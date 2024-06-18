@@ -16,9 +16,12 @@ import { ChatsModule } from './chats/chats.module'
 import { CommonGateway } from './common/common.gateway'
 import { CommonService } from './common/common.service'
 import { CommonModule } from './common/common.module'
+import { MeetingGateway } from './meeting/meeting.gateway';
+import { MeetingService } from './meeting/meeting.service';
+import { MeetingModule } from './meeting/meeting.module';
 
 @Module({
-  imports: [UsersModule, AuthModule, AwsModule, ChatsModule, CommonModule],
+  imports: [UsersModule, AuthModule, AwsModule, ChatsModule, CommonModule, MeetingModule],
   controllers: [
     AppController,
     UsersController,
@@ -34,6 +37,8 @@ import { CommonModule } from './common/common.module'
     ChatsService,
     CommonGateway,
     CommonService,
+    MeetingGateway,
+    MeetingService,
   ],
 })
 export class AppModule {}
