@@ -7,10 +7,13 @@ import { AuthService } from './auth/auth.service';
 import { AuthController } from './auth/auth.controller';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
+import { AwsController } from './aws/aws.controller';
+import { AwsService } from './aws/aws.service';
+import { AwsModule } from './aws/aws.module';
 
 @Module({
-  imports: [UsersModule, AuthModule],
-  controllers: [AppController, UsersController, AuthController],
-  providers: [AppService, UsersService, AuthService],
+  imports: [UsersModule, AuthModule, AwsModule],
+  controllers: [AppController, UsersController, AuthController, AwsController],
+  providers: [AppService, UsersService, AuthService, AwsService],
 })
 export class AppModule {}
