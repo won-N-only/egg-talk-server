@@ -1,1 +1,1 @@
-Onion-chat server repository
+Egg-Signal server repository
