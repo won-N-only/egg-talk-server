@@ -22,10 +22,10 @@ enum GenderTypes {
 
 @Schema({ timestamps: true })
 export class User {
-  @Prop({ type: String, required: true })
+  @Prop({ type: String, required: true, unique: true })
   id: string
 
-  @Prop({ type: String, required: true })
+  @Prop({ type: String, required: true, unique: true })
   nickname: string
 
   @Prop({ type: String, required: true })
