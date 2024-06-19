@@ -1,44 +1,27 @@
 import { Module } from '@nestjs/common'
 import { AppController } from './app.controller'
 import { AppService } from './app.service'
-import { UsersController } from './users/users.controller'
-import { UsersService } from './users/users.service'
-import { AuthService } from './auth/auth.service'
-import { AuthController } from './auth/auth.controller'
 import { UsersModule } from './users/users.module'
 import { AuthModule } from './auth/auth.module'
-import { AwsController } from './aws/aws.controller'
-import { AwsService } from './aws/aws.service'
 import { AwsModule } from './aws/aws.module'
-import { ChatsController } from './chats/chats.controller'
-import { ChatsService } from './chats/chats.service'
 import { ChatsModule } from './chats/chats.module'
-import { CommonGateway } from './common/common.gateway'
-import { CommonService } from './common/common.service'
 import { CommonModule } from './common/common.module'
-import { MeetingGateway } from './meeting/meeting.gateway';
-import { MeetingService } from './meeting/meeting.service';
-import { MeetingModule } from './meeting/meeting.module';
+import { MeetingModule } from './meeting/meeting.module'
+import { MongooseModule } from '@nestjs/mongoose'
+import { ConfigModule } from '@nestjs/config'
 
 @Module({
-  imports: [UsersModule, AuthModule, AwsModule, ChatsModule, CommonModule, MeetingModule],
-  controllers: [
-    AppController,
-    UsersController,
-    AuthController,
-    AwsController,
-    ChatsController,
+  imports: [
+    ConfigModule.forRoot(),
+    UsersModule,
+    AuthModule,
+    AwsModule,
+    ChatsModule,
+    CommonModule,
+    MeetingModule,
+    MongooseModule.forRoot(process.env.MONGODB_URI),
   ],
-  providers: [
-    AppService,
-    UsersService,
-    AuthService,
-    AwsService,
-    ChatsService,
-    CommonGateway,
-    CommonService,
-    MeetingGateway,
-    MeetingService,
-  ],
+  controllers: [AppController],
+  providers: [AppService],
 })
 export class AppModule {}
