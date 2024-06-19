@@ -15,7 +15,7 @@ class Friend {
 
 const FriendSchema = SchemaFactory.createForClass(Friend)
 
-enum GenderTypes {
+export enum GenderTypes {
   MALE = 'MALE',
   FEMALE = 'FEMALE',
 }
