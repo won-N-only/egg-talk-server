@@ -1,9 +1,12 @@
-import { SubscribeMessage, WebSocketGateway } from '@nestjs/websockets';
+import { SubscribeMessage, WebSocketGateway } from '@nestjs/websockets'
+import { UseGuards } from '@nestjs/common'
+import { JwtAuthWsGuard } from '../guards/jwt-auth.ws.guard'
 
-@WebSocketGateway()
+@UseGuards(JwtAuthWsGuard)
+@WebSocketGateway({ namespace: 'common' })
 export class CommonGateway {
   @SubscribeMessage('message')
   handleMessage(client: any, payload: any): string {
-    return 'Hello world!';
+    return 'Hello world!'
   }
 }
