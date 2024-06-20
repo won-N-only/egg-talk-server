@@ -24,7 +24,13 @@ export class UsersController {
     return this.usersService.findOne(reqGetUserDto)
   }
 
-  //요청받은 유저가 ok 했을 때
+  @Get('/avatar')
+  @HttpCode(HttpStatus.OK)
+  async getUserAvatar(@Query() reqGetUserDto: ReqGetUserDto): Promise<Object> {
+    return this.usersService.findAvatar(reqGetUserDto)
+  }
+
+  //친구 요청받은 유저가 ok 했을 때
   @Post('/friends')
   @HttpCode(HttpStatus.OK)
   async addFriend(
