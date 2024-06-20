@@ -7,6 +7,7 @@ import {
   HttpStatus,
   UseGuards,
   Query,
+  Patch,
 } from '@nestjs/common'
 import { UsersService } from './users.service'
 import { JwtAuthRestGuard } from '../guards/jwt-auth.rest.guard'
@@ -27,7 +28,17 @@ export class UsersController {
   @Get('/avatar')
   @HttpCode(HttpStatus.OK)
   async getUserAvatar(@Query() reqGetUserDto: ReqGetUserDto): Promise<Object> {
-    return this.usersService.findAvatar(reqGetUserDto)
+    return this.usersService.getAvatar(reqGetUserDto)
+  }
+
+  @Patch('/avatar')
+  @HttpCode(HttpStatus.OK)
+  async patchUserAvatar(
+    @Query() reqGetUserDto: ReqGetUserDto,
+    /**TODO: 아바타 obj 아니고 indexnumber면 나중에 바꿔야함 */
+    @Body() avatar: Object,
+  ): Promise<Object> {
+    return this.usersService.patchAvatar(reqGetUserDto, avatar)
   }
 
   //친구 요청받은 유저가 ok 했을 때
