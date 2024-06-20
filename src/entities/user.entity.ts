@@ -1,10 +1,11 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import { Types } from 'mongoose'
+import { Notification } from './notification.entity'
 
 @Schema({ _id: false })
 class Friend {
-  @Prop({ type: Types.ObjectId, required: true })
-  _id: Types.ObjectId
+  @Prop({ type: Types.ObjectId, required: true, ref: 'User' })
+  friend: Types.ObjectId
 
   @Prop({ type: Types.ObjectId, required: true })
   chatRoomId: Types.ObjectId
@@ -42,6 +43,14 @@ export class User {
 
   @Prop({ type: Boolean, required: false, default: false })
   newNotification: boolean
+
+  @Prop({
+    type: [Types.ObjectId],
+    required: false,
+    default: [],
+    ref: Notification.name,
+  })
+  notifications: Types.ObjectId[]
 }
 
 export const UserSchema = SchemaFactory.createForClass(User)
