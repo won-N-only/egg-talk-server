@@ -29,10 +29,9 @@ export class UsersService {
       throw new NotFoundException('없는 유저입니다.')
     }
 
-    // if (user.friends.some(friend => friend.friend === friendId)) {
-    //   // 이미 친구인지 확인
-    //   throw new BadRequestException('이미 친구에용.')
-    // }
+    if (user.friends.some(f => f.friend === friendId)) {
+      throw new BadRequestException('이미 친구에용.')
+    }
 
     const updatedUser = await this.usersRepository.addFriend(userId, friendId)
     return plainToClass(ResGetUserDto, updatedUser)
