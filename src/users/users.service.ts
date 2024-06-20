@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common'
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common'
 import { UsersRepository } from './users.repository'
 import { ResGetUserDto } from './dto/response/get-user.dto'
 import { plainToClass } from 'class-transformer'
@@ -12,9 +16,25 @@ export class UsersService {
     if (!user) {
       throw new NotFoundException('유저가 없습니다.')
     }
-    const resGetUserDto = plainToClass(ResGetUserDto, user) 
-    console.log('로그립니디', resGetUserDto._id)
-
+    const resGetUserDto = plainToClass(ResGetUserDto, user)
     return resGetUserDto
+  }
+
+  async addFriend(userId: string, friendId: string): Promise<ResGetUserDto> {
+    // 유효한 userId와 friendId를 가지고 있는지 확인
+    const user = await this.usersRepository.findOne({ id: userId })
+    const friend = await this.usersRepository.findOne({ id: friendId })
+
+    if (!friend) {
+      throw new NotFoundException('없는 유저입니다.')
+    }
+
+    // if (user.friends.some(friend => friend.friend === friendId)) {
+    //   // 이미 친구인지 확인
+    //   throw new BadRequestException('이미 친구에용.')
+    // }
+
+    const updatedUser = await this.usersRepository.addFriend(userId, friendId)
+    return plainToClass(ResGetUserDto, updatedUser)
   }
 }
