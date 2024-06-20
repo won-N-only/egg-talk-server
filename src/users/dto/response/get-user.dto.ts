@@ -9,11 +9,7 @@ export class ResGetUserDto {
 
   newNotification: boolean
   notifications: string[] // Notification의 ObjectId 목록
-  friends: Array<{
-    _id: string // 친구 id
-    chatRoomId: string // 채팅방 id
-    newMessage: boolean
-  }>
+  friends: string[]
 
   createdAt: Date
 }
