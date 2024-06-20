@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
+  Query,
 } from '@nestjs/common'
 import { UsersService } from './users.service'
 import { JwtAuthRestGuard } from '../guards/jwt-auth.rest.guard'
@@ -17,9 +18,9 @@ import { ReqAddFriendDto } from './dto/request/add-friend.dto'
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @Get('me')
+  @Get()
   @HttpCode(HttpStatus.OK)
-  async getUser(reqGetUserDto: ReqGetUserDto): Promise<ResGetUserDto> {
+  async getUser(@Query() reqGetUserDto: ReqGetUserDto): Promise<ResGetUserDto> {
     return this.usersService.findOne(reqGetUserDto)
   }
 
