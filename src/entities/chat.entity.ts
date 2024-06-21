@@ -9,9 +9,6 @@ export class Chat {
   @Prop({ type: String, required: true })
   message: string
 
-  @Prop({ type: Date, default: Date.now })
-  createdAt: Date
-
   @Prop({ type: Boolean, default: false })
   isRead: boolean
 }
