@@ -1,6 +1,6 @@
 import { IsString } from 'class-validator'
-
+import {Types} from 'mongoose';
 export class ReqGetUserDto {
   @IsString()
-  id: string
+  _id: Types.ObjectId
 }
