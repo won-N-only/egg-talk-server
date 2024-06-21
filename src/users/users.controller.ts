@@ -23,12 +23,6 @@ export class UsersController {
     return this.usersService.findOne(reqGetUserDto)
   }
 
-  @Get('/avatar')
-  @HttpCode(HttpStatus.OK)
-  async getUserAvatar(@Query() reqGetUserDto: ReqGetUserDto): Promise<Object> {
-    return (await this.usersService.findOne(reqGetUserDto)).avatar
-  }
-
   @Patch('/avatar')
   @HttpCode(HttpStatus.OK)
   async patchUserAvatar(
