@@ -4,8 +4,16 @@ import { CommonService } from './common.service'
 import { CommonRepository } from './common.repository'
 import { JwtAuthWsGuard } from '../guards/jwt-auth.ws.guard'
 import { JwtService } from '@nestjs/jwt'
-
+import { MongooseModule } from '@nestjs/mongoose'
+import { Chat, ChatSchema } from '../entities/chat.entity'
+import { ChatRoom, ChatRoomSchema } from '../entities/chat-room.entity'
 @Module({
+  imports: [
+    MongooseModule.forFeature([
+      { name: Chat.name, schema: ChatSchema },
+      { name: ChatRoom.name, schema: ChatRoomSchema },
+    ]),
+  ],
   providers: [
     CommonGateway,
     CommonService,
