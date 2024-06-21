@@ -6,15 +6,11 @@ import { UsersRepository } from './users.repository'
 import { JwtAuthRestGuard } from '../guards/jwt-auth.rest.guard'
 import { JwtService } from '@nestjs/jwt'
 import { MongooseModule } from '@nestjs/mongoose'
-import { UserSchema, User } from 'src/entities/user.entity'
 import { ChatRoomSchema, ChatRoom } from 'src/entities/chat-room.entity'
 
 @Module({
   imports: [
     AuthModule,
-    MongooseModule.forFeature([
-      { name: User.name, schema: UserSchema, collection: 'Users' },
-    ]),
     MongooseModule.forFeature([
       { name: ChatRoom.name, schema: ChatRoomSchema, collection: 'ChatRooms' },
     ]),
