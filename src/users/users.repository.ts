@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common'
-import { Model } from 'mongoose'
+import { Model, Types } from 'mongoose'
 import { User } from '../entities/user.entity'
 import { ChatRoom } from '../entities/chat-room.entity'
 import { InjectModel } from '@nestjs/mongoose'
@@ -23,7 +23,7 @@ export class UsersRepository {
       .lean()
   }
 
-  async addFriend(userId: string, friendId: string): Promise<User> {
+  async addFriend(userId: Types.ObjectId, friendId: Types.ObjectId): Promise<User> {
     // ChatRoom 생성
     const chatRoom = new this.chatRoomModel({ chats: [] })
     await chatRoom.save()
