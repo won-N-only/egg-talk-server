@@ -4,7 +4,6 @@ import { User } from '../entities/user.entity'
 import { ChatRoom } from '../entities/chat-room.entity'
 import { InjectModel } from '@nestjs/mongoose'
 import { ResGetUserDto } from './dto/response/get-user.dto'
-import { NotFound, BadRequest } from 'http-errors'
 
 @Injectable()
 export class UsersRepository {
