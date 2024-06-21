@@ -1,3 +1,4 @@
+import { Friend } from '../../../entities/user.entity'
 export class ResAddFriendDto {
   _id: string
 
@@ -9,11 +10,7 @@ export class ResAddFriendDto {
 
   newNotification: boolean
   notifications: string[] // Notification의 ObjectId 목록
-  friends: Array<{
-    _id: string // 친구 id
-    chatRoomId: string // 채팅방 id
-    newMessage: boolean
-  }>
+  friends: Friend[]
 
   createdAt: Date
 }
