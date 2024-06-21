@@ -4,8 +4,8 @@ import { Notification } from './notification.entity'
 
 @Schema({ _id: false })
 export class Friend {
-  @Prop({ type: String, required: true, ref: 'User' })
-  friend: string
+  @Prop({ type: Types.ObjectId, required: true, ref: 'User' })
+  friend: Types.ObjectId
 
   @Prop({ type: Types.ObjectId, required: true })
   chatRoomId: Types.ObjectId
@@ -48,7 +48,7 @@ export class User {
     type: [Types.ObjectId],
     required: false,
     default: [],
-    // ref: Notification.name,
+    ref: Notification.name,
   })
   notifications: Types.ObjectId[]
 }
