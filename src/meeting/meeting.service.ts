@@ -30,7 +30,6 @@ export class OpenViduService {
         } else {
             console.log(`Session already exists: ${sessionName}`);
         }
-        // console.log('createSession의 값은 무엇일까요?:', this.sessions[sessionName].session);
         return this.sessions[sessionName]?.session;
     }
 

@@ -9,17 +9,15 @@ import {
 import { Body, UseGuards } from '@nestjs/common'
 import { Server, Socket } from 'socket.io';
 import { OpenViduService } from './meeting.service';
-// import { JwtAuthWsGuard } from '../guards/jwt-auth.ws.guard'
 
-// @WebSocketGateway({
-//   cors: {
-//     origin: '*',
-//     methods: ['GET', 'POST'],
-//   },
-// })
-
-// @UseGuards(JwtAuthWsGuard)
-@WebSocketGateway({ namespace: 'meeting' })
+@WebSocketGateway({
+  namespace: 'meeting',
+  cors: {
+    origin: '*', // 모든 출처에서의 요청 허용
+    methods: ['GET', 'POST'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  },
+})
 export class MeetingGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;
 
@@ -34,7 +32,6 @@ export class MeetingGateway implements OnGatewayInit, OnGatewayConnection, OnGat
   }
 
   handleDisconnect(client: Socket) {
-    // 모든 세션에서 참가자를 제거합니다.
     const sessions = this.openviduService.getSessions();
     for (const sessionName in sessions) {
       if (sessions.hasOwnProperty(sessionName)) {
@@ -48,7 +45,7 @@ export class MeetingGateway implements OnGatewayInit, OnGatewayConnection, OnGat
     try {
       const { participantName } = payload;
       console.log('ready됐지롱~~~~~~~');
-      const sessionName = this.openviduService.findOrCreateAvailableSession();
+      const sessionName = await this.openviduService.findOrCreateAvailableSession();
       const session = await this.openviduService.createSession(sessionName);
       if (session) {
         console.log('Session successfully created or retrieved');
@@ -63,7 +60,6 @@ export class MeetingGateway implements OnGatewayInit, OnGatewayConnection, OnGat
 
   @SubscribeMessage('cancel')
   handleCancel(client: Socket) {
-    // 모든 세션에서 참가자를 제거합니다.
     const sessions = this.openviduService.getSessions();
     for (const sessionName in sessions) {
       if (sessions.hasOwnProperty(sessionName)) {
@@ -91,7 +87,7 @@ export class MeetingGateway implements OnGatewayInit, OnGatewayConnection, OnGat
       const tokens = await this.openviduService.generateTokens(sessionName);
       console.log('토큰이 지금 되고 있음????', tokens);
       const session = this.openviduService.getSession(sessionName);
-      console.log('현재 세션::', session.sessionId);
+      console.log('현재 세션::', session);
       if (!session) {
         console.error(`No session found for ${sessionName} during startVideoChatSession`);
         return;
@@ -104,7 +100,7 @@ export class MeetingGateway implements OnGatewayInit, OnGatewayConnection, OnGat
           participantName: participant,
         });
       });
-      this.openviduService.resetParticipants(sessionName);
+      await this.openviduService.resetParticipants(sessionName);
     } catch (error) {
       console.error('Error generating tokens: ', error);
     }
