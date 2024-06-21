@@ -8,9 +8,6 @@ export class Chat {
 
   @Prop({ type: String, required: true })
   message: string
-
-  @Prop({ type: Boolean, default: false })
-  isRead: boolean
 }
 
 export const ChatSchema = SchemaFactory.createForClass(Chat)

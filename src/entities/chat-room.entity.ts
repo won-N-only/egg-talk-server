@@ -5,6 +5,9 @@ import { Types } from 'mongoose'
 export class ChatRoom {
   @Prop({ type: [Types.ObjectId] })
   chats: Types.ObjectId[]
+
+  @Prop({ type: Boolean, default: false })
+  isRead: boolean
 }
 
 export const ChatRoomSchema = SchemaFactory.createForClass(ChatRoom)
