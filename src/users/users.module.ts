@@ -16,7 +16,7 @@ import { ChatRoomSchema, ChatRoom } from 'src/entities/chat-room.entity'
       { name: User.name, schema: UserSchema, collection: 'Users' },
     ]),
     MongooseModule.forFeature([
-      { name: ChatRoom.name, schema: ChatRoomSchema },
+      { name: ChatRoom.name, schema: ChatRoomSchema, collection: 'ChatRooms' },
     ]),
   ],
   controllers: [UsersController],
