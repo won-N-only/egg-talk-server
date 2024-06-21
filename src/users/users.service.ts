@@ -1,9 +1,6 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common'
+import { Injectable, NotFoundException } from '@nestjs/common'
 import { UsersRepository } from './users.repository'
+import { ReqGetUserDto } from './dto/request/get-user.dto'
 import { ResGetUserDto } from './dto/response/get-user.dto'
 import { plainToClass } from 'class-transformer'
 
@@ -11,8 +8,8 @@ import { plainToClass } from 'class-transformer'
 export class UsersService {
   constructor(private readonly usersRepository: UsersRepository) {}
 
-  async findOne(filter: object): Promise<ResGetUserDto> {
-    const user = await this.usersRepository.findOne(filter)
+  async findOne(ReqGetUserDto: ReqGetUserDto): Promise<ResGetUserDto> {
+    const user = await this.usersRepository.findOne(ReqGetUserDto)
     if (!user) throw new NotFoundException('유저가 없습니다.')
 
     const resGetUserDto = plainToClass(ResGetUserDto, user)
@@ -22,19 +19,5 @@ export class UsersService {
   async patchAvatar(filter: object, avatar: object): Promise<Object> {
     const updatedUser = await this.usersRepository.updateAvatar(filter, avatar)
     return updatedUser.avatar
-  }
-
-  async addFriend(userId: string, friendId: string): Promise<ResGetUserDto> {
-    // 유효한 userId와 friendId를 가지고 있는지 확인
-    const user = await this.usersRepository.findOne({ id: userId })
-    const friend = await this.usersRepository.findOne({ id: friendId })
-
-    if (!friend) throw new NotFoundException('없는 유저입니다.')
-
-    if (user.friends.some(f => f.friend === friendId))
-      throw new BadRequestException('이미 친구에용.')
-
-    const updatedUser = await this.usersRepository.addFriend(userId, friendId)
-    return plainToClass(ResGetUserDto, updatedUser)
   }
 }
