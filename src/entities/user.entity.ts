@@ -3,7 +3,7 @@ import { Types } from 'mongoose'
 import { Notification } from './notification.entity'
 
 @Schema({ _id: false })
-class Friend {
+export class Friend {
   @Prop({ type: Types.ObjectId, required: true, ref: 'User' })
   friend: Types.ObjectId
 
