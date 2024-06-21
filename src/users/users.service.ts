@@ -19,13 +19,6 @@ export class UsersService {
     return resGetUserDto
   }
 
-  async getAvatar(filter: object): Promise<Object> {
-    const user = await this.usersRepository.findOne(filter)
-    if (!user) throw new NotFoundException('유저가 없습니다.')
-
-    return user.avatar
-  }
-
   async patchAvatar(filter: object, avatar: object): Promise<Object> {
     const updatedUser = await this.usersRepository.updateAvatar(filter, avatar)
     return updatedUser.avatar
