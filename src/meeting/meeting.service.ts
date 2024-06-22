@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import { OpenVidu, OpenViduRole, Session } from 'openvidu-node-client'
+import { Socket } from 'socket.io'
 
 @Injectable()
 export class OpenViduService {
@@ -149,6 +150,62 @@ export class OpenViduService {
     await this.createSession(newSessionName)
     console.log(`Creating and returning new session: ${newSessionName}`)
     return newSessionName
+  }
+
+  async handleJoinQueue(
+    sessionName: string,
+    participantName: string,
+    client: Socket,
+  ) {
+    try {
+      this.addParticipant(sessionName, participantName, client)
+      const participants = this.getParticipants(sessionName)
+      console.log(
+        'Current waiting participants: ',
+        participants.map(p => p.name),
+      )
+      console.log(
+        'Current number of waiting participants: ',
+        participants.length,
+      )
+
+      if (participants.length === 6) {
+        await this.startVideoChatSession(sessionName)
+        // 새로운 세션을 생성하고 반환
+        const newSessionName = this.generateSessionName()
+        await this.createSession(newSessionName)
+        console.log(`New session prepared: ${newSessionName}`)
+      }
+    } catch (error) {
+      console.error('Error joining queue:', error)
+      // 세션 참가 실패 시 세션 삭제
+      await this.deleteSession(sessionName)
+    }
+  }
+
+  async startVideoChatSession(sessionName: string) {
+    try {
+      const tokens = await this.generateTokens(sessionName)
+      const session = this.getSession(sessionName)
+      if (!session) {
+        console.error(
+          `No session found for ${sessionName} during startVideoChatSession`,
+        )
+        return
+      }
+      tokens.forEach(({ participant, token }, index) => {
+        const participantSocket =
+          this.getParticipants(sessionName)[index].socket
+        participantSocket.emit('startCall', {
+          sessionId: session.sessionId,
+          token: token,
+          participantName: participant,
+        })
+      })
+      await this.resetParticipants(sessionName)
+    } catch (error) {
+      console.error('Error generating tokens: ', error)
+    }
   }
 
   getSessions() {
