@@ -7,8 +7,8 @@ export class OpenViduService {
     private sessions: Record<string, { session: Session, participants: any[] }> = {};
 
     constructor() {
-        const OPENVIDU_URL = process.env.OPENVIDU_URL || 'http://localhost:4443';
-        const OPENVIDU_SECRET = process.env.OPENVIDU_SECRET || 'MY_SECRET';
+        const OPENVIDU_URL = process.env.OPENVIDU_URL;
+        const OPENVIDU_SECRET = process.env.OPENVIDU_SECRET;
         this.openvidu = new OpenVidu(OPENVIDU_URL, OPENVIDU_SECRET);
     }
 
@@ -19,18 +19,18 @@ export class OpenViduService {
     async createSession(sessionName: string) {
         if (!this.sessions[sessionName] || !this.sessions[sessionName].session) {
             try {
+                // 세션 새로 생성
                 const session = await this.openvidu.createSession();
                 this.sessions[sessionName] = { session, participants: [] };
-                console.log(`Session created: ${sessionName}`);
-                console.log(`Session ID: ${session.sessionId}`);
+                console.log(`Session created: ${sessionName}, ID: ${session.sessionId}`);
             } catch (error) {
                 console.error('Error creating session:', error);
                 throw error;
             }
         } else {
-            console.log(`Session already exists: ${sessionName}`);
+            // 세션이 현재 존재할때는 존재하는 곳에 보내줌
+            return this.sessions[sessionName]?.session;
         }
-        return this.sessions[sessionName]?.session;
     }
 
     addParticipant(sessionName: string, participantName: string, socket: any) {
@@ -79,19 +79,11 @@ export class OpenViduService {
         }));
     }
 
-    resetParticipants(sessionName: string) {
+    async resetParticipants(sessionName: string) {
         if (this.sessions[sessionName]) {
-            // this.sessions[sessionName].participants = [];
             const newSessionName = this.generateSessionName();
-            this.createSession(newSessionName).then(newSession => {
-                this.sessions[newSessionName] = { session: newSession, participants: [] };
-            }).catch(error => {
-                console.error('Error creating new session', error);
-            });
-            // const newSessionName = this.generateSessionName();
-            // this.createSession(newSessionName);
-            // this.sessions[newSessionName] = { session: this.sessions[sessionName].session, participants: [] };
-            // console.log(`Session ${sessionName} reset and new session ${newSessionName} created`);
+            const newSession = await this.createSession(newSessionName);
+            this.sessions[newSessionName] = { session: newSession, participants: [] };
         } else {
             console.error(`Session ${sessionName} does not exist`);
         }
@@ -101,34 +93,31 @@ export class OpenViduService {
         return this.sessions[sessionName]?.session;
     }
 
-    findOrCreateAvailableSession() {
+    async findOrCreateAvailableSession() {
         console.log("Finding or creating available session");
-        // 기존 세션 중에 참가자 수가 6명 미만인 세션을 찾습니다.
         for (const sessionName in this.sessions) {
             if (this.sessions.hasOwnProperty(sessionName)) {
-                if (this.sessions[sessionName].participants.length < 6) {
-                    if (this.sessions[sessionName].participants.length == 5) {
-                        // 5명이 있는 세션을 찾으면 기존 세션 이름을 반환하고,
-                        // 새로운 세션 이름을 생성하여 준비합니다.
-                        const before_sessionName = sessionName;
+                const participants = this.sessions[sessionName].participants;
+                if (participants.length < 6) {
+                    if (participants.length === 5) {
                         const newSessionName = this.generateSessionName();
-                        console.log(`Creating new session: ${newSessionName} and returning existing session: ${before_sessionName}`);
-                        this.createSession(newSessionName);
-                        return before_sessionName;
+                        await this.createSession(newSessionName);
+                        console.log(`Returning existing session: ${sessionName} and preparing new session: ${newSessionName}`);
+                        return sessionName;
                     } else {
-                        // 5명 미만인 세션을 반환합니다.
                         console.log(`Returning existing session: ${sessionName}`);
                         return sessionName;
                     }
                 }
             }
         }
-        // 새로운 세션 이름을 생성하고 반환합니다.
+        // 세션을 아예 맨 처음 만들때 이쪽으로 오게됨(최초 1회)
         const newSessionName = this.generateSessionName();
-        this.createSession(newSessionName);
+        await this.createSession(newSessionName);
         console.log(`Creating and returning new session: ${newSessionName}`);
         return newSessionName;
     }
+
 
     getSessions() {
         return this.sessions;

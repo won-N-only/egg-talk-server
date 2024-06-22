@@ -44,7 +44,6 @@ export class MeetingGateway implements OnGatewayInit, OnGatewayConnection, OnGat
   async handleReady(client: Socket, payload: { participantName: string }) {
     try {
       const { participantName } = payload;
-      console.log('ready됐지롱~~~~~~~');
       const sessionName = await this.openviduService.findOrCreateAvailableSession();
       const session = await this.openviduService.createSession(sessionName);
       if (session) {
@@ -83,11 +82,8 @@ export class MeetingGateway implements OnGatewayInit, OnGatewayConnection, OnGat
 
   async startVideoChatSession(sessionName: string) {
     try {
-      console.log('시작 비디오 챗');
       const tokens = await this.openviduService.generateTokens(sessionName);
-      console.log('토큰이 지금 되고 있음????', tokens);
       const session = this.openviduService.getSession(sessionName);
-      console.log('현재 세션::', session);
       if (!session) {
         console.error(`No session found for ${sessionName} during startVideoChatSession`);
         return;
