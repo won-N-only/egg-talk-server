@@ -14,4 +14,4 @@ import { JwtService } from '@nestjs/jwt'
     JwtAuthWsGuard,
   ],
 })
-export class MeetingModule { }
+export class MeetingModule {}
