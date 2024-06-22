@@ -9,9 +9,9 @@ import {
 import { Body, UseGuards } from '@nestjs/common'
 import { Server, Socket } from 'socket.io'
 import { OpenViduService } from './meeting.service'
-import { JwtAuthWsGuard } from '../guards/jwt-auth.ws.guard'
+// import { JwtAuthWsGuard } from '../guards/jwt-auth.ws.guard'
 
-@UseGuards(JwtAuthWsGuard)
+// @UseGuards(JwtAuthWsGuard)
 @WebSocketGateway({
   namespace: 'meeting',
   cors: {
@@ -45,14 +45,17 @@ export class MeetingGateway
     }
   }
 
+  // @SubscribeMessage('ready')
+  // async handleReady(client: Socket) {
+  //   try {
+  //     const participantName = client['user'].participantName
   @SubscribeMessage('ready')
-  async handleReady(client: Socket) {
+  async handleReady(client: Socket, payload: { participantName: string }) {
     try {
-      const participantName = client['user'].participantName
+      const { participantName } = payload
       const sessionName =
         await this.openviduService.findOrCreateAvailableSession()
-      const session = await this.openviduService.createSession(sessionName)
-      if (session) {
+      if (sessionName) {
         console.log('Session successfully created or retrieved')
         await this.handleJoinQueue(sessionName, participantName, client)
       } else {
@@ -78,18 +81,29 @@ export class MeetingGateway
     participantName: string,
     client: Socket,
   ) {
-    this.openviduService.addParticipant(sessionName, participantName, client)
+    try {
+      this.openviduService.addParticipant(sessionName, participantName, client)
+      const participants = this.openviduService.getParticipants(sessionName)
+      console.log(
+        'Current waiting participants: ',
+        participants.map(p => p.name),
+      )
+      console.log(
+        'Current number of waiting participants: ',
+        participants.length,
+      )
 
-    const participants = this.openviduService.getParticipants(sessionName)
-    console.log('Participant joined the queue: ', participantName)
-    console.log(
-      'Current waiting participants: ',
-      participants.map(p => p.name),
-    )
-    console.log('Current number of waiting participants: ', participants.length)
-
-    if (participants.length === 6) {
-      await this.startVideoChatSession(sessionName)
+      if (participants.length === 6) {
+        await this.startVideoChatSession(sessionName)
+        // 새로운 세션을 생성하고 반환
+        const newSessionName = this.openviduService.generateSessionName()
+        await this.openviduService.createSession(newSessionName)
+        console.log(`New session prepared: ${newSessionName}`)
+      }
+    } catch (error) {
+      console.error('Error joining queue:', error)
+      // 세션 참가 실패 시 세션 삭제
+      await this.openviduService.deleteSession(sessionName)
     }
   }
 
