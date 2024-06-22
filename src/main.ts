@@ -8,7 +8,8 @@ async function bootstrap() {
   app.enableCors({
     origin: '*', // 모든 출처에서의 요청 허용
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type'],
+    credentials: true,
   });
 
   await app.listen(3000)

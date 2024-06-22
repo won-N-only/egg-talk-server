@@ -15,7 +15,8 @@ import { OpenViduService } from './meeting.service';
   cors: {
     origin: '*', // 모든 출처에서의 요청 허용
     methods: ['GET', 'POST'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type'],
+    credentials: true,
   },
 })
 export class MeetingGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
