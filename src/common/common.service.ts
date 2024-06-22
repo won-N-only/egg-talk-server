@@ -17,7 +17,10 @@ export class CommonService {
     const chatRoomIdObj = new Types.ObjectId(chatRoomId);
 
     // 2. 해당 ChatRoom의 chats 배열 가져오기
-    const chatRoom = await this.chatRoomModel.findById(chatRoomIdObj).exec();
+    const chatRoom = await this.chatRoomModel.findByIdAndUpdate(
+        chatRoomIdObj,
+        { $set: { isRead: true } }, // isRead를 true로 업데이트
+        { new: true }).exec();      // { new : true } 옵션 지정해줘야 바뀐 데이터 반환가능
     const chatIds = chatRoom?.chats || []; // chatRoom이 없으면 빈 배열
 
     // 3. Chat 배열 조회 및 populate
@@ -27,18 +30,11 @@ export class CommonService {
     .sort({ createdAt: 1 }) // createdAt 기준 오름차순 정렬
     .exec();
 
-    // 4. 채팅방에 들어갔다 = 안읽은 메세지 읽음 처리해야함 ( * 상대방이 보낸것만 읽음 처리 )
-    await this.chatModel.updateMany(
-      {
-        _id: { $in: chatIds },
-        sender: { $ne: userId }, // 본인이 보낸 메시지 제외
-      },
-      { $set: { isRead: true } }
-    );
+    console.log(chats);
     return chats;
   }
 
-  async sendMessage(senderId: string, chatRoomId: string, message: string): Promise<Chat> {
+  async sendMessage(senderId: string, chatRoomId: string, message: string, isReceiverOnline: boolean): Promise<Chat> {
     try {
       // 1. 메시지 저장
       const newChat = await this.chatModel.create({
@@ -49,13 +45,13 @@ export class CommonService {
       // 2. ChatRoom 업데이트
       await this.chatRoomModel.findByIdAndUpdate(chatRoomId, {
         $push: { chats: newChat._id },
-        // $set: {isRead : false}
+        isRead: isReceiverOnline,
       });
-
+      console.log(newChat);
       return newChat;
     } catch (error) {
       console.error('메시지 저장 실패:', error);
-      throw error; // 에러를 상위 호출자에게 전달
+      throw error;
     }
   }
 }
