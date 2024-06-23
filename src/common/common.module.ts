@@ -7,11 +7,13 @@ import { JwtService } from '@nestjs/jwt'
 import { MongooseModule } from '@nestjs/mongoose'
 import { Chat, ChatSchema } from '../entities/chat.entity'
 import { ChatRoom, ChatRoomSchema } from '../entities/chat-room.entity'
+import { User, UserSchema } from 'src/entities/user.entity'
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: Chat.name, schema: ChatSchema },
       { name: ChatRoom.name, schema: ChatRoomSchema },
+      { name: User.name, schema: UserSchema}
     ]),
   ],
   providers: [

@@ -1,6 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
-import { Document, Types } from 'mongoose'
-export type ChatDocument = Chat & Document
+import { Types } from 'mongoose'
 
 @Schema({ timestamps: true })
 export class Chat {

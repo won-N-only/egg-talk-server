@@ -1,15 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { Chat, ChatDocument } from '../entities/chat.entity';
-import { ChatRoom, ChatRoomDocument } from '../entities/chat-room.entity';
-
+import { Chat} from '../entities/chat.entity';
+import { ChatRoom} from '../entities/chat-room.entity';
+import { User } from '../entities/user.entity';
 
 @Injectable()
 export class CommonService {
   constructor(
-    @InjectModel(ChatRoom.name) private chatRoomModel: Model<ChatRoomDocument>,
-    @InjectModel(Chat.name) private chatModel: Model<ChatDocument>
+    @InjectModel(ChatRoom.name) private chatRoomModel: Model<ChatRoom>,
+    @InjectModel(Chat.name) private chatModel: Model<Chat>,
+    @InjectModel(User.name) private userModel: Model<User>
   ) {}
 
   async getChatHistory(chatRoomId: string, userId:string): Promise<Chat[]> {
@@ -26,7 +27,7 @@ export class CommonService {
     // 3. Chat 배열 조회 및 populate
     const chats = await this.chatModel
     .find({ _id: { $in: chatIds } }) // chatIds에 속하는 Chat만 조회
-    .populate('sender', 'username') // sender 정보 populate (필요한 경우)
+    // .populate('sender', 'username') // sender 정보 populate (필요한 경우)
     .sort({ createdAt: 1 }) // createdAt 기준 오름차순 정렬
     .exec();
 
@@ -51,6 +52,18 @@ export class CommonService {
       return newChat;
     } catch (error) {
       console.error('메시지 저장 실패:', error);
+      throw error;
+    }
+  }
+
+  async changeNotice(userId : string){
+    try {
+      await this.userModel.findOneAndUpdate(
+        { id: userId },
+        { $set: { newNotification: true } },
+      );
+    } catch (error) {
+      console.error('알림이 전송되지 않았습니다.', error);
       throw error;
     }
   }
