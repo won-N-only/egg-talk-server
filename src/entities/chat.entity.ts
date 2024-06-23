@@ -8,9 +8,6 @@ export class Chat {
 
   @Prop({ type: String, required: true })
   message: string
-
-  @Prop({ type: Date, default: Date.now })
-  createdAt: Date
 }
 
 export const ChatSchema = SchemaFactory.createForClass(Chat)

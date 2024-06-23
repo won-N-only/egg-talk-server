@@ -1,12 +1,9 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import { Types } from 'mongoose'
-// export type ChatRoomDocument = ChatRoom & Document
 
 @Schema({ timestamps: true })
 export class ChatRoom {
 
-  // @Prop({ type: [{ type: Types.ObjectId }] })
-  // chats: Types.ObjectId[]
   @Prop({ type: [Types.ObjectId] })
   chats: Types.ObjectId[]
 
