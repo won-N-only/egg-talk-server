@@ -6,4 +6,4 @@
 $ docker compose up --build
 ```
 
-server will open in http://localhost:3000
+server will open in http://localhost
