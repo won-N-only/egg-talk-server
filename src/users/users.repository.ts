@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common'
-import { Model } from 'mongoose'
+import { Model, Types } from 'mongoose'
 import { User } from '../entities/user.entity'
 import { InjectModel } from '@nestjs/mongoose'
 import { ResGetUserDto } from './dto/response/get-user.dto'
@@ -10,10 +10,8 @@ export class UsersRepository {
     @InjectModel(User.name) private readonly userModel: Model<User>,
   ) {}
 
-  async findOne(ReqGetUserDto: ReqGetUserDto): Promise<ResGetUserDto> {
-    return await this.userModel
-      .findById(ReqGetUserDto._id, { password: 0 })
-      .lean()
+  async findOne(userId: Types.ObjectId): Promise<ResGetUserDto> {
+    return await this.userModel.findById(userId, { password: 0 }).lean()
   }
 
   async updateAvatar(filter: object, avatar: object): Promise<User> {
