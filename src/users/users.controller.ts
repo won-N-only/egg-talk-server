@@ -6,12 +6,13 @@ import {
   HttpStatus,
   UseGuards,
   Query,
+  Req,
   Patch,
 } from '@nestjs/common'
 import { UsersService } from './users.service'
 import { JwtAuthRestGuard } from '../guards/jwt-auth.rest.guard'
-import { ReqGetUserDto } from './dto/request/get-user.dto'
 import { ResGetUserDto } from './dto/response/get-user.dto'
+import { Types } from 'mongoose'
 @UseGuards(JwtAuthRestGuard)
 @Controller('users')
 export class UsersController {
@@ -19,17 +20,18 @@ export class UsersController {
 
   @Get()
   @HttpCode(HttpStatus.OK)
-  async getUser(@Query() reqGetUserDto: ReqGetUserDto): Promise<ResGetUserDto> {
-    return this.usersService.findOne(reqGetUserDto)
+  async getUser(@Req() request: Request): Promise<ResGetUserDto> {
+    const userId = new Types.ObjectId(request['user']._id)
+    return this.usersService.findOne(userId)
   }
 
-  @Patch('/avatar')
+  @Patch()
   @HttpCode(HttpStatus.OK)
   async patchUserAvatar(
-    @Query() reqGetUserDto: ReqGetUserDto,
-    /**TODO: 아바타 obj 아니고 indexnumber면 나중에 바꿔야함 */
-    @Body() avatar: Object,
+    @Req() request: Request,
+    @Body() avatar: Object, // avatar말고 다른 것도 바꿀 수 있게 수정 예정
   ): Promise<Object> {
-    return this.usersService.patchAvatar(reqGetUserDto, avatar)
+    const userId = new Types.ObjectId(request['user']._id)
+    return this.usersService.patchAvatar(userId, avatar)
   }
 }

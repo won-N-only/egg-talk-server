@@ -13,7 +13,7 @@ import { User, UserSchema } from '../entities/user.entity'
     MongooseModule.forFeature([
       { name: Chat.name, schema: ChatSchema },
       { name: ChatRoom.name, schema: ChatRoomSchema },
-      { name: User.name, schema: UserSchema}
+      { name: User.name, schema: UserSchema },
     ]),
   ],
   providers: [
