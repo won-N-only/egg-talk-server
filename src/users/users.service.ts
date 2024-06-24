@@ -1,6 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { UsersRepository } from './users.repository'
-import { ReqGetUserDto } from './dto/request/get-user.dto'
 import { ResGetUserDto } from './dto/response/get-user.dto'
 import { plainToClass } from 'class-transformer'
 

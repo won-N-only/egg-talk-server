@@ -11,7 +11,6 @@ import {
 } from '@nestjs/common'
 import { UsersService } from './users.service'
 import { JwtAuthRestGuard } from '../guards/jwt-auth.rest.guard'
-import { ReqGetUserDto } from './dto/request/get-user.dto'
 import { ResGetUserDto } from './dto/response/get-user.dto'
 @UseGuards(JwtAuthRestGuard)
 @Controller('users')
