@@ -24,12 +24,11 @@ export class UsersController {
     return this.usersService.findOne(userId)
   }
 
-  @Patch('/avatar')
+  @Patch()
   @HttpCode(HttpStatus.OK)
   async patchUserAvatar(
     @Req() request: Request,
-    /**TODO: 아바타 obj 아니고 indexnumber면 나중에 바꿔야함 */
-    @Body() avatar: Object,
+    @Body() avatar: Object, // avatar말고 다른 것도 바꿀 수 있게 수정 예정
   ): Promise<Object> {
     const userId = request['user']._id
     return this.usersService.patchAvatar(userId, avatar)
