@@ -100,4 +100,11 @@ export class CommonService {
 
     return await this.commonRepository.markNotification(data)
   }
+
+  async getFriends(userId: Types.ObjectId): Promise<ObjectId[]> {
+    return await this.commonRepository.getFriends(userId)
+  }
+  async acceptFriend(data: AddFriendDto): Promise<User> {
+    return await this.commonRepository.acceptFriend(data)
+  }
 }
