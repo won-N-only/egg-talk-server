@@ -44,4 +44,59 @@ export class CommonRepository {
     return notification
   }
 
+  async getFriends(userId: Types.ObjectId): Promise<ObjectId[]> {
+    return await this.userModel.findById(userId, { friends: 1 }).lean()
+  }
+  async acceptFriend(data: AddFriendDto): Promise<User> {
+    const { userId, friendId } = data
+    const friend = await this.userModel.findById(friendId)
+    if (!friend) throw new Error('없는 유저랍니다.')
+
+    try {
+      await this.userModel.findByIdAndUpdate(
+        userId,
+        {
+          $pull: {
+            notifications: {
+              sender: friendId,
+            },
+          },
+        },
+        { new: true },
+      )
+
+      const newChatRoom = new this.chatRoomModel({ chats: [] })
+      await newChatRoom.save({})
+
+      const newFriend: Friend = {
+        friend: friend._id,
+        chatRoomId: newChatRoom._id,
+        newMessage: false,
+      }
+
+      const newFriendForFriend: Friend = {
+        friend: userId,
+        chatRoomId: newChatRoom._id,
+        newMessage: false,
+      }
+
+      await this.userModel.findByIdAndUpdate(
+        friendId,
+        { $push: { friends: newFriendForFriend } },
+        { new: true },
+      )
+
+      const updatedUser = await this.userModel
+        .findByIdAndUpdate(
+          userId,
+          { $push: { friends: newFriend } },
+          { new: true },
+        )
+        .lean()
+
+      return updatedUser
+    } catch (error) {
+      throw new Error('친구 추가 실패했어용.')
+    }
+  }
 }
