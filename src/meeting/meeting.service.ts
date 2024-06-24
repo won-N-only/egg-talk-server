@@ -212,15 +212,21 @@ export class OpenViduService {
   }
 
   startSessionTimer(sessionName: string, server: Server) {
+    const timer = [1, 2, 3]
     if (this.sessionTimers[sessionName]) {
       clearTimeout(this.sessionTimers[sessionName])
     }
-    this.sessionTimers[sessionName] = setTimeout(
-      () => {
-        this.notifySessionParticipants(sessionName, '5분 됐습니다!', server)
-      },
-      1 * 60 * 1000,
-    ) // 5 minutes in milliseconds
+    const getRandomNumber = () => Math.floor(Math.random() * 20) + 1
+
+    timer.forEach(time => {
+      setTimeout(
+        () => {
+          const number = getRandomNumber()
+          this.notifySessionParticipants(sessionName, `${number}`, server)
+        },
+        time * 60 * 1000,
+      )
+    })
   }
 
   notifySessionParticipants(
