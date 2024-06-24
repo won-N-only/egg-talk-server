@@ -45,7 +45,13 @@ export class CommonRepository {
   }
 
   async getFriends(userId: Types.ObjectId): Promise<ObjectId[]> {
-    return await this.userModel.findById(userId, { friends: 1 }).lean()
+    return await this.userModel
+      .findById(userId, { friends: 1 })
+      .populate({
+        path: 'friends.friend',
+        select: '-password -id -_id -newNotification -notifications -friends ',
+      })
+      .lean()
   }
   async acceptFriend(data: AddFriendDto): Promise<User> {
     const { userId, friendId } = data
