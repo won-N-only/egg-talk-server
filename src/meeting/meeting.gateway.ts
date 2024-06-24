@@ -25,16 +25,15 @@ export class MeetingGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
   @WebSocketServer() server: Server
-
+  private roomid: Map<string, string> = new Map()
   constructor(private readonly openviduService: OpenViduService) {}
 
   afterInit(server: Server) {
+    this.openviduService.server = server
     console.log('WebSocket initialized')
   }
 
-  handleConnection(client: Socket) {
-    console.log('New client connected')
-  }
+  handleConnection(client: Socket) {}
 
   handleDisconnect(client: Socket) {
     const sessions = this.openviduService.getSessions()
@@ -62,6 +61,7 @@ export class MeetingGateway
           participantName,
           client,
         )
+        this.roomid.set(participantName, sessionName)
       } else {
         console.error('Failed to create or retrieve session')
       }
@@ -77,6 +77,41 @@ export class MeetingGateway
       if (sessions.hasOwnProperty(sessionName)) {
         this.openviduService.removeParticipant(sessionName, client)
       }
+    }
+  }
+
+  @SubscribeMessage('choose')
+  handleChoose(client: Socket, payload: { sender: string; receiver: string }) {
+    const sessionName = this.roomid.get(payload.sender)
+    if (sessionName) {
+      this.openviduService.storeChoose(
+        sessionName,
+        payload.sender,
+        payload.receiver,
+      )
+      const chooseData = this.openviduService.getChooseData(sessionName)
+      if (chooseData.length === 6) {
+        const participants = this.openviduService.getParticipants(sessionName)
+        const matches = this.openviduService.findMatchingPairs(sessionName)
+        participants.forEach(({ socket, name }) => {
+          // 매칭된 사람이 있는지 체크
+          const matchedPair = matches.find(match => match.pair.includes(name))
+          if (matchedPair) {
+            const partner = matchedPair.pair.find(
+              partnerName => partnerName !== name,
+            )
+            this.server.to(socket.id).emit('cupidResult', { message: partner })
+          } else {
+            this.server.to(socket.id).emit('cupidResult', { message: '0' })
+          }
+
+          this.server
+            .to(socket.id)
+            .emit('chooseResult', { message: chooseData })
+        })
+      }
+    } else {
+      console.error('세션에러입니다')
     }
   }
 }
