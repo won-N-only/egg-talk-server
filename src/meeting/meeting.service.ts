@@ -7,6 +7,8 @@ export class OpenViduService {
   private openvidu: OpenVidu
   private sessions: Record<string, { session: Session; participants: any[] }> =
     {}
+  private chooseData: Record<string, { sender: string; receiver: string }[]> =
+    {}
   private sessionTimers: Record<string, NodeJS.Timeout> = {}
   public server: Server
 
@@ -217,26 +219,24 @@ export class OpenViduService {
       { time: 2, event: 'cam' },
       { time: 3, event: 'finish' },
     ]
-    // 키워드, 캠, 끝나는거
+    // 언젠가 세션 같은 방을 만날 수도 있어서 초기화를 시킴
+    // 만약 겹치지 않는다면, 아래 코드는 지워도 무방
     if (this.sessionTimers[sessionName]) {
       clearTimeout(this.sessionTimers[sessionName])
     }
 
     timers.forEach(({ time, event }) => {
-      setTimeout(
-        () => {
-          let message
-          if (time === 1) {
-            const getRandomNumber = () => Math.floor(Math.random() * 20) + 1
-            const number = getRandomNumber()
-            message = `${number}`
-          } else {
-            message = `${event}`
-          }
-          this.notifySessionParticipants(sessionName, event, message, server)
-        },
-        time * 60 * 1000,
-      )
+      setTimeout(() => {
+        let message: string
+        if (time === 1) {
+          const getRandomNumber = () => Math.floor(Math.random() * 20) + 1
+          const number = getRandomNumber()
+          message = `${number}`
+        } else {
+          message = `${event}`
+        }
+        this.notifySessionParticipants(sessionName, event, message, server)
+      }, time * 1000)
     })
   }
 
@@ -246,12 +246,33 @@ export class OpenViduService {
     message: string,
     server: Server,
   ) {
-    const participant = this.getParticipants(sessionName)
-    participant.forEach(({ socket }) => {
+    const participants = this.getParticipants(sessionName)
+    participants.forEach(({ socket }) => {
       server.to(socket.id).emit(eventType, { message })
     })
   }
+
   getSessions() {
     return this.sessions
+  }
+
+  storeChoose(sessionName: string, sender: string, receiver: string) {
+    if (!this.chooseData[sessionName]) {
+      this.chooseData[sessionName] = []
+    }
+
+    // 기존 선택이 있는지 확인하고 업데이트
+    const existingChoiceIndex = this.chooseData[sessionName].findIndex(
+      choice => choice.sender === sender,
+    )
+    if (existingChoiceIndex !== -1) {
+      this.chooseData[sessionName][existingChoiceIndex].receiver = receiver
+    } else {
+      this.chooseData[sessionName].push({ sender, receiver })
+    }
+  }
+
+  getChooseData(sessionName: string) {
+    return this.chooseData[sessionName] || []
   }
 }
