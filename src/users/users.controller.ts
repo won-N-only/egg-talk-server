@@ -12,6 +12,7 @@ import {
 import { UsersService } from './users.service'
 import { JwtAuthRestGuard } from '../guards/jwt-auth.rest.guard'
 import { ResGetUserDto } from './dto/response/get-user.dto'
+import { Types } from 'mongoose'
 @UseGuards(JwtAuthRestGuard)
 @Controller('users')
 export class UsersController {
@@ -20,7 +21,7 @@ export class UsersController {
   @Get()
   @HttpCode(HttpStatus.OK)
   async getUser(@Req() request: Request): Promise<ResGetUserDto> {
-    const userId = request['user']._id
+    const userId = new Types.ObjectId(request['user']._id)
     return this.usersService.findOne(userId)
   }
 
@@ -30,7 +31,7 @@ export class UsersController {
     @Req() request: Request,
     @Body() avatar: Object, // avatar말고 다른 것도 바꿀 수 있게 수정 예정
   ): Promise<Object> {
-    const userId = request['user']._id
+    const userId = new Types.ObjectId(request['user']._id)
     return this.usersService.patchAvatar(userId, avatar)
   }
 }
