@@ -183,4 +183,50 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.emit('resGetFriendsError', error.message)
     }
   }
+
+  @SubscribeMessage('reqRequestFriend')
+  async handleRequestFriend(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: AddFriendDto, //나중에 data에 notiType 추가
+  ): Promise<void> {
+    try {
+      /*3경우로 나눠서 알림보내기만? 접속해있으면 일단 알림보내 ㅇ
+      db에는 무조건박아*/
+
+      //친구 접속중이면 알림보내일단 근데 이거 비지니스로직아닌가
+      const friendSocketId = this.getSocketIdByUserId(data.friendId)
+      const friendSocket = client.nsp.sockets.get(friendSocketId)
+      if (friendSocket) friendSocket.emit('newFriendRequest', data)
+
+      //유저 디비 접근해서 flag on
+      const notification = await this.commonService.markNotification(data)
+
+      if (data.type == 'FRIEND') client.emit('reqRequestFriend', notification)
+      else if (data.type == 'PARTY')
+        client.emit('reqRequestParty', notification)
+      else throw new Error('잘못된 요청')
+    } catch (error) {
+      client.emit('reqRequestFriendError', error.message)
+    }
+  }
+
+  @SubscribeMessage('reqAcceptFriend')
+  async handleAcceptFriend(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: AddFriendDto,
+  ): Promise<void> {
+    try {
+      const updatedUser = await this.commonService.acceptFriend(data)
+      client.emit('resAcceptFriend', updatedUser)
+    } catch (error) {
+      client.emit('resAcceptFriendError', error.message)
+    }
+  }
+
+  private getSocketIdByUserId(userId: Types.ObjectId): string | null {
+    for (const [socketId, id] of this.connectedClients.entries())
+      if (id.equals(userId)) return socketId
+
+    return null
+  }
 }
