@@ -275,4 +275,18 @@ export class OpenViduService {
   getChooseData(sessionName: string) {
     return this.chooseData[sessionName] || []
   }
+
+  findMatchingPairs(sessionName: string) {
+    const chooseData = this.getChooseData(sessionName)
+    const matches = []
+    chooseData.forEach(({ sender, receiver }) => {
+      const isPair = chooseData.find(
+        choice => choice.sender === receiver && choice.receiver === sender,
+      )
+      if (isPair) {
+        matches.push({ pair: [sender, receiver] })
+      }
+    })
+    return matches
+  }
 }

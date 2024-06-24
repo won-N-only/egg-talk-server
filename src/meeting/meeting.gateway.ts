@@ -33,9 +33,7 @@ export class MeetingGateway
     console.log('WebSocket initialized')
   }
 
-  handleConnection(client: Socket) {
-    console.log('New client connected')
-  }
+  handleConnection(client: Socket) {}
 
   handleDisconnect(client: Socket) {
     const sessions = this.openviduService.getSessions()
@@ -94,7 +92,19 @@ export class MeetingGateway
       const chooseData = this.openviduService.getChooseData(sessionName)
       if (chooseData.length === 6) {
         const participants = this.openviduService.getParticipants(sessionName)
-        participants.forEach(({ socket }) => {
+        const matches = this.openviduService.findMatchingPairs(sessionName)
+        participants.forEach(({ socket, name }) => {
+          // 매칭된 사람이 있는지 체크
+          const matchedPair = matches.find(match => match.pair.includes(name))
+          if (matchedPair) {
+            const partner = matchedPair.pair.find(
+              partnerName => partnerName !== name,
+            )
+            this.server.to(socket.id).emit('cupidResult', { message: partner })
+          } else {
+            this.server.to(socket.id).emit('cupidResult', { message: 'fail' })
+          }
+
           this.server
             .to(socket.id)
             .emit('chooseResult', { message: chooseData })
