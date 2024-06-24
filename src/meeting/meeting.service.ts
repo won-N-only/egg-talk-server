@@ -1,12 +1,14 @@
 import { Injectable } from '@nestjs/common'
 import { OpenVidu, OpenViduRole, Session } from 'openvidu-node-client'
-import { Socket } from 'socket.io'
+import { Socket, Server } from 'socket.io'
 
 @Injectable()
 export class OpenViduService {
   private openvidu: OpenVidu
   private sessions: Record<string, { session: Session; participants: any[] }> =
     {}
+  private sessionTimers: Record<string, NodeJS.Timeout> = {}
+  public server: Server
 
   constructor() {
     const OPENVIDU_URL = process.env.OPENVIDU_URL
@@ -202,12 +204,35 @@ export class OpenViduService {
           participantName: participant,
         })
       })
+      this.startSessionTimer(sessionName, this.server)
       await this.resetParticipants(sessionName)
     } catch (error) {
       console.error('Error generating tokens: ', error)
     }
   }
 
+  startSessionTimer(sessionName: string, server: Server) {
+    if (this.sessionTimers[sessionName]) {
+      clearTimeout(this.sessionTimers[sessionName])
+    }
+    this.sessionTimers[sessionName] = setTimeout(
+      () => {
+        this.notifySessionParticipants(sessionName, '5분 됐습니다!', server)
+      },
+      1 * 60 * 1000,
+    ) // 5 minutes in milliseconds
+  }
+
+  notifySessionParticipants(
+    sessionName: string,
+    message: string,
+    server: Server,
+  ) {
+    const participant = this.getParticipants(sessionName)
+    participant.forEach(({ socket }) => {
+      server.to(socket.id).emit('notification', { message })
+    })
+  }
   getSessions() {
     return this.sessions
   }

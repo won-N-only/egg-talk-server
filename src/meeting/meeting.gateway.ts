@@ -29,6 +29,7 @@ export class MeetingGateway
   constructor(private readonly openviduService: OpenViduService) {}
 
   afterInit(server: Server) {
+    this.openviduService.server = server
     console.log('WebSocket initialized')
   }
 
