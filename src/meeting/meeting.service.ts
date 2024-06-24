@@ -212,17 +212,28 @@ export class OpenViduService {
   }
 
   startSessionTimer(sessionName: string, server: Server) {
-    const timer = [1, 2, 3]
+    const timers = [
+      { time: 1, event: 'keyword' },
+      { time: 2, event: 'cam' },
+      { time: 3, event: 'finish' },
+    ]
+    // 키워드, 캠, 끝나는거
     if (this.sessionTimers[sessionName]) {
       clearTimeout(this.sessionTimers[sessionName])
     }
-    const getRandomNumber = () => Math.floor(Math.random() * 20) + 1
 
-    timer.forEach(time => {
+    timers.forEach(({ time, event }) => {
       setTimeout(
         () => {
-          const number = getRandomNumber()
-          this.notifySessionParticipants(sessionName, `${number}`, server)
+          let message
+          if (time === 1) {
+            const getRandomNumber = () => Math.floor(Math.random() * 20) + 1
+            const number = getRandomNumber()
+            message = `${number}`
+          } else {
+            message = `${event}`
+          }
+          this.notifySessionParticipants(sessionName, event, message, server)
         },
         time * 60 * 1000,
       )
@@ -231,12 +242,13 @@ export class OpenViduService {
 
   notifySessionParticipants(
     sessionName: string,
+    eventType: string,
     message: string,
     server: Server,
   ) {
     const participant = this.getParticipants(sessionName)
     participant.forEach(({ socket }) => {
-      server.to(socket.id).emit('notification', { message })
+      server.to(socket.id).emit(eventType, { message })
     })
   }
   getSessions() {
