@@ -27,10 +27,11 @@ export class UsersController {
   @Patch('/avatar')
   @HttpCode(HttpStatus.OK)
   async patchUserAvatar(
-    @Query() reqGetUserDto: ReqGetUserDto,
+    @Req() request: Request,
     /**TODO: 아바타 obj 아니고 indexnumber면 나중에 바꿔야함 */
     @Body() avatar: Object,
   ): Promise<Object> {
-    return this.usersService.patchAvatar(reqGetUserDto, avatar)
+    const userId = request['user']._id
+    return this.usersService.patchAvatar(userId, avatar)
   }
 }

@@ -16,8 +16,8 @@ export class UsersService {
     return resGetUserDto
   }
 
-  async patchAvatar(filter: object, avatar: object): Promise<Object> {
-    const updatedUser = await this.usersRepository.updateAvatar(filter, avatar)
+  async patchAvatar(userId: Types.ObjectId, avatar: object): Promise<Object> {
+    const updatedUser = await this.usersRepository.updateAvatar(userId, avatar)
     return updatedUser.avatar
   }
 }

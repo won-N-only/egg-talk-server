@@ -14,9 +14,9 @@ export class UsersRepository {
     return await this.userModel.findById(userId, { password: 0 }).lean()
   }
 
-  async updateAvatar(filter: object, avatar: object): Promise<User> {
+  async updateAvatar(userId: Types.ObjectId, avatar: object): Promise<User> {
     return await this.userModel
-      .findOneAndUpdate(filter, { avatar }, { new: true })
+      .findByIdAndUpdate(userId, { avatar }, { new: true })
       .lean()
   }
 }
