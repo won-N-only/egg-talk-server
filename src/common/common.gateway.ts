@@ -152,4 +152,35 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.emit('error', '메시지 전송에 실패했습니다.')
     }
   }
+
+  // private connectedClients: { [clientId: string]: Types.ObjectId } = {}
+  private connectedClients: Map<string, Types.ObjectId> = new Map()
+
+  @SubscribeMessage('reqGetNotifications')
+  async handleGetNotifications(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { userId: Types.ObjectId },
+  ): Promise<void> {
+    try {
+      const notifications = await this.commonService.getNotifications(
+        data.userId,
+      )
+      client.emit('resGetNotifications', notifications)
+    } catch (error) {
+      client.emit('resGetNotificationsError', error.message)
+    }
+  }
+
+  @SubscribeMessage('reqGetFriends')
+  async handleGetFriendList(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() userId: Types.ObjectId,
+  ): Promise<void> {
+    try {
+      const friends = await this.commonService.getFriends(userId)
+      client.emit('resGetFriends', friends)
+    } catch (error) {
+      client.emit('resGetFriendsError', error.message)
+    }
+  }
 }
