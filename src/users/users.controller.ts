@@ -6,6 +6,7 @@ import {
   HttpStatus,
   UseGuards,
   Query,
+  Req,
   Patch,
 } from '@nestjs/common'
 import { UsersService } from './users.service'
@@ -19,8 +20,9 @@ export class UsersController {
 
   @Get()
   @HttpCode(HttpStatus.OK)
-  async getUser(@Query() reqGetUserDto: ReqGetUserDto): Promise<ResGetUserDto> {
-    return this.usersService.findOne(reqGetUserDto)
+  async getUser(@Req() request: Request): Promise<ResGetUserDto> {
+    const userId = request['user']._id
+    return this.usersService.findOne(userId)
   }
 
   @Patch('/avatar')
