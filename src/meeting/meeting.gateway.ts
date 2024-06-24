@@ -102,7 +102,7 @@ export class MeetingGateway
             )
             this.server.to(socket.id).emit('cupidResult', { message: partner })
           } else {
-            this.server.to(socket.id).emit('cupidResult', { message: 'fail' })
+            this.server.to(socket.id).emit('cupidResult', { message: '0' })
           }
 
           this.server
