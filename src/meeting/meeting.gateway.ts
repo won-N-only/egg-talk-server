@@ -39,7 +39,7 @@ export class MeetingGateway
     const sessions = this.openviduService.getSessions()
     for (const sessionName in sessions) {
       if (sessions.hasOwnProperty(sessionName)) {
-        this.openviduService.removeParticipant(sessionName, client)
+        this.openviduService.removeParticipant(sessionName, client, '')
       }
     }
   }
@@ -71,11 +71,16 @@ export class MeetingGateway
   }
 
   @SubscribeMessage('cancel')
-  handleCancel(client: Socket) {
+  handleCancel(client: Socket, payload: { participantName: string }) {
     const sessions = this.openviduService.getSessions()
+    const { participantName } = payload
     for (const sessionName in sessions) {
       if (sessions.hasOwnProperty(sessionName)) {
-        this.openviduService.removeParticipant(sessionName, client)
+        this.openviduService.removeParticipant(
+          sessionName,
+          client,
+          participantName,
+        )
       }
     }
   }
