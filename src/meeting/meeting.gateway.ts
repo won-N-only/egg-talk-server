@@ -85,9 +85,7 @@ export class MeetingGateway
   handleCancel(client: Socket, payload: { participantName: string }) {
     const sessions = this.openviduService.getSessions()
     const { participantName } = payload
-    const participantName2 = this.connectedSockets[client.id]
 
-    console.log('두개를 비교해봅시다아아~', participantName, participantName2)
     for (const sessionName in sessions) {
       if (sessions.hasOwnProperty(sessionName)) {
         this.openviduService.removeParticipant(
