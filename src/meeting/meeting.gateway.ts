@@ -10,9 +10,9 @@ import {
 import { Body, Req, UseGuards } from '@nestjs/common'
 import { Server, Socket } from 'socket.io'
 import { OpenViduService } from './meeting.service'
-import { JwtAuthWsGuard } from '../guards/jwt-auth.ws.guard'
+// import { JwtAuthWsGuard } from '../guards/jwt-auth.ws.guard'
 
-@UseGuards(JwtAuthWsGuard)
+// @UseGuards(JwtAuthWsGuard)
 @WebSocketGateway({
   namespace: 'meeting',
   cors: {
@@ -59,10 +59,10 @@ export class MeetingGateway
   async handleReady(client: Socket, payload: { participantName: string }) {
     try {
       const { participantName } = payload
-      const nickname = client['user'].nickname
-      const socketId = client.id
-      this.connectedSockets[socketId] = nickname
-      this.connectedUsers[nickname] = socketId
+      // const nickname = client['user'].nickname
+      // const socketId = client.id
+      // this.connectedSockets[socketId] = nickname
+      // this.connectedUsers[nickname] = socketId
       const sessionName =
         await this.openviduService.findOrCreateAvailableSession()
       if (sessionName) {
