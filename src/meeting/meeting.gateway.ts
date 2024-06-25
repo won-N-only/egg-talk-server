@@ -107,7 +107,7 @@ export class MeetingGateway
         payload.receiver,
       )
       const chooseData = this.openviduService.getChooseData(sessionName)
-      if (chooseData.length === 6) {
+      if (chooseData.length === 3) {
         const participants = this.openviduService.getParticipants(sessionName)
         const matches = this.openviduService.findMatchingPairs(sessionName)
         participants.forEach(({ socket, name }) => {
