@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { OpenVidu, OpenViduRole, Session } from 'openvidu-node-client'
 import { Socket, Server } from 'socket.io'
+import { v4 as uuidv4 } from 'uuid'
 
 @Injectable()
 export class OpenViduService {
@@ -19,13 +20,16 @@ export class OpenViduService {
   }
 
   generateSessionName() {
-    return `session-${Date.now()}`
+    return uuidv4()
   }
 
   async createSession(sessionName: string): Promise<Session> {
     if (!this.sessions[sessionName]) {
       try {
-        const session = await this.openvidu.createSession()
+        const session = await this.openvidu.createSession({
+          customSessionId: sessionName,
+        })
+
         this.sessions[sessionName] = { session, participants: [] }
         console.log(`Session created: ${sessionName}, ID: ${session.sessionId}`)
         return session
