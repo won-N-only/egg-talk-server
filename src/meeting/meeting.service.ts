@@ -149,7 +149,7 @@ export class OpenViduService {
       if (this.sessions.hasOwnProperty(sessionName)) {
         const participants = this.sessions[sessionName].participants
 
-        if (participants.length < 3) {
+        if (participants.length < 2) {
           console.log(`Returning existing session: ${sessionName}`)
           return sessionName
         }
@@ -179,7 +179,7 @@ export class OpenViduService {
         participants.length,
       )
 
-      if (participants.length === 3) {
+      if (participants.length === 2) {
         await this.startVideoChatSession(sessionName)
         // 새로운 세션을 생성하고 반환
         const newSessionName = this.generateSessionName()
