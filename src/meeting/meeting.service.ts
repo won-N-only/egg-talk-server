@@ -179,7 +179,7 @@ export class OpenViduService {
         participants.length,
       )
 
-      if (participants.length === 4) {
+      if (participants.length === 2) {
         await this.startVideoChatSession(sessionName)
         // 새로운 세션을 생성하고 반환
         const newSessionName = this.generateSessionName()
