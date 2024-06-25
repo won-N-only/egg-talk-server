@@ -35,7 +35,7 @@ export class MeetingGateway
     console.log('WebSocket initialized')
   }
 
-  handleConnection(@ConnectedSocket() client: Socket) {}
+  handleConnection(client: Socket) {}
 
   handleDisconnect(client: Socket) {
     const sessions = this.openviduService.getSessions()

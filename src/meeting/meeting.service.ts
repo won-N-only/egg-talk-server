@@ -65,7 +65,7 @@ export class OpenViduService {
 
   removeParticipant(sessionName: string, socket: any, myid: string) {
     if (this.sessions[sessionName]) {
-      console.log(this.sessions[sessionName].participants.map(p => p.name))
+      // console.log(this.sessions[sessionName].participants.map(p => p.name))
       const participants = this.getParticipants(sessionName)
       this.sessions[sessionName].participants = participants.filter(
         p => p.name !== myid,
