@@ -59,11 +59,13 @@ export class OpenViduService {
     }
   }
 
-  removeParticipant(sessionName: string, socket: any) {
+  removeParticipant(sessionName: string, socket: any, myid: string) {
     if (this.sessions[sessionName]) {
-      this.sessions[sessionName].participants = this.sessions[
-        sessionName
-      ].participants.filter(p => p.socket !== socket)
+      console.log(this.sessions[sessionName].participants.map(p => p.name))
+      const participants = this.getParticipants(sessionName)
+      this.sessions[sessionName].participants = participants.filter(
+        p => p.name !== myid,
+      )
     } else {
       console.error(`Session ${sessionName} does not exist`)
     }
@@ -173,7 +175,7 @@ export class OpenViduService {
         participants.length,
       )
 
-      if (participants.length === 2) {
+      if (participants.length === 5) {
         await this.startVideoChatSession(sessionName)
         // 새로운 세션을 생성하고 반환
         const newSessionName = this.generateSessionName()

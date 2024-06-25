@@ -5,13 +5,14 @@ import {
   OnGatewayConnection,
   OnGatewayDisconnect,
   WebSocketServer,
+  ConnectedSocket,
 } from '@nestjs/websockets'
-import { Body, UseGuards } from '@nestjs/common'
+import { Body, Req, UseGuards } from '@nestjs/common'
 import { Server, Socket } from 'socket.io'
 import { OpenViduService } from './meeting.service'
-// import { JwtAuthWsGuard } from '../guards/jwt-auth.ws.guard'
+import { JwtAuthWsGuard } from '../guards/jwt-auth.ws.guard'
 
-// @UseGuards(JwtAuthWsGuard)
+@UseGuards(JwtAuthWsGuard)
 @WebSocketGateway({
   namespace: 'meeting',
   cors: {
@@ -27,19 +28,25 @@ export class MeetingGateway
   @WebSocketServer() server: Server
   private roomid: Map<string, string> = new Map()
   constructor(private readonly openviduService: OpenViduService) {}
-
+  private connectedUsers: { [nickname: string]: string } = {} // nickname: socketId 형태로 변경
+  private connectedSockets: { [socketId: string]: string } = {} // socketId: nickname 형태로 변경
   afterInit(server: Server) {
     this.openviduService.server = server
     console.log('WebSocket initialized')
   }
 
-  handleConnection(client: Socket) {}
+  handleConnection(@ConnectedSocket() client: Socket) {}
 
   handleDisconnect(client: Socket) {
     const sessions = this.openviduService.getSessions()
+    const participantName = this.connectedSockets[client.id]
     for (const sessionName in sessions) {
       if (sessions.hasOwnProperty(sessionName)) {
-        this.openviduService.removeParticipant(sessionName, client)
+        this.openviduService.removeParticipant(
+          sessionName,
+          client,
+          participantName,
+        )
       }
     }
   }
@@ -52,6 +59,10 @@ export class MeetingGateway
   async handleReady(client: Socket, payload: { participantName: string }) {
     try {
       const { participantName } = payload
+      const nickname = client['user'].nickname
+      const socketId = client.id
+      this.connectedSockets[socketId] = nickname
+      this.connectedUsers[nickname] = socketId
       const sessionName =
         await this.openviduService.findOrCreateAvailableSession()
       if (sessionName) {
@@ -71,11 +82,19 @@ export class MeetingGateway
   }
 
   @SubscribeMessage('cancel')
-  handleCancel(client: Socket) {
+  handleCancel(client: Socket, payload: { participantName: string }) {
     const sessions = this.openviduService.getSessions()
+    const { participantName } = payload
+    const participantName2 = this.connectedSockets[client.id]
+
+    console.log('두개를 비교해봅시다아아~', participantName, participantName2)
     for (const sessionName in sessions) {
       if (sessions.hasOwnProperty(sessionName)) {
-        this.openviduService.removeParticipant(sessionName, client)
+        this.openviduService.removeParticipant(
+          sessionName,
+          client,
+          participantName,
+        )
       }
     }
   }
