@@ -110,6 +110,12 @@ export class MeetingGateway
       if (chooseData.length === 6) {
         const participants = this.openviduService.getParticipants(sessionName)
         const matches = this.openviduService.findMatchingPairs(sessionName)
+
+        const matchedPairs = matches.map(match => ({
+          pair: match.pair,
+          others: matches.filter(p => p !== match),
+        }))
+
         participants.forEach(({ socket, name }) => {
           // 매칭된 사람이 있는지 체크
           const matchedPair = matches.find(match => match.pair.includes(name))
@@ -117,9 +123,16 @@ export class MeetingGateway
             const partner = matchedPair.pair.find(
               partnerName => partnerName !== name,
             )
-            this.server.to(socket.id).emit('cupidResult', { message: partner })
+            this.server.to(socket.id).emit('cupidResult', {
+              lover: partner,
+              winner: matchedPairs
+                .filter(pair => !pair.pair.includes(name))
+                .map(pair => pair.pair),
+            })
           } else {
-            this.server.to(socket.id).emit('cupidResult', { message: '0' })
+            this.server
+              .to(socket.id)
+              .emit('cupidResult', { lover: '0', winner: [] })
           }
 
           this.server
