@@ -10,6 +10,7 @@ import {
 import { Body, Req, UseGuards } from '@nestjs/common'
 import { Server, Socket } from 'socket.io'
 import { OpenViduService } from './meeting.service'
+import { ReqReadyDto } from './dto/request/ready.dto'
 // import { JwtAuthWsGuard } from '../guards/jwt-auth.ws.guard'
 
 // @UseGuards(JwtAuthWsGuard)
@@ -149,7 +150,22 @@ export class MeetingGateway
   private femaleQueue: { client: Socket; nickname: string }[] = []
 
   @SubscribeMessage('party-ready')
-  handlePartyReady(client: Socket) {}
+  async handlePartyReady(@ConnectedSocket() client: Socket) {
+    //jwt에 gender 삽입 이후
+    const { nickname, gender } = Socket['user']
+
+    if (gender === 'MALE') {
+      this.maleQueue.push({ client, nickname })
+    } else if (gender === 'FEMALE') {
+      this.femaleQueue.push({ client, nickname })
+    }
+    if (this.maleQueue.length > 0 && this.femaleQueue.length > 0) {
+      const maleUser = this.maleQueue.shift()
+      const femaleUser = this.femaleQueue.shift()
+
+      await this.openviduService.matchParties(maleUser, femaleUser)
+    }
+  }
 
   @SubscribeMessage('party-cancel')
   handlePartyCancel(client: Socket) {}
