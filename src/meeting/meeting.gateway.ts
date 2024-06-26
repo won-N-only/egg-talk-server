@@ -178,14 +178,10 @@ export class MeetingGateway
     await this.openviduService.matchParties(allUserWithSocket)
   }
 
-  private getSocketById(socketId: string): Socket {
-    return this.server.sockets.sockets.get(socketId)
-  }
-
   private linkUserWithSocket = (members: string[]) =>
     members.map(nickname => {
       const socketId = this.connectedUsers[nickname]
-      const userSocket = this.getSocketById(socketId)
+      const userSocket = this.server.sockets.sockets.get(socketId)
       return { client: userSocket, nickname }
     })
 }
