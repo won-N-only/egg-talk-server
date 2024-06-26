@@ -1,1 +1,3 @@
-export class ResReadyUserDto {}
+export class ReqReadyDto {
+  usersNickname: [string]
+}
