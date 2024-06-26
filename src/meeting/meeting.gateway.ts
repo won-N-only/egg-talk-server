@@ -145,6 +145,9 @@ export class MeetingGateway
     }
   }
 
+  private maleQueue: { client: Socket; nickname: string }[] = []
+  private femaleQueue: { client: Socket; nickname: string }[] = []
+
   @SubscribeMessage('party-ready')
   handlePartyReady(client: Socket) {}
 
