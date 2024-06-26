@@ -223,7 +223,7 @@ export class OpenViduService {
     const timers = [
       { time: 1, event: 'keyword' },
       { time: 2, event: 'cam' },
-      { time: 3, event: 'finish' },
+      { time: 120, event: 'finish' },
     ]
     // 언젠가 세션 같은 방을 만날 수도 있어서 초기화를 시킴
     // 만약 겹치지 않는다면, 아래 코드는 지워도 무방
@@ -232,17 +232,20 @@ export class OpenViduService {
     }
 
     timers.forEach(({ time, event }) => {
-      setTimeout(() => {
-        let message: string
-        if (time === 1) {
-          const getRandomNumber = () => Math.floor(Math.random() * 20) + 1
-          const number = getRandomNumber()
-          message = `${number}`
-        } else {
-          message = `${event}`
-        }
-        this.notifySessionParticipants(sessionName, event, message, server)
-      }, time * 1000)
+      setTimeout(
+        () => {
+          let message: string
+          if (time === 1) {
+            const getRandomNumber = () => Math.floor(Math.random() * 20) + 1
+            const number = getRandomNumber()
+            message = `${number}`
+          } else {
+            message = `${event}`
+          }
+          this.notifySessionParticipants(sessionName, event, message, server)
+        },
+        time * 60 * 1000,
+      )
     })
   }
 
