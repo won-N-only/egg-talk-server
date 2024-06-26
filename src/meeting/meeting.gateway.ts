@@ -10,7 +10,6 @@ import {
 import { Body, Req, UseGuards } from '@nestjs/common'
 import { Server, Socket } from 'socket.io'
 import { OpenViduService } from './meeting.service'
-import { ReqReadyDto } from './dto/request/ready.dto'
 // import { JwtAuthWsGuard } from '../guards/jwt-auth.ws.guard'
 
 // @UseGuards(JwtAuthWsGuard)
@@ -146,30 +145,41 @@ export class MeetingGateway
     }
   }
 
-  private maleQueue: { client: Socket; nickname: string }[] = []
-  private femaleQueue: { client: Socket; nickname: string }[] = []
+  private maleQueue: { members: string[] }[] = []
+  private femaleQueue: { members: string[] }[] = []
 
   @SubscribeMessage('party-ready')
-  async handlePartyReady(@ConnectedSocket() client: Socket) {
-    //jwt에 gender 삽입 이후
-    const { nickname, gender } = Socket['user']
+  async handlePartyReady(
+    @ConnectedSocket() client: Socket,
+    @Body() partyMemberList: string[],
+  ) {
+    try {
+      const { gender } = client['user']
 
-    if (gender === 'MALE') {
-      this.maleQueue.push({ client, nickname })
-    } else if (gender === 'FEMALE') {
-      this.femaleQueue.push({ client, nickname })
-    }
-    if (this.maleQueue.length > 0 && this.femaleQueue.length > 0) {
-      const maleUser = this.maleQueue.shift()
-      const femaleUser = this.femaleQueue.shift()
+      const queue = gender === 'MALE' ? this.maleQueue : this.femaleQueue
+      queue.push({ members: partyMemberList })
 
-      await this.openviduService.matchParties(maleUser, femaleUser)
+      if (this.maleQueue.length > 0 && this.femaleQueue.length > 0) {
+        const maleUser = this.maleQueue.shift()
+        const femaleUser = this.femaleQueue.shift()
+
+        const membersList = (members: string[]) =>
+          members.map(nickname => {
+            const socketId = this.connectedUsers[nickname]
+            const userSocket = this.server.sockets.sockets.get(socketId)
+            return { client: userSocket, nickname }
+          })
+
+        const maleUsers = membersList(maleUser.members)
+        const femaleUsers = membersList(femaleUser.members)
+
+        await this.openviduService.matchParties(maleUsers, femaleUsers)
+      }
+    } catch (error) {
+      console.error('Error party-ready:', error)
     }
   }
 
   @SubscribeMessage('party-cancel')
   handlePartyCancel(client: Socket) {}
-
-  @SubscribeMessage('party-choose')
-  handlePartyChoose(client: Socket) {}
 }
