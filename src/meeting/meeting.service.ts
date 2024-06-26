@@ -299,4 +299,30 @@ export class OpenViduService {
     })
     return matches
   }
+
+  async matchParties(
+    maleUsers: { client: Socket; nickname: string }[],
+    femaleUsers: { client: Socket; nickname: string }[],
+  ) {
+    const sessionName =  uuidv4()
+    await this.createSession(sessionName)
+    console.log(`Created new party session: ${sessionName}`)
+
+    if (sessionName) {
+      for (const maleUser of maleUsers) {
+        await this.handleJoinQueue(
+          sessionName,
+          maleUser.nickname,
+          maleUser.client,
+        )
+      }
+      for (const femaleUser of femaleUsers) {
+        await this.handleJoinQueue(
+          sessionName,
+          femaleUser.nickname,
+          femaleUser.client,
+        )
+      }
+    }
+  }
 }
