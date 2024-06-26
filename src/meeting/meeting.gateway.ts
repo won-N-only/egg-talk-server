@@ -168,7 +168,27 @@ export class MeetingGateway
   }
 
   @SubscribeMessage('party-cancel')
-  handlePartyCancel(client: Socket) {}
+  async handlePartyCancel(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() partyMemberList: string[],
+  ): Promise<void> {
+    try {
+      const { gender } = client['user']
+
+      const queue = gender === 'MALE' ? this.maleQueue : this.femaleQueue
+
+      const partyIndex = queue.findIndex(party =>
+        party.members.every(member => partyMemberList.includes(member)),
+      )
+
+      if (partyIndex > -1) {
+        queue.splice(partyIndex, 1)
+        client.emit('partyCancelSuccess')
+      }
+    } catch (error) {
+      if (error) throw error
+    }
+  }
 
   private async matchPartyQueue() {
     const maleUser = this.maleQueue.shift().members
