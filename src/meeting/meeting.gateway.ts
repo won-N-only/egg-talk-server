@@ -155,19 +155,12 @@ export class MeetingGateway
   ) {
     try {
       const { gender } = client['user']
-
       const queue = gender === 'MALE' ? this.maleQueue : this.femaleQueue
+
       queue.push({ members: partyMemberList })
 
-      if (this.maleQueue.length > 0 && this.femaleQueue.length > 0) {
-        const maleUser = this.maleQueue.shift()
-        const femaleUser = this.femaleQueue.shift()
-
-        const maleUsers = this.membersList(maleUser.members)
-        const femaleUsers = this.membersList(femaleUser.members)
-
-        await this.openviduService.matchParties(maleUsers, femaleUsers)
-      }
+      if (this.maleQueue.length && this.femaleQueue.length)
+        await this.matchPartyQueue()
     } catch (error) {
       console.error('Error party-ready:', error)
     }
@@ -175,6 +168,15 @@ export class MeetingGateway
 
   @SubscribeMessage('party-cancel')
   handlePartyCancel(client: Socket) {}
+
+  private async matchPartyQueue() {
+    const maleUser = this.maleQueue.shift().members
+    const femaleUser = this.femaleQueue.shift().members
+    const allUser = [...maleUser, ...femaleUser]
+    const allUserWithSocket = this.membersList(allUser)
+
+    await this.openviduService.matchParties(allUserWithSocket)
+  }
 
   private getSocketById(socketId: string): Socket {
     return this.server.sockets.sockets.get(socketId)
