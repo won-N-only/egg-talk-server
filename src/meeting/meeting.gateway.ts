@@ -144,4 +144,13 @@ export class MeetingGateway
       console.error('세션에러입니다')
     }
   }
+
+  @SubscribeMessage('party-ready')
+  handlePartyReady(client: Socket) {}
+
+  @SubscribeMessage('party-cancel')
+  handlePartyCancel(client: Socket) {}
+
+  @SubscribeMessage('party-choose')
+  handlePartyChoose(client: Socket) {}
 }
