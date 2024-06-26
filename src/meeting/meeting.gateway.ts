@@ -6,8 +6,9 @@ import {
   OnGatewayDisconnect,
   WebSocketServer,
   ConnectedSocket,
+  MessageBody,
 } from '@nestjs/websockets'
-import { Body, Req, UseGuards } from '@nestjs/common'
+import { UseGuards } from '@nestjs/common'
 import { Server, Socket } from 'socket.io'
 import { OpenViduService } from './meeting.service'
 // import { JwtAuthWsGuard } from '../guards/jwt-auth.ws.guard'
@@ -151,7 +152,7 @@ export class MeetingGateway
   @SubscribeMessage('party-ready')
   async handlePartyReady(
     @ConnectedSocket() client: Socket,
-    @Body() partyMemberList: string[],
+    @MessageBody() partyMemberList: string[],
   ) {
     try {
       const { gender } = client['user']
