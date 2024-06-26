@@ -166,7 +166,7 @@ export class MeetingGateway
         const membersList = (members: string[]) =>
           members.map(nickname => {
             const socketId = this.connectedUsers[nickname]
-            const userSocket = this.server.sockets.sockets.get(socketId)
+            const userSocket = this.getSocketById(socketId)
             return { client: userSocket, nickname }
           })
 
@@ -182,4 +182,8 @@ export class MeetingGateway
 
   @SubscribeMessage('party-cancel')
   handlePartyCancel(client: Socket) {}
+
+  private getSocketById(socketId: string): Socket {
+    return this.server.sockets.sockets.get(socketId)
+  }
 }
