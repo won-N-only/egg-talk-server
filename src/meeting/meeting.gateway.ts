@@ -163,15 +163,8 @@ export class MeetingGateway
         const maleUser = this.maleQueue.shift()
         const femaleUser = this.femaleQueue.shift()
 
-        const membersList = (members: string[]) =>
-          members.map(nickname => {
-            const socketId = this.connectedUsers[nickname]
-            const userSocket = this.getSocketById(socketId)
-            return { client: userSocket, nickname }
-          })
-
-        const maleUsers = membersList(maleUser.members)
-        const femaleUsers = membersList(femaleUser.members)
+        const maleUsers = this.membersList(maleUser.members)
+        const femaleUsers = this.membersList(femaleUser.members)
 
         await this.openviduService.matchParties(maleUsers, femaleUsers)
       }
@@ -186,4 +179,11 @@ export class MeetingGateway
   private getSocketById(socketId: string): Socket {
     return this.server.sockets.sockets.get(socketId)
   }
+  
+  private membersList = (members: string[]) =>
+    members.map(nickname => {
+      const socketId = this.connectedUsers[nickname]
+      const userSocket = this.getSocketById(socketId)
+      return { client: userSocket, nickname }
+    })
 }
