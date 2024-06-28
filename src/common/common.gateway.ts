@@ -56,15 +56,16 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
     try {
       const { userId } = client['user']
       // 현재 이 게이트웨이에 존재하는 모든 클라이언트를 식별할 수 있는 array 생성
-      this.connectedUsers.set(userId, client)
-      this.connectedSockets.set(client.id, userId)
+      this.commonService.addUser(userId, client)
       // 서버에 접속한 유저들에게 해당 유저가 온라인 되었다는 메세지를 보냄
       // 나와 친구인 사람들에게만 emit을 보내야함
       // 1. 나와 친구인 사람을 파악하기 위해서 내정보에서 가져옴
       const friendIds = await this.commonService.sortfriend(userId)
       // 2. 순서대로 emit을 보내야함 (내 친구가 현재 접속해있다면!)
       for (const friend of friendIds) {
-        const friendSocket = this.connectedUsers.get(friend.toString())
+        const friendSocket = this.commonService.getSocketByUserId(
+          friend.toString(),
+        )
         if (friendSocket) {
           friendSocket.emit('friendOnline', userId)
         }
@@ -138,8 +139,9 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
       if (receiverSocket) {
         this.server.to(chatRoomId).emit('message', newChat) // 상대방이 (온라인 상태 + 채팅방 참여) 일때 메시지 전송
       } else {
-        if (receiverId in this.connectedUsers) {
-          const receiverSocketId = this.connectedUsers[receiverId]
+        const receiverSocketId =
+          this.commonService.getSocketByUserId(receiverId).id
+        if (receiverSocketId) {
           this.server
             .to(receiverSocketId)
             .emit('newMessageNotification', chatRoomId)
