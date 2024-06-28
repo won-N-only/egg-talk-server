@@ -55,18 +55,13 @@ export class CommonService {
     isReceiverOnline: boolean,
   ): Promise<Chat> {
     try {
-      // 1. 메시지 저장
-      const newChat = await this.chatModel.create({
-        sender: senderId,
+      //DTO 
+      const newChat = await this.commonRepository.saveMessagetoChatRoom(
+        senderId,
         message,
-      })
-
-      // 2. ChatRoom 업데이트
-      await this.chatRoomModel.findByIdAndUpdate(chatRoomId, {
-        $push: { chats: newChat._id },
-        isRead: isReceiverOnline,
-      })
-      console.log(newChat)
+        chatRoomId,
+        isReceiverOnline,
+      )
       return newChat
     } catch (error) {
       console.error('메시지 저장 실패:', error)
