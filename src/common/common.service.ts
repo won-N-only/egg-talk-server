@@ -12,6 +12,10 @@ export class CommonService {
     @InjectModel(Chat.name) private chatModel: Model<Chat>,
     @InjectModel(User.name) private userModel: Model<User>,
   ) {}
+  private server: Server
+  private connectedUsers = new Map<string, Socket>() // userId: Socket
+  private connectedSockets = new Map<string, string>() // socketId: userId
+
 
   async getChatHistory(chatRoomId: string, userId: string): Promise<Chat[]> {
     // 1. ChatRoom ObjectId로 변환
