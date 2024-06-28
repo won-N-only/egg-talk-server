@@ -36,7 +36,7 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async handleDisconnect(@ConnectedSocket() client: Socket) {
     // 유저가 종료되면 연결된 소켓에 해당 유저 종료했다고 알림
     const userId = 'sst' //test용 _id
-    const friendIds = await this.commonService.sortfriend(userId)
+    const friendIds = await this.commonService.sortFriend(userId)
     for (const friend of friendIds) {
       const friendSocket = this.commonService.getSocketByUserId(
         friend.toString(),
@@ -62,7 +62,7 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
       // 서버에 접속한 유저들에게 해당 유저가 온라인 되었다는 메세지를 보냄
       // 나와 친구인 사람들에게만 emit을 보내야함
       // 1. 나와 친구인 사람을 파악하기 위해서 내정보에서 가져옴
-      const friendIds = await this.commonService.sortriend(userId)
+      const friendIds = await this.commonService.sortFriend(userId)
       // 2. 순서대로 emit을 보내야함 (내 친구가 현재 접속해있다면!)
       for (const friend of friendIds) {
         const friendSocket = this.commonService.getSocketByUserId(
@@ -95,7 +95,6 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     // 3. 새 채팅방 참여
     client.join(newChatRoomId)
-
 
     // 4. 채팅 기록 불러오기 (필요하다면)
     const chatHistory = await this.commonService.getChatHistory(
