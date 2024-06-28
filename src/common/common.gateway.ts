@@ -37,19 +37,20 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
   // 클라이언트 연결 해제 시 처리 로직
   async handleDisconnect(@ConnectedSocket() client: Socket) {
     // 유저가 종료되면 연결된 소켓에 해당 유저 종료했다고 알림
-    const userId = 'sst' //test용 _id
-    const friendIds = await this.commonService.sortFriend(userId)
+    const nickname = 'sst' //test용 _id
+    // const nickname =  client['user'].nickname// 올바른 코드
+    const friendIds = await this.commonService.sortFriend(nickname)
     for (const friend of friendIds) {
       const friendSocket = this.commonService.getSocketByUserId(
         friend.toString(),
       )
       if (friendSocket) {
-        friendSocket.emit('friendOffline', userId)
+        friendSocket.emit('friendOffline', nickname)
       }
     }
 
     // 연결된 클라이언트 삭제
-    this.commonService.removeUser(userId, client.id)
+    this.commonService.removeUser(nickname, client.id)
     logger.log(client.id, '연결이 끊겼습니다.')
   }
 
@@ -58,20 +59,20 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) /**토큰 파싱과는 연관이 없으니 login했다는걸 알려주는 event name으로  */
   async decodeToken(@ConnectedSocket() client: Socket) {
     try {
-      const { userId } = client['user']
+      const { nickname } = client['user']
       // 현재 이 게이트웨이에 존재하는 모든 클라이언트를 식별할 수 있는 array 생성
-      this.commonService.addUser(userId, client)
+      this.commonService.addUser(nickname, client)
       // 서버에 접속한 유저들에게 해당 유저가 온라인 되었다는 메세지를 보냄
       // 나와 친구인 사람들에게만 emit을 보내야함
       // 1. 나와 친구인 사람을 파악하기 위해서 내정보에서 가져옴
-      const friendIds = await this.commonService.sortFriend(userId)
+      const friendIds = await this.commonService.sortFriend(nickname)
       // 2. 순서대로 emit을 보내야함 (내 친구가 현재 접속해있다면!)
       for (const friend of friendIds) {
         const friendSocket = this.commonService.getSocketByUserId(
           friend.toString(),
         )
         if (friendSocket) {
-          friendSocket.emit('friendOnline', userId)
+          friendSocket.emit('friendOnline', nickname)
         }
       }
     } catch (error) {
@@ -86,7 +87,7 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
     payload: { newChatRoomId: Types.ObjectId }, // nickName == userId
   ) {
     const { newChatRoomId } = payload
-    const chatRoomId = newChatRoomId.toString();
+    const chatRoomId = newChatRoomId.toString()
     // 1. 기존 채팅방 정보 가져오기
 
     const currentRooms = Array.from(client.rooms) // 현재 참여 중인 모든 방
@@ -100,13 +101,24 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
     client.join(chatRoomId)
 
     // 4. 채팅 기록 불러오기 (필요하다면)
-    const chatHistory = await this.commonService.getChatHistory(
-      chatRoomId
-    )
+    const chatHistory = await this.commonService.getChatHistory(chatRoomId)
     client.emit('chatHistory', chatHistory)
   }
 
-  @SubscribeMessage('send')
+  @SubscribeMessage('closeChat')
+  async closeChat(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { chatRoomdId: Types.ObjectId },
+  ) {
+    try {
+      const { chatRoomdId } = payload
+      client.leave(chatRoomdId.toString())
+    } catch (error) {
+      logger.error('채팅방 떠나기 오류', error)
+    }
+  }
+
+  @SubscribeMessage('sendMessage')
   async handleSendMessage(
     @ConnectedSocket() client: Socket,
     @MessageBody()
@@ -123,7 +135,7 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
       // 상대방이 채팅방에 참여 중인지 확인
       const receiverSocket = (
         await this.server.in(chatRoomId.toString()).fetchSockets()
-      ).find(client => client['user'].nickname === receiverNickname);
+      ).find(client => client['user'].nickname === receiverNickname)
 
       /**DTO */
       const newChat = await this.commonService.sendMessage(

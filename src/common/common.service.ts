@@ -23,21 +23,21 @@ export class CommonService {
     this.server = server
   }
 
-  getSocketByUserId(userId: string): Socket {
-    return this.connectedUsers.get(userId)
+  getSocketByUserId(nickname: string): Socket {
+    return this.connectedUsers.get(nickname)
   }
 
   getUserIdBySocketId(socketId: string): string {
     return this.connectedSockets.get(socketId)
   }
 
-  addUser(userId: string, socket: Socket): void {
-    this.connectedUsers.set(userId, socket)
-    this.connectedSockets.set(socket.id, userId)
+  addUser(nickname: string, socket: Socket): void {
+    this.connectedUsers.set(nickname, socket)
+    this.connectedSockets.set(socket.id, nickname)
   }
 
-  removeUser(userId: string, socketId: string): void {
-    this.connectedSockets.delete(userId)
+  removeUser(nickname: string, socketId: string): void {
+    this.connectedSockets.delete(nickname)
     this.connectedUsers.delete(socketId)
   }
 
