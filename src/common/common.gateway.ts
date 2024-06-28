@@ -15,8 +15,6 @@ import { Logger } from '@nestjs/common'
 const logger = new Logger('ChatGateway')
 
 import { CommonService } from './common.service'
-import { lookup } from 'dns'
-import { Types, ObjectId, Schema } from 'mongoose'
 
 // @UseGuards(JwtAuthWsGuard)
 @WebSocketGateway({ namespace: 'common' })
