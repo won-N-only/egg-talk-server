@@ -29,10 +29,9 @@ export class CommonRepository {
   }
 
   async markNotification(data: AddFriendDto): Promise<Notification> {
-    const { userId, friendId, type } = data
+    const { userId, friendId } = data
     const notification = new this.notificationModel({
       from: userId,
-      notificationType: type,
     })
 
     await this.userModel.findByIdAndUpdate(friendId, {
