@@ -193,8 +193,7 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       const notification = await this.commonService.markNotification(data)
 
-      if (data.type == 'FRIEND') client.emit('reqRequestFriend', notification)
-      else throw new Error('잘못된 요청')
+      client.emit('reqRequestFriend', notification)
     } catch (error) {
       client.emit('reqRequestFriendError', error.message)
     }
