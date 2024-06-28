@@ -39,15 +39,16 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const userId = this.connectedSockets.get(client.id)
     const friendIds = await this.commonService.sortfriend(userId)
     for (const friend of friendIds) {
-      const friendSocket = this.connectedUsers.get(friend.toString())
+      const friendSocket = this.commonService.getSocketByUserId(
+        friend.toString(),
+      )
       if (friendSocket) {
         friendSocket.emit('friendOffline', userId)
       }
     }
 
     // 연결된 클라이언트 삭제
-    delete this.connectedSockets[client.id]
-    delete this.connectedUsers[userId]
+    this.commonService.removeUser(userId, client.id)
     logger.log(client.id, '연결이 끊겼습니다.')
   }
   @SubscribeMessage('decodeToken')
