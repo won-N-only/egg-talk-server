@@ -13,4 +13,20 @@ export class CommonRepository {
     @InjectModel(User.name) private userModel: Model<User>,
   ) {}
 
+  async getChatRoomMessage(chatRoomObjectId: Types.ObjectId) {
+    return await this.chatRoomModel
+      .findByIdAndUpdate(
+        chatRoomObjectId,
+        { $set: { isRead: true } },
+        { new: true },
+      )
+      .populate({
+        path: 'chats',
+        model: 'Chat',
+        options: { sort: { createAt: 1 } },
+        populate: { path: 'sender', select: 'nickname' },
+      })
+      .lean()
+      .exec()
+  }
 }
