@@ -21,12 +21,9 @@ import { CommonService } from './common.service'
 export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server
 
-  constructor(private commonService: CommonService) {}
-
-  // private connectedUsers: { [userId: string]: string } = {} // userId: socketId 형태로 변경
-  private connectedUsers = new Map<string, Socket>() // userId(ObjectId) : socket 객체형태로 변경
-  // private connectedSockets: { [socketId: string]: string } = {} // socketId: userId 형태로 변경
-  private connectedSockets = new Map<string, string>() // socketId: userId 형태로 변경
+  constructor(private commonService: CommonService) {
+    this.commonService.setServer(this.server)
+  }
 
   @SubscribeMessage('message')
   handleMessage(client: any, payload: any): string {
