@@ -19,16 +19,15 @@ export class CommonRepository {
     await this.userModel.findByIdAndUpdate(userId, {
       $set: { newNotification: false },
     })
-    //모두 objId로 처리하는게 맞나 생각해보기
+
     const user = await this.userModel
       .findById(userId)
       .populate<{ notifications: Notification[] }>('notifications')
-      .lean() // populate 적용
+      .lean()
 
     return user.notifications
   }
 
-  //노티.타입 으로 나눠지는데 렌더링할때 나눠서 하나?
   async markNotification(data: AddFriendDto): Promise<Notification> {
     const { userId, friendId, type } = data
     const notification = new this.notificationModel({
@@ -61,18 +60,12 @@ export class CommonRepository {
     try {
       await this.userModel.findByIdAndUpdate(
         userId,
-        {
-          $pull: {
-            notifications: {
-              sender: friendId,
-            },
-          },
-        },
+        { $pull: { notifications: { sender: friendId } } },
         { new: true },
       )
 
       const newChatRoom = new this.chatRoomModel({ chats: [] })
-      await newChatRoom.save({})
+      await newChatRoom.save()
 
       const newFriend: Friend = {
         friend: friend._id,

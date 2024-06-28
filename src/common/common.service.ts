@@ -94,7 +94,6 @@ export class CommonService {
 
     const user = await this.usersRepository.findOne({ _id: userId })
 
-    /**파티 시스템 구현 후 이미 파티인 사람도 throw new Error 할 예정  */
     if (user.friends.some(f => f.friend == friendId))
       throw new Error(`이미 ${data.type}에용.`)
 
