@@ -16,7 +16,7 @@ const logger = new Logger('ChatGateway')
 
 import { CommonService } from './common.service'
 
-// @UseGuards(JwtAuthWsGuard)
+@UseGuards(JwtAuthWsGuard)
 @WebSocketGateway({ namespace: 'common' })
 export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server
