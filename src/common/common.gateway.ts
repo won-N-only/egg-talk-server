@@ -153,9 +153,6 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
-  // private connectedClients: { [clientId: string]: Types.ObjectId } = {}
-  private connectedClients: Map<string, Types.ObjectId> = new Map()
-
   @SubscribeMessage('reqGetNotifications')
   async handleGetNotifications(
     @ConnectedSocket() client: Socket,
@@ -187,10 +184,10 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('reqRequestFriend')
   async handleRequestFriend(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: AddFriendDto, //나중에 data에 notiType 추가
+    @MessageBody() data: AddFriendDto,
   ): Promise<void> {
     try {
-      const friendSocketId = this.getSocketIdByUserId(data.friendId)
+      const friendSocketId = this.connectedUsers[data.friendId.toString()]
       const friendSocket = client.nsp.sockets.get(friendSocketId)
       if (friendSocket) friendSocket.emit('newFriendRequest', data)
 
@@ -214,12 +211,5 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
     } catch (error) {
       client.emit('resAcceptFriendError', error.message)
     }
-  }
-
-  private getSocketIdByUserId(userId: Types.ObjectId): string | null {
-    for (const [socketId, id] of this.connectedClients.entries())
-      if (id.equals(userId)) return socketId
-
-    return null
   }
 }
