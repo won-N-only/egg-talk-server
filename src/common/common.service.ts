@@ -90,12 +90,12 @@ export class CommonService {
   async markNotification(data: AddFriendDto): Promise<Notification> {
     const { userId, friendId } = data
     if (userId == friendId)
-      throw new Error(`자기자신은 ${data.type} 등록 안됩니다`)
+      throw new Error(`자기자신은 등록 안됩니다`)
 
     const user = await this.usersRepository.findOne({ _id: userId })
 
     if (user.friends.some(f => f.friend == friendId))
-      throw new Error(`이미 ${data.type}에용.`)
+      throw new Error(`이미 친구에용.`)
 
     return await this.commonRepository.markNotification(data)
   }
