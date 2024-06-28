@@ -16,6 +16,7 @@ const logger = new Logger('ChatGateway')
 
 import { CommonService } from './common.service'
 import { lookup } from 'dns'
+import { Types, ObjectId, Schema } from 'mongoose'
 
 // @UseGuards(JwtAuthWsGuard)
 @WebSocketGateway({ namespace: 'common' })
@@ -24,8 +25,10 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   constructor(private commonService: CommonService) {}
 
-  private connectedUsers: { [userId: string]: string } = {} // userId: socketId 형태로 변경
-  private connectedSockets: { [socketId: string]: string } = {} // socketId: userId 형태로 변경
+  // private connectedUsers: { [userId: string]: string } = {} // userId: socketId 형태로 변경
+  private connectedUsers = new Map<string, Socket>() // userId(ObjectId) : socket 객체형태로 변경
+  // private connectedSockets: { [socketId: string]: string } = {} // socketId: userId 형태로 변경
+  private connectedSockets = new Map<string, string>() // socketId: userId 형태로 변경
 
   @SubscribeMessage('message')
   handleMessage(client: any, payload: any): string {
@@ -33,37 +36,24 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   // 클라이언트 연결 시 처리 로직
-  handleConnection(@ConnectedSocket() client: Socket): void {
-    try {
-      const userId = client.handshake.query.userId as string
-      client.data.userId = userId
-      const soketuser = client.data.userId
-      console.log(soketuser, 'socket에 넣은 유저 아이디')
-
-      // 현재 이 게이트웨이에 존재하는 모든 클라이언트를 식별할 수 있는 array 생성
-      this.connectedUsers[userId] = client.id
-      this.connectedSockets[client.id] = userId
-
-      logger.log(client.id, '연결되었습니다.')
-      this.server.emit('online', userId)
-    } catch (error) {
-      logger.error('연결 처리 중 오류 발생:', error)
-      client.disconnect()
-    }
-  }
+  handleConnection(@ConnectedSocket() client: Socket): void {}
 
   // 클라이언트 연결 해제 시 처리 로직
-  handleDisconnect(@ConnectedSocket() client: Socket): void {
-    if (this.connectedSockets[client.id]) {
-      // 유저가 종료되면 연결된 소켓에 해당 유저 종료했다고 알림
-      this.server.emit('offline', client.data.userId)
-      // 연결된 클라이언트 삭제
-      const userId = this.connectedSockets[client.id]
-      delete this.connectedSockets[client.id]
-      delete this.connectedUsers[userId]
-
-      logger.log(client.id, '연결이 끊겼습니다.')
+  async handleDisconnect(@ConnectedSocket() client: Socket) {
+    // 유저가 종료되면 연결된 소켓에 해당 유저 종료했다고 알림
+    const userId = this.connectedSockets.get(client.id)
+    const friendIds = await this.commonService.sortfriend(userId)
+    for (const friend of friendIds) {
+      const friendSocket = this.connectedUsers.get(friend.toString())
+      if (friendSocket) {
+        friendSocket.emit('friendOffline', userId)
+      }
     }
+
+    // 연결된 클라이언트 삭제
+    delete this.connectedSockets[client.id]
+    delete this.connectedUsers[userId]
+    logger.log(client.id, '연결이 끊겼습니다.')
   }
 
   @SubscribeMessage('joinchat')
