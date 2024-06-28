@@ -42,25 +42,10 @@ export class CommonService {
     // 1. ChatRoom ObjectId로 변환
     const chatRoomIdObj = new Types.ObjectId(chatRoomId)
 
-    // 2. 해당 ChatRoom의 chats 배열 가져오기
-    const chatRoom = await this.chatRoomModel
-      .findByIdAndUpdate(
-        chatRoomIdObj,
-        { $set: { isRead: true } }, // isRead를 true로 업데이트
-        { new: true },
-      )
-      .exec() // { new : true } 옵션 지정해줘야 바뀐 데이터 반환가능
-    const chatIds = chatRoom?.chats || [] // chatRoom이 없으면 빈 배열
-
-    // 3. Chat 배열 조회 및 populate
-    const chats = await this.chatModel
-      .find({ _id: { $in: chatIds } }) // chatIds에 속하는 Chat만 조회
-      // .populate('sender', 'username') // sender 정보 populate (필요한 경우)
-      .sort({ createdAt: 1 }) // createdAt 기준 오름차순 정렬
-      .exec()
-
-    console.log(chats)
-    return chats
+    const chatRoom =
+      await this.commonRepository.getChatRoomMessage(chatRoomIdObj)
+    console.log('chatroom populate result: ', chatRoom.chats)
+    return chatRoom.chats as unknown as Chat[]
   }
 
   async sendMessage(
