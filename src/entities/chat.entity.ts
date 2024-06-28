@@ -3,7 +3,7 @@ import { Types } from 'mongoose'
 
 @Schema({ timestamps: true })
 export class Chat {
-  @Prop({ type: Types.ObjectId, required: true })
+  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   sender: Types.ObjectId
 
   @Prop({ type: String, required: true })
