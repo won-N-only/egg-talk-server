@@ -9,14 +9,13 @@ import {
 } from '@nestjs/websockets'
 import { UseGuards } from '@nestjs/common'
 import { JwtAuthWsGuard } from '../guards/jwt-auth.ws.guard'
-// import { Server } from 'http';
 import { Server, Socket } from 'socket.io'
 import { Logger } from '@nestjs/common'
 const logger = new Logger('ChatGateway')
 
 import { CommonService } from './common.service'
 
-@UseGuards(JwtAuthWsGuard)
+//@UseGuards(JwtAuthWsGuard)
 @WebSocketGateway({ namespace: 'common' })
 export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server
@@ -36,7 +35,7 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
   // 클라이언트 연결 해제 시 처리 로직
   async handleDisconnect(@ConnectedSocket() client: Socket) {
     // 유저가 종료되면 연결된 소켓에 해당 유저 종료했다고 알림
-    const userId = this.connectedSockets.get(client.id)
+    const userId = 'sst' //test용 _id
     const friendIds = await this.commonService.sortfriend(userId)
     for (const friend of friendIds) {
       const friendSocket = this.commonService.getSocketByUserId(
@@ -51,7 +50,10 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.commonService.removeUser(userId, client.id)
     logger.log(client.id, '연결이 끊겼습니다.')
   }
-  @SubscribeMessage('decodeToken')
+
+  @SubscribeMessage(
+    'serverCertificate',
+  ) /**토큰 파싱과는 연관이 없으니 login했다는걸 알려주는 event name으로  */
   async decodeToken(@ConnectedSocket() client: Socket) {
     try {
       const { userId } = client['user']
@@ -60,7 +62,7 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
       // 서버에 접속한 유저들에게 해당 유저가 온라인 되었다는 메세지를 보냄
       // 나와 친구인 사람들에게만 emit을 보내야함
       // 1. 나와 친구인 사람을 파악하기 위해서 내정보에서 가져옴
-      const friendIds = await this.commonService.sortfriend(userId)
+      const friendIds = await this.commonService.sortriend(userId)
       // 2. 순서대로 emit을 보내야함 (내 친구가 현재 접속해있다면!)
       for (const friend of friendIds) {
         const friendSocket = this.commonService.getSocketByUserId(
@@ -81,14 +83,11 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
     client: Socket,
     payload: { newChatRoomId: string; userId: string },
   ) {
+    const { newChatRoomId, userId } = payload
     // 1. 기존 채팅방 정보 가져오기
 
     const currentRooms = Array.from(client.rooms) // 현재 참여 중인 모든 방
-    console.log(currentRooms, '현재 참여중인 모든 방')
     const currentChatRoomId = currentRooms.find(room => room !== client.id) // Socket ID 제외
-    console.log(currentChatRoomId, '참여중인 채팅창이 있었다면 표시되어야함 !')
-    console.log(payload)
-    const { newChatRoomId, userId } = payload
     // 2. 기존 채팅방 연결 종료 (만약 있다면)
     if (currentChatRoomId) {
       client.leave(currentChatRoomId) // 기존 방 떠나기
@@ -96,12 +95,8 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     // 3. 새 채팅방 참여
     client.join(newChatRoomId)
-    console.log(newChatRoomId, '새롭게 참여할 채팅방 정보')
 
-    const socketIdsInChat = (
-      await this.server.in(newChatRoomId).fetchSockets()
-    ).map(Socket => Socket.id)
-    console.log(socketIdsInChat, '채팅방에 접속 중인 소켓 ID 목록:')
+
     // 4. 채팅 기록 불러오기 (필요하다면)
     const chatHistory = await this.commonService.getChatHistory(
       newChatRoomId,
@@ -129,6 +124,7 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
         await this.server.in(chatRoomId).fetchSockets()
       ).find(socket => socket.data.userId === receiverId)
 
+      /**DTO */
       const newChat = await this.commonService.sendMessage(
         userId,
         chatRoomId,
