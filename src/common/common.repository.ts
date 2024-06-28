@@ -29,4 +29,19 @@ export class CommonRepository {
       .lean()
       .exec()
   }
+
+  async saveMessagetoChatRoom(
+    sender: string,
+    message: string,
+    chatRoomId: string,
+    isReceiverOnline: boolean,
+  ): Promise<Chat> {
+    const newChat = await this.chatModel.create({ sender, message })
+    await this.chatRoomModel.findByIdAndUpdate(chatRoomId, {
+      $push: { chats: newChat._id },
+      isRead: isReceiverOnline,
+    })
+    return newChat
+  }
+
 }
