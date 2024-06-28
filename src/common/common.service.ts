@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
-import { Model, Types } from 'mongoose'
+import { Model, Types, ObjectId } from 'mongoose'
 import { Chat } from '../entities/chat.entity'
 import { ChatRoom } from '../entities/chat-room.entity'
 import { User } from '../entities/user.entity'
@@ -75,4 +75,21 @@ export class CommonService {
       throw error
     }
   }
+
+  async sortfriend(userId: string){
+    // 유저 정보를 조회하여 친구목록 화인
+    // 내 친구에게만 알림 보내면됨
+    try {
+      // await this.userModel.findById(userId, { friends : 1 }).lean();
+      const friendIds = await this.userModel.findOne({id : userId})
+      .select('friends.friend')
+      .lean()
+      .exec()
+      return friendIds.friends.map(elem => elem.friend);
+      // return friendIds
+    } catch(error){
+      throw error
+    }
+  }
+
 }
