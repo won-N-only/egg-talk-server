@@ -41,7 +41,7 @@ export class CommonService {
     this.connectedUsers.delete(socketId)
   }
 
-  async getChatHistory(chatRoomId: string, userId: string): Promise<Chat[]> {
+  async getChatHistory(chatRoomId: string): Promise<Chat[]> {
     // 1. ChatRoom ObjectId로 변환
     const chatRoomIdObj = new Types.ObjectId(chatRoomId)
 
@@ -52,15 +52,15 @@ export class CommonService {
   }
 
   async sendMessage(
-    senderId: string,
-    chatRoomId: string,
+    senderNickName: string,
+    chatRoomId: Types.ObjectId,
     message: string,
     isReceiverOnline: boolean,
   ): Promise<Chat> {
     try {
       //DTO
       const newChat = await this.commonRepository.saveMessagetoChatRoom(
-        senderId,
+        senderNickName,
         message,
         chatRoomId,
         isReceiverOnline,

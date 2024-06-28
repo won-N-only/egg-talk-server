@@ -33,7 +33,7 @@ export class CommonRepository {
   async saveMessagetoChatRoom(
     sender: string,
     message: string,
-    chatRoomId: string,
+    chatRoomId: Types.ObjectId,
     isReceiverOnline: boolean,
   ): Promise<Chat> {
     const newChat = await this.chatModel.create({ sender, message })

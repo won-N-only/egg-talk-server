@@ -15,6 +15,8 @@ const logger = new Logger('ChatGateway')
 
 import { CommonService } from './common.service'
 
+import { Types } from 'mongoose'
+
 //@UseGuards(JwtAuthWsGuard)
 @WebSocketGateway({ namespace: 'common' })
 export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -81,9 +83,10 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('joinchat')
   async handleJoinRoom(
     client: Socket,
-    payload: { newChatRoomId: string; userId: string },
+    payload: { newChatRoomId: Types.ObjectId }, // nickName == userId
   ) {
-    const { newChatRoomId, userId } = payload
+    const { newChatRoomId } = payload
+    const chatRoomId = newChatRoomId.toString();
     // 1. 기존 채팅방 정보 가져오기
 
     const currentRooms = Array.from(client.rooms) // 현재 참여 중인 모든 방
@@ -94,12 +97,11 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     // 3. 새 채팅방 참여
-    client.join(newChatRoomId)
+    client.join(chatRoomId)
 
     // 4. 채팅 기록 불러오기 (필요하다면)
     const chatHistory = await this.commonService.getChatHistory(
-      newChatRoomId,
-      userId,
+      chatRoomId
     )
     client.emit('chatHistory', chatHistory)
   }
@@ -109,40 +111,40 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
     @MessageBody()
     payload: {
-      userId: string
-      chatRoomId: string
+      userNickname: string
+      chatRoomId: Types.ObjectId
       message: string
-      receiverId: string
+      receiverNickname: string
     },
   ) {
     try {
-      const { chatRoomId, message, userId, receiverId } = payload
+      const { chatRoomId, message, userNickname, receiverNickname } = payload
 
       // 상대방이 채팅방에 참여 중인지 확인
       const receiverSocket = (
-        await this.server.in(chatRoomId).fetchSockets()
-      ).find(socket => socket.data.userId === receiverId)
+        await this.server.in(chatRoomId.toString()).fetchSockets()
+      ).find(client => client['user'].nickname === receiverNickname);
 
       /**DTO */
       const newChat = await this.commonService.sendMessage(
-        userId,
+        userNickname,
         chatRoomId,
         message,
         !!receiverSocket,
       ) // isReceiverOnline 전달
       // 메시지 전송
       if (receiverSocket) {
-        this.server.to(chatRoomId).emit('message', newChat) // 상대방이 (온라인 상태 + 채팅방 참여) 일때 메시지 전송
+        this.server.to(chatRoomId.toString()).emit('message', newChat) // 상대방이 (온라인 상태 + 채팅방 참여) 일때 메시지 전송
       } else {
         const receiverSocketId =
-          this.commonService.getSocketByUserId(receiverId).id
+          this.commonService.getSocketByUserId(receiverNickname).id
         if (receiverSocketId) {
           this.server
             .to(receiverSocketId)
             .emit('newMessageNotification', chatRoomId)
         }
         // 유저 정보에서 "newNotification": bool 부분만 바꿔주면됌
-        await this.commonService.changeNotice(receiverId)
+        await this.commonService.changeNotice(receiverNickname)
       }
 
       // 1. recieverId에 대응 하는 socket ID 가 connectClient에 존재하는지 확인
