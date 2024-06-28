@@ -44,4 +44,14 @@ export class CommonRepository {
     return newChat
   }
 
+  async setNewNotification(userId: string) {
+    await this.userModel.findOneAndUpdate(
+      { id: userId },
+      { $set: { newNotification: true } },
+    )
+  }
+
+  async getFriendIds(userId: string) {
+    return await this.userModel.findOne({ id: userId }).lean().exec()
+  }
 }
