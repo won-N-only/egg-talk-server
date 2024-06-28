@@ -71,10 +71,7 @@ export class CommonService {
 
   async changeNotice(userId: string) {
     try {
-      await this.userModel.findOneAndUpdate(
-        { id: userId },
-        { $set: { newNotification: true } },
-      )
+      await this.commonRepository.setNewNotification(userId)
     } catch (error) {
       console.error('알림이 전송되지 않았습니다.', error)
       throw error
