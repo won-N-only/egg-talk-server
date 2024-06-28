@@ -4,10 +4,13 @@ import { Model, Types, ObjectId } from 'mongoose'
 import { Chat } from '../entities/chat.entity'
 import { ChatRoom } from '../entities/chat-room.entity'
 import { User } from '../entities/user.entity'
+import { Server, Socket } from 'socket.io'
+import { CommonRepository } from './common.repository'
 
 @Injectable()
 export class CommonService {
   constructor(
+    private readonly commonRepository: CommonRepository,
     @InjectModel(ChatRoom.name) private chatRoomModel: Model<ChatRoom>,
     @InjectModel(Chat.name) private chatModel: Model<Chat>,
     @InjectModel(User.name) private userModel: Model<User>,
@@ -55,7 +58,7 @@ export class CommonService {
     isReceiverOnline: boolean,
   ): Promise<Chat> {
     try {
-      //DTO 
+      //DTO
       const newChat = await this.commonRepository.saveMessagetoChatRoom(
         senderId,
         message,
@@ -78,20 +81,14 @@ export class CommonService {
     }
   }
 
-  async sortfriend(userId: string){
+  async sortFriend(userId: string) {
     // 유저 정보를 조회하여 친구목록 화인
     // 내 친구에게만 알림 보내면됨
     try {
-      // await this.userModel.findById(userId, { friends : 1 }).lean();
-      const friendIds = await this.userModel.findOne({id : userId})
-      .select('friends.friend')
-      .lean()
-      .exec()
-      return friendIds.friends.map(elem => elem.friend);
-      // return friendIds
-    } catch(error){
+      const friendIds = await this.commonRepository.getFriendIds(userId)
+      return friendIds.friends.map(elem => elem.friend)
+    } catch (error) {
       throw error
     }
   }
-
 }
