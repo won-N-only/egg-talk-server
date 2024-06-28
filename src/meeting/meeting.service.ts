@@ -10,6 +10,7 @@ export class OpenViduService {
     {}
   private chooseData: Record<string, { sender: string; receiver: string }[]> =
     {}
+  private timerFlag: Map<string, boolean> = new Map()
   private sessionTimers: Record<string, NodeJS.Timeout> = {}
   public server: Server
 
@@ -212,7 +213,11 @@ export class OpenViduService {
           participantName: participant,
         })
       })
-      this.startSessionTimer(sessionName, this.server)
+      if (this.timerFlag.get(sessionName) == undefined) {
+        this.startSessionTimer(sessionName, this.server)
+        this.timerFlag.set(sessionName, true)
+      }
+
       await this.resetParticipants(sessionName)
     } catch (error) {
       console.error('Error generating tokens: ', error)
