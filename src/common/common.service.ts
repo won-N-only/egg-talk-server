@@ -16,6 +16,27 @@ export class CommonService {
   private connectedUsers = new Map<string, Socket>() // userId: Socket
   private connectedSockets = new Map<string, string>() // socketId: userId
 
+  setServer(server: Server) {
+    this.server = server
+  }
+
+  getSocketByUserId(userId: string): Socket {
+    return this.connectedUsers.get(userId)
+  }
+
+  getUserIdBySocketId(socketId: string): string {
+    return this.connectedSockets.get(socketId)
+  }
+
+  addUser(userId: string, socket: Socket): void {
+    this.connectedUsers.set(userId, socket)
+    this.connectedSockets.set(socket.id, userId)
+  }
+
+  removeUser(userId: string, socketId: string): void {
+    this.connectedSockets.delete(userId)
+    this.connectedUsers.delete(socketId)
+  }
 
   async getChatHistory(chatRoomId: string, userId: string): Promise<Chat[]> {
     // 1. ChatRoom ObjectId로 변환
