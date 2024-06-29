@@ -19,20 +19,17 @@ export class UsersController {
   @Get()
   @HttpCode(HttpStatus.OK)
   async getUser(@Req() request: Request): Promise<ResGetUserDto> {
-    // const nickname = request['user'].nickname
-    const nickname = 'sst'
-
+    const nickname = request['user'].nickname
     return this.usersService.findOne(nickname)
   }
 
-  @Patch('/avatar')
+  @Patch()
   @HttpCode(HttpStatus.OK)
   async patchUserAvatar(
     @Req() request: Request,
     @Body() avatar: Object,
   ): Promise<Object> {
-    // const nickname = request['user'].nickname
-    const nickname = 'sst'
+    const nickname = request['user'].nickname
     return this.usersService.patchAvatar(nickname, avatar)
   }
 }

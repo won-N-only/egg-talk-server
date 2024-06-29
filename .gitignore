@@ -5,3 +5,6 @@ gen
 .env
 node_modules
 dist
+
+### Mac Os ###
+.DS_Store.DS_Store

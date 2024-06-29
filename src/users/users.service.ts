@@ -16,7 +16,10 @@ export class UsersService {
   }
 
   async patchAvatar(nickname: string, avatar: object): Promise<Object> {
-    const updatedUser = await this.usersRepository.updateAvatar(nickname, avatar)
+    const updatedUser = await this.usersRepository.updateAvatar(
+      nickname,
+      avatar,
+    )
     return updatedUser.avatar
   }
 }
