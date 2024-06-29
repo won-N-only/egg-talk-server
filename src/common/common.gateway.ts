@@ -167,12 +167,10 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('reqGetFriends')
-  async handleGetFriendList(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() userId: Types.ObjectId,
-  ): Promise<void> {
+  async handleGetFriendList(@ConnectedSocket() client: Socket): Promise<void> {
     try {
-      const friends = await this.commonService.getFriends(userId)
+      const nickname = client['user'].nickname
+      const friends = await this.commonService.getFriends(nickname)
       client.emit('resGetFriends', friends)
     } catch (error) {
       client.emit('resGetFriendsError', error.message)
