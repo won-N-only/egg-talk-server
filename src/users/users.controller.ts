@@ -5,12 +5,11 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
-  Query,
   Patch,
+  Req,
 } from '@nestjs/common'
 import { UsersService } from './users.service'
 import { JwtAuthRestGuard } from '../guards/jwt-auth.rest.guard'
-import { ReqGetUserDto } from './dto/request/get-user.dto'
 import { ResGetUserDto } from './dto/response/get-user.dto'
 @UseGuards(JwtAuthRestGuard)
 @Controller('users')
@@ -19,17 +18,21 @@ export class UsersController {
 
   @Get()
   @HttpCode(HttpStatus.OK)
-  async getUser(@Query() reqGetUserDto: ReqGetUserDto): Promise<ResGetUserDto> {
-    return this.usersService.findOne(reqGetUserDto)
+  async getUser(@Req() request: Request): Promise<ResGetUserDto> {
+    // const nickname = request['user'].nickname
+    const nickname = 'sst'
+
+    return this.usersService.findOne(nickname)
   }
 
   @Patch('/avatar')
   @HttpCode(HttpStatus.OK)
   async patchUserAvatar(
-    @Query() reqGetUserDto: ReqGetUserDto,
-    /**TODO: 아바타 obj 아니고 indexnumber면 나중에 바꿔야함 */
+    @Req() request: Request,
     @Body() avatar: Object,
   ): Promise<Object> {
-    return this.usersService.patchAvatar(reqGetUserDto, avatar)
+    // const nickname = request['user'].nickname
+    const nickname = 'sst'
+    return this.usersService.patchAvatar(nickname, avatar)
   }
 }
