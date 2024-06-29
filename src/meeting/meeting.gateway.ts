@@ -5,9 +5,8 @@ import {
   OnGatewayConnection,
   OnGatewayDisconnect,
   WebSocketServer,
-  ConnectedSocket,
 } from '@nestjs/websockets'
-import { Body, Req, UseGuards } from '@nestjs/common'
+import { UseGuards } from '@nestjs/common'
 import { Server, Socket } from 'socket.io'
 import { OpenViduService } from './meeting.service'
 // import { JwtAuthWsGuard } from '../guards/jwt-auth.ws.guard'
