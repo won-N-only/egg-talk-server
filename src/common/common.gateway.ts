@@ -156,12 +156,10 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('reqGetNotifications')
   async handleGetNotifications(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { userId: Types.ObjectId },
   ): Promise<void> {
     try {
-      const notifications = await this.commonService.getNotifications(
-        data.userId,
-      )
+      const nickname = client['user'].nickname
+      const notifications = await this.commonService.getNotifications(nickname)
       client.emit('resGetNotifications', notifications)
     } catch (error) {
       client.emit('resGetNotificationsError', error.message)
@@ -187,13 +185,11 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() data: AddFriendDto,
   ): Promise<void> {
     try {
-      const friendSocketId = this.connectedUsers[data.friendId.toString()]
+      const friendSocketId = this.connectedUsers[data.friendNickname]
       const friendSocket = client.nsp.sockets.get(friendSocketId)
       if (friendSocket) friendSocket.emit('newFriendRequest', data)
 
-      const notification = await this.commonService.markNotification(data)
-
-      client.emit('reqRequestFriend', notification)
+      await this.commonService.markNotification(data)
     } catch (error) {
       client.emit('reqRequestFriendError', error.message)
     }
