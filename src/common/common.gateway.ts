@@ -191,9 +191,7 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const friendSocket = client.nsp.sockets.get(friendSocketId)
       if (friendSocket) friendSocket.emit('newFriendRequest', data)
 
-      const notification = await this.commonService.markNotification(data)
-
-      client.emit('reqRequestFriend', notification)
+      await this.commonService.markNotification(data)
     } catch (error) {
       client.emit('reqRequestFriendError', error.message)
     }
