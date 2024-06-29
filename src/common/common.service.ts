@@ -83,18 +83,18 @@ export class CommonService {
     }
   }
 
-  async getNotifications(userId: Types.ObjectId): Promise<Notification[]> {
-    return this.commonRepository.getNotification(userId)
+  async getNotifications(nickname: String): Promise<Notification[]> {
+    return this.commonRepository.getNotification(nickname)
   }
 
   async markNotification(data: AddFriendDto): Promise<Notification> {
-    const { userId, friendId } = data
-    if (userId == friendId)
+    const { userNickname, friendNickname } = data
+    if (userNickname == friendNickname)
       throw new Error(`자기자신은 등록 안됩니다`)
 
-    const user = await this.usersRepository.findOne({ _id: userId })
+    const user = await this.usersRepository.findOne(userNickname)
 
-    if (user.friends.some(f => f.friend == friendId))
+    if (user.friends.some(f => f.friend == friendNickname))
       throw new Error(`이미 친구에용.`)
 
     return await this.commonRepository.markNotification(data)
