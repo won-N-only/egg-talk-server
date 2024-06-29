@@ -97,7 +97,7 @@ export class CommonRepository {
     } catch (error) {
       throw new Error('친구 추가 실패했어용.')
     }
-  
+  }
 
   async getChatRoomMessage(chatRoomObjectId: Types.ObjectId) {
     return await this.chatRoomModel

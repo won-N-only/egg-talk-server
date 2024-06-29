@@ -23,7 +23,6 @@ export class CommonService {
   private connectedUsers = new Map<string, Socket>() // userId: Socket
   private connectedSockets = new Map<string, string>() // socketId: userId
 
-
   setServer(server: Server) {
     this.server = server
   }
@@ -63,7 +62,6 @@ export class CommonService {
     isReceiverOnline: boolean,
   ): Promise<Chat> {
     try {
-
       //DTO
       const newChat = await this.commonRepository.saveMessagetoChatRoom(
         senderNickName,
@@ -104,10 +102,9 @@ export class CommonService {
 
   async markNotification(data: AddFriendDto): Promise<Notification> {
     const { userId, friendId } = data
-    if (userId == friendId)
-      throw new Error(`자기자신은 등록 안됩니다`)
+    if (userId == friendId) throw new Error(`자기자신은 등록 안됩니다`)
 
-    const user = await this.usersRepository.findOne({ _id: userId })
+    const user = await this.usersRepository.findOne(userId)
 
     if (user.friends.some(f => f.friend == friendId))
       throw new Error(`이미 친구에용.`)
