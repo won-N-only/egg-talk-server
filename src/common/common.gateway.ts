@@ -12,9 +12,7 @@ import { JwtAuthWsGuard } from '../guards/jwt-auth.ws.guard'
 import { Server, Socket } from 'socket.io'
 import { Logger } from '@nestjs/common'
 const logger = new Logger('ChatGateway')
-
 import { CommonService } from './common.service'
-
 import { Types } from 'mongoose'
 
 //@UseGuards(JwtAuthWsGuard)
@@ -44,7 +42,6 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
         friendSocket.emit('friendOffline', nickname)
       }
     }
-
     // 연결된 클라이언트 삭제
     this.commonService.removeUser(nickname, client.id)
     logger.log(client.id, '연결이 끊겼습니다.')
@@ -52,7 +49,7 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage(
     'serverCertificate',
-  ) /**토큰 파싱과는 연관이 없으니 login했다는걸 알려주는 event name으로  */
+  ) 
   async serverCertificate(@ConnectedSocket() client: Socket) {
     try {
       const { nickname } = client['user']
@@ -80,6 +77,7 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('joinchat')
   async handleJoinRoom(
     client: Socket,
+
     payload: { newChatRoomId: Types.ObjectId }, // nickName == userId
   ) {
     const { newChatRoomId } = payload
