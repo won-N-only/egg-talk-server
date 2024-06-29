@@ -48,24 +48,20 @@ export class CommonRepository {
     return notification
   }
 
-  async getFriends(userId: Types.ObjectId): Promise<ObjectId[]> {
+  async getFriends(nickname: string): Promise<ObjectId[]> {
     return await this.userModel
-      .findById(userId, { friends: 1 })
-      .populate({
-        path: 'friends.friend',
-        select: '-password -id -_id -newNotification -notifications -friends ',
-      })
+      .findOne({ nickname }, { friends: 1, _id: 0 })
       .lean()
   }
   async acceptFriend(data: AddFriendDto): Promise<User> {
-    const { userId, friendId } = data
-    const friend = await this.userModel.findById(friendId)
+    const { userNickname, friendNickname } = data
+    const friend = await this.userModel.findOne({ nickname: friendNickname })
     if (!friend) throw new Error('없는 유저랍니다.')
 
     try {
-      await this.userModel.findByIdAndUpdate(
-        userId,
-        { $pull: { notifications: { sender: friendId } } },
+      await this.userModel.findOneAndUpdate(
+        { nickname: userNickname },
+        { $pull: { notifications: { from: friendNickname } } },
         { new: true },
       )
 
@@ -73,26 +69,26 @@ export class CommonRepository {
       await newChatRoom.save()
 
       const newFriend: Friend = {
-        friend: friend._id,
+        friend: friendNickname,
         chatRoomId: newChatRoom._id,
         newMessage: false,
       }
 
       const newFriendForFriend: Friend = {
-        friend: userId,
+        friend: userNickname,
         chatRoomId: newChatRoom._id,
         newMessage: false,
       }
 
-      await this.userModel.findByIdAndUpdate(
-        friendId,
+      await this.userModel.findOneAndUpdate(
+        { nickname: friendNickname },
         { $push: { friends: newFriendForFriend } },
         { new: true },
       )
 
       const updatedUser = await this.userModel
-        .findByIdAndUpdate(
-          userId,
+        .findOneAndUpdate(
+          { nickname: userNickname },
           { $push: { friends: newFriend } },
           { new: true },
         )
