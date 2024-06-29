@@ -124,17 +124,29 @@ export class MeetingGateway
               const partner = matchedPair.pair.find(
                 partnerName => partnerName !== name,
               )
-              console.log('매칭된사람', matchedPair)
               this.server.to(socket.id).emit('cupidResult', {
                 lover: partner,
-                winner: matchedPairs
-                  .filter(pair => !pair.pair.includes(name))
-                  .map(pair => pair.pair),
+                loser: participants
+                  .filter(
+                    participant =>
+                      !matchedPairs.some(pair =>
+                        pair.pair.includes(participant.name),
+                      ),
+                  )
+                  .map(participant => participant.name),
               })
             } else {
-              this.server
-                .to(socket.id)
-                .emit('cupidResult', { lover: '0', winner: [] })
+              this.server.to(socket.id).emit('cupidResult', {
+                lover: '0',
+                loser: participants
+                  .filter(
+                    participant =>
+                      !matchedPairs.some(pair =>
+                        pair.pair.includes(participant.name),
+                      ),
+                  )
+                  .map(participant => participant.name),
+              })
             }
 
             this.server
