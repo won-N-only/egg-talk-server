@@ -30,6 +30,7 @@ export class MeetingGateway
   constructor(private readonly openviduService: OpenViduService) {}
   private connectedUsers: { [nickname: string]: string } = {} // nickname: socketId 형태로 변경
   private connectedSockets: { [socketId: string]: string } = {} // socketId: nickname 형태로 변경
+  private cupidFlag: Map<string, boolean> = new Map()
   afterInit(server: Server) {
     this.openviduService.server = server
     console.log('WebSocket initialized')
@@ -115,30 +116,33 @@ export class MeetingGateway
           pair: match.pair,
           others: matches.filter(p => p !== match),
         }))
+        if (this.cupidFlag.get(sessionName) == undefined) {
+          participants.forEach(({ socket, name }) => {
+            // 매칭된 사람이 있는지 체크
+            const matchedPair = matches.find(match => match.pair.includes(name))
+            if (matchedPair) {
+              const partner = matchedPair.pair.find(
+                partnerName => partnerName !== name,
+              )
+              console.log('매칭된사람', matchedPair)
+              this.server.to(socket.id).emit('cupidResult', {
+                lover: partner,
+                winner: matchedPairs
+                  .filter(pair => !pair.pair.includes(name))
+                  .map(pair => pair.pair),
+              })
+            } else {
+              this.server
+                .to(socket.id)
+                .emit('cupidResult', { lover: '0', winner: [] })
+            }
 
-        participants.forEach(({ socket, name }) => {
-          // 매칭된 사람이 있는지 체크
-          const matchedPair = matches.find(match => match.pair.includes(name))
-          if (matchedPair) {
-            const partner = matchedPair.pair.find(
-              partnerName => partnerName !== name,
-            )
-            this.server.to(socket.id).emit('cupidResult', {
-              lover: partner,
-              winner: matchedPairs
-                .filter(pair => !pair.pair.includes(name))
-                .map(pair => pair.pair),
-            })
-          } else {
             this.server
               .to(socket.id)
-              .emit('cupidResult', { lover: '0', winner: [] })
-          }
-
-          this.server
-            .to(socket.id)
-            .emit('chooseResult', { message: chooseData })
-        })
+              .emit('chooseResult', { message: chooseData })
+          })
+          this.cupidFlag.set(sessionName, true)
+        }
       }
     } else {
       console.error('세션에러입니다')
