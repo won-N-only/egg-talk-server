@@ -3,7 +3,7 @@ import { Types } from 'mongoose'
 
 @Schema({ timestamps: true })
 export class ChatRoom {
-  @Prop({ type: [Types.ObjectId] })
+  @Prop({ type: [{ type: Types.ObjectId, ref: 'Chat' }] })
   chats: Types.ObjectId[]
 
   @Prop({ type: Boolean, default: false })

@@ -1,62 +1,69 @@
 import { Injectable } from '@nestjs/common'
-import { InjectModel } from '@nestjs/mongoose'
-import { Model, Types } from 'mongoose'
+import { AddFriendDto } from './dto/request/notification.dto'
+import { UsersRepository } from '../users/users.repository'
+import { Notification } from '../entities/notification.entity'
+import { Types, ObjectId } from 'mongoose'
 import { Chat } from '../entities/chat.entity'
-import { ChatRoom } from '../entities/chat-room.entity'
 import { User } from '../entities/user.entity'
+import { Server, Socket } from 'socket.io'
+import { CommonRepository } from './common.repository'
 
 @Injectable()
 export class CommonService {
   constructor(
-    @InjectModel(ChatRoom.name) private chatRoomModel: Model<ChatRoom>,
-    @InjectModel(Chat.name) private chatModel: Model<Chat>,
-    @InjectModel(User.name) private userModel: Model<User>,
+    private readonly commonRepository: CommonRepository,
+    private readonly usersRepository: UsersRepository,
   ) {}
+  private server: Server
+  private connectedUsers = new Map<string, Socket>() // userId: Socket
+  private connectedSockets = new Map<string, string>() // socketId: userId
 
-  async getChatHistory(chatRoomId: string, userId: string): Promise<Chat[]> {
+  setServer(server: Server) {
+    this.server = server
+  }
+
+  getSocketByUserId(nickname: string): Socket {
+    return this.connectedUsers.get(nickname)
+  }
+
+  getUserIdBySocketId(socketId: string): string {
+    return this.connectedSockets.get(socketId)
+  }
+
+  addUser(nickname: string, socket: Socket): void {
+    this.connectedUsers.set(nickname, socket)
+    this.connectedSockets.set(socket.id, nickname)
+  }
+
+  removeUser(nickname: string, socketId: string): void {
+    this.connectedSockets.delete(nickname)
+    this.connectedUsers.delete(socketId)
+  }
+
+  async getChatHistory(chatRoomId: string): Promise<Chat[]> {
     // 1. ChatRoom ObjectId로 변환
     const chatRoomIdObj = new Types.ObjectId(chatRoomId)
 
-    // 2. 해당 ChatRoom의 chats 배열 가져오기
-    const chatRoom = await this.chatRoomModel
-      .findByIdAndUpdate(
-        chatRoomIdObj,
-        { $set: { isRead: true } }, // isRead를 true로 업데이트
-        { new: true },
-      )
-      .exec() // { new : true } 옵션 지정해줘야 바뀐 데이터 반환가능
-    const chatIds = chatRoom?.chats || [] // chatRoom이 없으면 빈 배열
-
-    // 3. Chat 배열 조회 및 populate
-    const chats = await this.chatModel
-      .find({ _id: { $in: chatIds } }) // chatIds에 속하는 Chat만 조회
-      // .populate('sender', 'username') // sender 정보 populate (필요한 경우)
-      .sort({ createdAt: 1 }) // createdAt 기준 오름차순 정렬
-      .exec()
-
-    console.log(chats)
-    return chats
+    const chatRoom =
+      await this.commonRepository.getChatRoomMessage(chatRoomIdObj)
+    console.log('chatroom populate result: ', chatRoom.chats)
+    return chatRoom.chats as unknown as Chat[]
   }
 
   async sendMessage(
-    senderId: string,
-    chatRoomId: string,
+    senderNickName: string,
+    chatRoomId: Types.ObjectId,
     message: string,
     isReceiverOnline: boolean,
   ): Promise<Chat> {
     try {
-      // 1. 메시지 저장
-      const newChat = await this.chatModel.create({
-        sender: senderId,
+      //DTO
+      const newChat = await this.commonRepository.saveMessagetoChatRoom(
+        senderNickName,
         message,
-      })
-
-      // 2. ChatRoom 업데이트
-      await this.chatRoomModel.findByIdAndUpdate(chatRoomId, {
-        $push: { chats: newChat._id },
-        isRead: isReceiverOnline,
-      })
-      console.log(newChat)
+        chatRoomId,
+        isReceiverOnline,
+      )
       return newChat
     } catch (error) {
       console.error('메시지 저장 실패:', error)
@@ -66,13 +73,44 @@ export class CommonService {
 
   async changeNotice(userId: string) {
     try {
-      await this.userModel.findOneAndUpdate(
-        { id: userId },
-        { $set: { newNotification: true } },
-      )
+      await this.commonRepository.setNewNotification(userId)
     } catch (error) {
       console.error('알림이 전송되지 않았습니다.', error)
       throw error
     }
+  }
+  async sortFriend(userId: string) {
+    // 유저 정보를 조회하여 친구목록 화인
+    // 내 친구에게만 알림 보내면됨
+    try {
+      const friendIds = await this.commonRepository.getFriendIds(userId)
+      return friendIds.friends.map(elem => elem.friend)
+    } catch (error) {
+      throw error
+    }
+  }
+
+  async getNotifications(nickname: String): Promise<Notification[]> {
+    return this.commonRepository.getNotification(nickname)
+  }
+
+  async markNotification(data: AddFriendDto): Promise<Notification> {
+    const { userNickname, friendNickname } = data
+    if (userNickname == friendNickname)
+      throw new Error(`자기자신은 등록 안됩니다`)
+
+    const user = await this.usersRepository.findOne(userNickname)
+    if (user.friends.some(f => f.friend == friendNickname))
+      throw new Error(`이미 친구에용.`)
+
+    return await this.commonRepository.markNotification(data)
+  }
+
+  async getFriends(nickname: string): Promise<ObjectId[]> {
+    return await this.commonRepository.getFriends(nickname)
+  }
+
+  async acceptFriend(data: AddFriendDto): Promise<User> {
+    return await this.commonRepository.acceptFriend(data)
   }
 }

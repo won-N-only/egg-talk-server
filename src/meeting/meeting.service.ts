@@ -10,6 +10,7 @@ export class OpenViduService {
     {}
   private chooseData: Record<string, { sender: string; receiver: string }[]> =
     {}
+  private timerFlag: Map<string, boolean> = new Map()
   private sessionTimers: Record<string, NodeJS.Timeout> = {}
   public server: Server
 
@@ -212,7 +213,11 @@ export class OpenViduService {
           participantName: participant,
         })
       })
-      this.startSessionTimer(sessionName, this.server)
+      if (this.timerFlag.get(sessionName) == undefined) {
+        this.startSessionTimer(sessionName, this.server)
+        this.timerFlag.set(sessionName, true)
+      }
+
       await this.resetParticipants(sessionName)
     } catch (error) {
       console.error('Error generating tokens: ', error)
@@ -221,8 +226,8 @@ export class OpenViduService {
 
   startSessionTimer(sessionName: string, server: Server) {
     const timers = [
-      // { time: 1, event: 'keyword' },
-      { time: 1, event: 'cupidTime' },
+      { time: 1, event: 'keyword' },
+      { time: 2, event: 'cupidTime' },
       { time: 3, event: 'cam' },
       { time: 40, event: 'finish' },
     ]
@@ -257,9 +262,17 @@ export class OpenViduService {
     server: Server,
   ) {
     const participants = this.getParticipants(sessionName)
-    participants.forEach(({ socket }) => {
-      server.to(socket.id).emit(eventType, { message })
-    })
+    if (eventType == 'keyword') {
+      const getRandomParticipant =
+        participants[Math.floor(Math.random() * participants.length)].name
+      participants.forEach(({ socket }) => {
+        server.to(socket.id).emit(eventType, { message, getRandomParticipant })
+      })
+    } else {
+      participants.forEach(({ socket }) => {
+        server.to(socket.id).emit(eventType, { message })
+      })
+    }
   }
 
   getSessions() {

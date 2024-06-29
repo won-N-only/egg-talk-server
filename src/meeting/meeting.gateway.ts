@@ -5,9 +5,8 @@ import {
   OnGatewayConnection,
   OnGatewayDisconnect,
   WebSocketServer,
-  ConnectedSocket,
 } from '@nestjs/websockets'
-import { Body, Req, UseGuards } from '@nestjs/common'
+import { UseGuards } from '@nestjs/common'
 import { Server, Socket } from 'socket.io'
 import { OpenViduService } from './meeting.service'
 // import { JwtAuthWsGuard } from '../guards/jwt-auth.ws.guard'
@@ -30,6 +29,7 @@ export class MeetingGateway
   constructor(private readonly openviduService: OpenViduService) {}
   private connectedUsers: { [nickname: string]: string } = {} // nickname: socketId 형태로 변경
   private connectedSockets: { [socketId: string]: string } = {} // socketId: nickname 형태로 변경
+  private cupidFlag: Map<string, boolean> = new Map()
   afterInit(server: Server) {
     this.openviduService.server = server
     console.log('WebSocket initialized')
@@ -115,30 +115,45 @@ export class MeetingGateway
           pair: match.pair,
           others: matches.filter(p => p !== match),
         }))
+        if (this.cupidFlag.get(sessionName) == undefined) {
+          participants.forEach(({ socket, name }) => {
+            // 매칭된 사람이 있는지 체크
+            const matchedPair = matches.find(match => match.pair.includes(name))
+            if (matchedPair) {
+              const partner = matchedPair.pair.find(
+                partnerName => partnerName !== name,
+              )
+              this.server.to(socket.id).emit('cupidResult', {
+                lover: partner,
+                loser: participants
+                  .filter(
+                    participant =>
+                      !matchedPairs.some(pair =>
+                        pair.pair.includes(participant.name),
+                      ),
+                  )
+                  .map(participant => participant.name),
+              })
+            } else {
+              this.server.to(socket.id).emit('cupidResult', {
+                lover: '0',
+                loser: participants
+                  .filter(
+                    participant =>
+                      !matchedPairs.some(pair =>
+                        pair.pair.includes(participant.name),
+                      ),
+                  )
+                  .map(participant => participant.name),
+              })
+            }
 
-        participants.forEach(({ socket, name }) => {
-          // 매칭된 사람이 있는지 체크
-          const matchedPair = matches.find(match => match.pair.includes(name))
-          if (matchedPair) {
-            const partner = matchedPair.pair.find(
-              partnerName => partnerName !== name,
-            )
-            this.server.to(socket.id).emit('cupidResult', {
-              lover: partner,
-              winner: matchedPairs
-                .filter(pair => !pair.pair.includes(name))
-                .map(pair => pair.pair),
-            })
-          } else {
             this.server
               .to(socket.id)
-              .emit('cupidResult', { lover: '0', winner: [] })
-          }
-
-          this.server
-            .to(socket.id)
-            .emit('chooseResult', { message: chooseData })
-        })
+              .emit('chooseResult', { message: chooseData })
+          })
+          this.cupidFlag.set(sessionName, true)
+        }
       }
     } else {
       console.error('세션에러입니다')
