@@ -56,9 +56,12 @@ export class MeetingGateway
   //   try {
   //     const participantName = client['user'].participantName
   @SubscribeMessage('ready')
-  async handleReady(client: Socket, payload: { participantName: string }) {
+  async handleReady(
+    client: Socket,
+    payload: { participantName: string; gender: string },
+  ) {
     try {
-      const { participantName } = payload
+      const { participantName, gender } = payload
       // const nickname = client['user'].nickname
       // const socketId = client.id
       // this.connectedSockets[socketId] = nickname
@@ -71,6 +74,7 @@ export class MeetingGateway
           sessionName,
           participantName,
           client,
+          gender,
         )
         this.roomid.set(participantName, sessionName)
       } else {
