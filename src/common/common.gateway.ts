@@ -57,7 +57,7 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage(
     'serverCertificate',
   ) /**토큰 파싱과는 연관이 없으니 login했다는걸 알려주는 event name으로  */
-  async decodeToken(@ConnectedSocket() client: Socket) {
+  async serverCertificate(@ConnectedSocket() client: Socket) {
     try {
       const { nickname } = client['user']
       // 현재 이 게이트웨이에 존재하는 모든 클라이언트를 식별할 수 있는 array 생성
@@ -76,7 +76,7 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
         }
       }
     } catch (error) {
-      logger.error('토큰 파싱 오류 발생', error)
+      logger.error('파싱 오류 발생', error)
       client.disconnect()
     }
   }
