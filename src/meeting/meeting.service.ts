@@ -1,12 +1,18 @@
 import { Injectable } from '@nestjs/common'
 import { OpenVidu, OpenViduRole, Session } from 'openvidu-node-client'
-import { Socket } from 'socket.io'
+import { Socket, Server } from 'socket.io'
+import { v4 as uuidv4 } from 'uuid'
 
 @Injectable()
 export class OpenViduService {
   private openvidu: OpenVidu
   private sessions: Record<string, { session: Session; participants: any[] }> =
     {}
+  private chooseData: Record<string, { sender: string; receiver: string }[]> =
+    {}
+  private timerFlag: Map<string, boolean> = new Map()
+  private sessionTimers: Record<string, NodeJS.Timeout> = {}
+  public server: Server
 
   constructor() {
     const OPENVIDU_URL = process.env.OPENVIDU_URL
@@ -15,13 +21,16 @@ export class OpenViduService {
   }
 
   generateSessionName() {
-    return `session-${Date.now()}`
+    return uuidv4()
   }
 
   async createSession(sessionName: string): Promise<Session> {
     if (!this.sessions[sessionName]) {
       try {
-        const session = await this.openvidu.createSession()
+        const session = await this.openvidu.createSession({
+          customSessionId: sessionName,
+        })
+
         this.sessions[sessionName] = { session, participants: [] }
         console.log(`Session created: ${sessionName}, ID: ${session.sessionId}`)
         return session
@@ -55,11 +64,13 @@ export class OpenViduService {
     }
   }
 
-  removeParticipant(sessionName: string, socket: any) {
+  removeParticipant(sessionName: string, socket: any, myid: string) {
     if (this.sessions[sessionName]) {
-      this.sessions[sessionName].participants = this.sessions[
-        sessionName
-      ].participants.filter(p => p.socket !== socket)
+      // console.log(this.sessions[sessionName].participants.map(p => p.name))
+      const participants = this.getParticipants(sessionName)
+      this.sessions[sessionName].participants = participants.filter(
+        p => p.name !== myid,
+      )
     } else {
       console.error(`Session ${sessionName} does not exist`)
     }
@@ -202,13 +213,95 @@ export class OpenViduService {
           participantName: participant,
         })
       })
+      if (this.timerFlag.get(sessionName) == undefined) {
+        this.startSessionTimer(sessionName, this.server)
+        this.timerFlag.set(sessionName, true)
+      }
+
       await this.resetParticipants(sessionName)
     } catch (error) {
       console.error('Error generating tokens: ', error)
     }
   }
 
+  startSessionTimer(sessionName: string, server: Server) {
+    const timers = [
+      // { time: 1, event: 'keyword' },
+      { time: 1, event: 'cupidTime' },
+      { time: 3, event: 'cam' },
+      { time: 40, event: 'finish' },
+    ]
+    // 언젠가 세션 같은 방을 만날 수도 있어서 초기화를 시킴
+    // 만약 겹치지 않는다면, 아래 코드는 지워도 무방
+    if (this.sessionTimers[sessionName]) {
+      clearTimeout(this.sessionTimers[sessionName])
+    }
+
+    timers.forEach(({ time, event }) => {
+      setTimeout(
+        () => {
+          let message: string
+          if (time === 1) {
+            const getRandomNumber = () => Math.floor(Math.random() * 20) + 1
+            const number = getRandomNumber()
+            message = `${number}`
+          } else {
+            message = `${event}`
+          }
+          this.notifySessionParticipants(sessionName, event, message, server)
+        },
+        time * 60 * 1000,
+      )
+    })
+  }
+
+  notifySessionParticipants(
+    sessionName: string,
+    eventType: string,
+    message: string,
+    server: Server,
+  ) {
+    const participants = this.getParticipants(sessionName)
+    participants.forEach(({ socket }) => {
+      server.to(socket.id).emit(eventType, { message })
+    })
+  }
+
   getSessions() {
     return this.sessions
+  }
+
+  storeChoose(sessionName: string, sender: string, receiver: string) {
+    if (!this.chooseData[sessionName]) {
+      this.chooseData[sessionName] = []
+    }
+
+    // 기존 선택이 있는지 확인하고 업데이트
+    const existingChoiceIndex = this.chooseData[sessionName].findIndex(
+      choice => choice.sender === sender,
+    )
+    if (existingChoiceIndex !== -1) {
+      this.chooseData[sessionName][existingChoiceIndex].receiver = receiver
+    } else {
+      this.chooseData[sessionName].push({ sender, receiver })
+    }
+  }
+
+  getChooseData(sessionName: string) {
+    return this.chooseData[sessionName] || []
+  }
+
+  findMatchingPairs(sessionName: string) {
+    const chooseData = this.getChooseData(sessionName)
+    const matches = []
+    chooseData.forEach(({ sender, receiver }) => {
+      const isPair = chooseData.find(
+        choice => choice.sender === receiver && choice.receiver === sender,
+      )
+      if (isPair) {
+        matches.push({ pair: [sender, receiver] })
+      }
+    })
+    return matches
   }
 }
