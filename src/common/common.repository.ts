@@ -15,13 +15,16 @@ export class CommonRepository {
     private readonly notificationModel: Model<Notification>,
   ) {}
 
-  async getNotification(userId: Types.ObjectId): Promise<Notification[]> {
-    await this.userModel.findByIdAndUpdate(userId, {
-      $set: { newNotification: false },
-    })
+  async getNotification(nickname: String): Promise<Notification[]> {
+    await this.userModel.findOneAndUpdate(
+      { nickname },
+      {
+        $set: { newNotification: false },
+      },
+    )
 
     const user = await this.userModel
-      .findById(userId)
+      .findOne({ nickname })
       .populate<{ notifications: Notification[] }>('notifications')
       .lean()
 
@@ -29,14 +32,17 @@ export class CommonRepository {
   }
 
   async markNotification(data: AddFriendDto): Promise<Notification> {
-    const { userId, friendId } = data
+    const { userNickname, friendNickname } = data
     const notification = new this.notificationModel({
-      from: userId,
+      from: userNickname,
     })
 
-    await this.userModel.findByIdAndUpdate(friendId, {
-      $push: { notifications: notification._id },
-    })
+    await this.userModel.findOneAndUpdate(
+      { nickname: friendNickname },
+      {
+        $push: { notifications: notification._id },
+      },
+    )
 
     await notification.save()
     return notification
