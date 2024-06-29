@@ -194,8 +194,9 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() data: AddFriendDto,
   ): Promise<void> {
     try {
-      const friendSocketId = this.connectedUsers[data.friendNickname]
-      const friendSocket = client.nsp.sockets.get(friendSocketId)
+      const friendSocket = this.commonService.getSocketByUserId(
+        data.friendNickname,
+      )
       if (friendSocket) friendSocket.emit('newFriendRequest', data)
 
       await this.commonService.markNotification(data)

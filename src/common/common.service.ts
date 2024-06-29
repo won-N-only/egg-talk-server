@@ -1,11 +1,9 @@
 import { Injectable } from '@nestjs/common'
-import { InjectModel } from '@nestjs/mongoose'
 import { AddFriendDto } from './dto/request/notification.dto'
 import { UsersRepository } from '../users/users.repository'
 import { Notification } from '../entities/notification.entity'
-import { Model, Types, ObjectId } from 'mongoose'
+import { Types, ObjectId } from 'mongoose'
 import { Chat } from '../entities/chat.entity'
-import { ChatRoom } from '../entities/chat-room.entity'
 import { User } from '../entities/user.entity'
 import { Server, Socket } from 'socket.io'
 import { CommonRepository } from './common.repository'
@@ -15,9 +13,6 @@ export class CommonService {
   constructor(
     private readonly commonRepository: CommonRepository,
     private readonly usersRepository: UsersRepository,
-    @InjectModel(ChatRoom.name) private chatRoomModel: Model<ChatRoom>,
-    @InjectModel(Chat.name) private chatModel: Model<Chat>,
-    @InjectModel(User.name) private userModel: Model<User>,
   ) {}
   private server: Server
   private connectedUsers = new Map<string, Socket>() // userId: Socket
