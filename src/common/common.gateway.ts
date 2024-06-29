@@ -14,6 +14,7 @@ import { Logger } from '@nestjs/common'
 const logger = new Logger('ChatGateway')
 import { CommonService } from './common.service'
 import { Types } from 'mongoose'
+import { AddFriendDto } from './dto/request/notification.dto'
 
 //@UseGuards(JwtAuthWsGuard)
 @WebSocketGateway({ namespace: 'common' })
@@ -23,7 +24,6 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(private commonService: CommonService) {
     this.commonService.setServer(this.server)
   }
-
 
   // 클라이언트 연결 시 처리 로직
   handleConnection(@ConnectedSocket() client: Socket): void {}
@@ -47,9 +47,7 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
     logger.log(client.id, '연결이 끊겼습니다.')
   }
 
-  @SubscribeMessage(
-    'serverCertificate',
-  ) 
+  @SubscribeMessage('serverCertificate')
   async serverCertificate(@ConnectedSocket() client: Socket) {
     try {
       const { nickname } = client['user']
@@ -163,6 +161,59 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
     } catch (error) {
       logger.error('메시지 전송 실패:', error)
       client.emit('error', '메시지 전송에 실패했습니다.')
+    }
+  }
+
+  @SubscribeMessage('reqGetNotifications')
+  async handleGetNotifications(
+    @ConnectedSocket() client: Socket,
+  ): Promise<void> {
+    try {
+      const nickname = client['user'].nickname
+      const notifications = await this.commonService.getNotifications(nickname)
+      client.emit('resGetNotifications', notifications)
+    } catch (error) {
+      client.emit('resGetNotificationsError', error.message)
+    }
+  }
+
+  @SubscribeMessage('reqGetFriends')
+  async handleGetFriendList(@ConnectedSocket() client: Socket): Promise<void> {
+    try {
+      const nickname = client['user'].nickname
+      const friends = await this.commonService.getFriends(nickname)
+      client.emit('resGetFriends', friends)
+    } catch (error) {
+      client.emit('resGetFriendsError', error.message)
+    }
+  }
+
+  @SubscribeMessage('reqRequestFriend')
+  async handleRequestFriend(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: AddFriendDto,
+  ): Promise<void> {
+    try {
+      const friendSocketId = this.connectedUsers[data.friendNickname]
+      const friendSocket = client.nsp.sockets.get(friendSocketId)
+      if (friendSocket) friendSocket.emit('newFriendRequest', data)
+
+      await this.commonService.markNotification(data)
+    } catch (error) {
+      client.emit('reqRequestFriendError', error.message)
+    }
+  }
+
+  @SubscribeMessage('reqAcceptFriend')
+  async handleAcceptFriend(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: AddFriendDto,
+  ): Promise<void> {
+    try {
+      const updatedUser = await this.commonService.acceptFriend(data)
+      client.emit('resAcceptFriend', updatedUser)
+    } catch (error) {
+      client.emit('resAcceptFriendError', error.message)
     }
   }
 }

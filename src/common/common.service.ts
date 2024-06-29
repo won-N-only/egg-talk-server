@@ -84,7 +84,6 @@ export class CommonService {
       throw error
     }
   }
-
   async sortFriend(userId: string) {
     // 유저 정보를 조회하여 친구목록 화인
     // 내 친구에게만 알림 보내면됨
@@ -96,25 +95,26 @@ export class CommonService {
     }
   }
 
-  async getNotifications(userId: Types.ObjectId): Promise<Notification[]> {
-    return this.commonRepository.getNotification(userId)
+  async getNotifications(nickname: String): Promise<Notification[]> {
+    return this.commonRepository.getNotification(nickname)
   }
 
   async markNotification(data: AddFriendDto): Promise<Notification> {
-    const { userId, friendId } = data
-    if (userId == friendId) throw new Error(`자기자신은 등록 안됩니다`)
+    const { userNickname, friendNickname } = data
+    if (userNickname == friendNickname)
+      throw new Error(`자기자신은 등록 안됩니다`)
 
-    const user = await this.usersRepository.findOne(userId)
-
-    if (user.friends.some(f => f.friend == friendId))
+    const user = await this.usersRepository.findOne(userNickname)
+    if (user.friends.some(f => f.friend == friendNickname))
       throw new Error(`이미 친구에용.`)
 
     return await this.commonRepository.markNotification(data)
   }
 
-  async getFriends(userId: Types.ObjectId): Promise<ObjectId[]> {
-    return await this.commonRepository.getFriends(userId)
+  async getFriends(nickname: string): Promise<ObjectId[]> {
+    return await this.commonRepository.getFriends(nickname)
   }
+
   async acceptFriend(data: AddFriendDto): Promise<User> {
     return await this.commonRepository.acceptFriend(data)
   }
