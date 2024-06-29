@@ -26,10 +26,6 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.commonService.setServer(this.server)
   }
 
-  @SubscribeMessage('message')
-  handleMessage(client: any, payload: any): string {
-    return 'Hello world!'
-  }
 
   // 클라이언트 연결 시 처리 로직
   handleConnection(@ConnectedSocket() client: Socket): void {}
