@@ -189,7 +189,8 @@ export class OpenViduService {
       }
 
       if (this.maleQueue.length >= 3 && this.femaleQueue.length >= 3) {
-        const session = await this.createSession(sessionName)
+        const sessionName = this.generateSessionName() // 새로운 세션 이름 생성
+        await this.createSession(sessionName)
         for (let i = 0; i < 3; i++) {
           this.addParticipant(
             sessionName,
