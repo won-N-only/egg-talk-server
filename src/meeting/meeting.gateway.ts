@@ -49,6 +49,9 @@ export class MeetingGateway
         )
       }
     }
+    delete this.connectedSockets[client.id]
+    delete this.connectedUsers[participantName]
+    this.roomid.delete(participantName)
   }
 
   // jwt사용시를 위한 코드
@@ -60,12 +63,20 @@ export class MeetingGateway
     client: Socket,
     payload: { participantName: string; gender: string },
   ) {
+    console.log('들어옴')
     try {
       const { participantName, gender } = payload
-      // const nickname = client['user'].nickname
-      // const socketId = client.id
-      // this.connectedSockets[socketId] = nickname
-      // this.connectedUsers[nickname] = socketId
+
+      const existingSessionName = this.roomid.get(participantName)
+      if (existingSessionName) {
+        this.openviduService.removeParticipant(
+          existingSessionName,
+          client,
+          participantName,
+        )
+        this.roomid.delete(participantName)
+      }
+
       const sessionName =
         await this.openviduService.findOrCreateAvailableSession()
       if (sessionName) {
@@ -77,6 +88,8 @@ export class MeetingGateway
           gender,
         )
         this.roomid.set(participantName, sessionName)
+        this.connectedUsers[participantName] = client.id
+        this.connectedSockets[client.id] = participantName
       } else {
         console.error('Failed to create or retrieve session')
       }
@@ -99,6 +112,9 @@ export class MeetingGateway
         )
       }
     }
+    delete this.connectedSockets[client.id]
+    delete this.connectedUsers[participantName]
+    this.roomid.delete(participantName)
   }
 
   @SubscribeMessage('choose')

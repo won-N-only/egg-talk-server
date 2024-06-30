@@ -279,8 +279,8 @@ export class OpenViduService {
 
   startSessionTimer(sessionName: string, server: Server) {
     const timers = [
-      { time: 1, event: 'keyword' },
-      { time: 2, event: 'cupidTime' },
+      // { time: 1, event: 'keyword' },
+      { time: 1, event: 'cupidTime' },
       { time: 3, event: 'cam' },
       { time: 40, event: 'finish' },
     ]
@@ -294,7 +294,7 @@ export class OpenViduService {
       setTimeout(
         () => {
           let message: string
-          if (time === 1) {
+          if (time === 2) {
             const getRandomNumber = () => Math.floor(Math.random() * 20) + 1
             const number = getRandomNumber()
             message = `${number}`
@@ -303,7 +303,7 @@ export class OpenViduService {
           }
           this.notifySessionParticipants(sessionName, event, message, server)
         },
-        time * 60 * 1000,
+        time * 50 * 1000,
       )
     })
   }
