@@ -74,7 +74,6 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('joinchat')
   async handleJoinRoom(
     client: Socket,
-
     payload: { newChatRoomId: Types.ObjectId }, // nickName == userId
   ) {
     const { newChatRoomId } = payload
@@ -140,7 +139,7 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
         this.server.to(chatRoomId.toString()).emit('message', newChat) // 상대방이 (온라인 상태 + 채팅방 참여) 일때 메시지 전송
       } else {
         const receiverSocketId =
-          this.commonService.getSocketByUserId(receiverNickname).id
+          this.commonService.getSocketByUserId(receiverNickname)?.id
         if (receiverSocketId) {
           this.server
             .to(receiverSocketId)
