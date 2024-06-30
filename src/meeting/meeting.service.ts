@@ -14,6 +14,9 @@ export class OpenViduService {
   private sessionTimers: Record<string, NodeJS.Timeout> = {}
   public server: Server
 
+  private maleQueue: { name: string; socket: Socket }[] = []
+  private femaleQueue: { name: string; socket: Socket }[] = []
+
   constructor() {
     const OPENVIDU_URL = process.env.OPENVIDU_URL
     const OPENVIDU_SECRET = process.env.OPENVIDU_SECRET
@@ -54,6 +57,7 @@ export class OpenViduService {
   }
 
   addParticipant(sessionName: string, participantName: string, socket: any) {
+    // gender별로 나눠야할 것 같음
     if (this.sessions[sessionName]) {
       this.sessions[sessionName].participants.push({
         name: participantName,
@@ -167,30 +171,68 @@ export class OpenViduService {
     sessionName: string,
     participantName: string,
     client: Socket,
+    gender: string,
   ) {
     try {
-      this.addParticipant(sessionName, participantName, client)
+      if (gender === 'male') {
+        this.maleQueue.push({ name: participantName, socket: client })
+        console.log(
+          'male Queue : ',
+          this.maleQueue.map(p => p.name),
+        )
+      } else if (gender === 'female') {
+        this.femaleQueue.push({ name: participantName, socket: client })
+        console.log(
+          'female Queue : ',
+          this.femaleQueue.map(p => p.name),
+        )
+      }
+
+      if (this.maleQueue.length >= 3 && this.femaleQueue.length >= 3) {
+        await this.createSession(sessionName)
+        for (let i = 0; i < 3; i++) {
+          this.addParticipant(
+            sessionName,
+            this.maleQueue[i].name,
+            this.maleQueue[i].socket,
+          )
+          this.addParticipant(
+            sessionName,
+            this.femaleQueue[i].name,
+            this.femaleQueue[i].socket,
+          )
+        }
+        this.maleQueue.splice(0, 3)
+        this.femaleQueue.splice(0, 3)
+        await this.startVideoChatSession(sessionName)
+      }
       const participants = this.getParticipants(sessionName)
       console.log(
         'Current waiting participants: ',
         participants.map(p => p.name),
       )
-      console.log(
-        'Current number of waiting participants: ',
-        participants.length,
-      )
-
-      if (participants.length === 6) {
-        await this.startVideoChatSession(sessionName)
-        // 새로운 세션을 생성하고 반환
-        const newSessionName = this.generateSessionName()
-        await this.createSession(newSessionName)
-        console.log(`New session prepared: ${newSessionName}`)
-      }
     } catch (error) {
       console.error('Error joining queue:', error)
-      // 세션 참가 실패 시 세션 삭제
       await this.deleteSession(sessionName)
+    }
+  }
+
+  removeFromQueue(participantName: string, gender: string) {
+    if (gender === 'male') {
+      console.log('temp : ', participantName)
+      this.maleQueue = this.maleQueue.filter(p => p.name !== participantName)
+      console.log(
+        'Update Male Queue : ',
+        this.maleQueue.map(p => p.name),
+      )
+    } else if (gender === 'female') {
+      this.femaleQueue = this.femaleQueue.filter(
+        p => p.name !== participantName,
+      )
+      console.log(
+        'Update Female Queue : ',
+        this.femaleQueue.map(p => p.name),
+      )
     }
   }
 
@@ -198,6 +240,8 @@ export class OpenViduService {
     try {
       const tokens = await this.generateTokens(sessionName)
       const session = this.getSession(sessionName)
+      const participants = this.getParticipants(sessionName)
+
       if (!session) {
         console.error(
           `No session found for ${sessionName} during startVideoChatSession`,
@@ -250,7 +294,7 @@ export class OpenViduService {
           }
           this.notifySessionParticipants(sessionName, event, message, server)
         },
-        time * 60 * 1000,
+        time * 50 * 1000,
       )
     })
   }
