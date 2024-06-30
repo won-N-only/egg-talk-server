@@ -229,6 +229,7 @@ export class OpenViduService {
       { time: 1, event: 'keyword' },
       { time: 2, event: 'cupidTime' },
       { time: 3, event: 'cam' },
+      { time: 4, event: 'Introduce'},
       { time: 40, event: 'finish' },
     ]
     // 언젠가 세션 같은 방을 만날 수도 있어서 초기화를 시킴
@@ -245,7 +246,13 @@ export class OpenViduService {
             const getRandomNumber = () => Math.floor(Math.random() * 20) + 1
             const number = getRandomNumber()
             message = `${number}`
-          } else {
+          } 
+          else if(time === 4){
+            const TeamArray = this.getParticipants(sessionName);  // 유저 닉네임 가져옴
+            const RandomTeamArray = shuffleArray(TeamArray);      // 유저를 랜덤으로 셔플함
+            message = `${RandomTeamArray}`                        // 셔플한 랜덤 유저 Array를 Message에 담음
+          } 
+          else {
             message = `${event}`
           }
           this.notifySessionParticipants(sessionName, event, message, server)
@@ -268,7 +275,8 @@ export class OpenViduService {
       participants.forEach(({ socket }) => {
         server.to(socket.id).emit(eventType, { message, getRandomParticipant })
       })
-    } else {
+    }
+    else {
       participants.forEach(({ socket }) => {
         server.to(socket.id).emit(eventType, { message })
       })
@@ -311,5 +319,12 @@ export class OpenViduService {
       }
     })
     return matches
+  }
+}
+
+function shuffleArray(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]]; // swap elements
   }
 }
