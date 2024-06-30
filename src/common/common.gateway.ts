@@ -16,7 +16,7 @@ import { CommonService } from './common.service'
 import { Types } from 'mongoose'
 import { AddFriendDto } from './dto/request/notification.dto'
 
-//@UseGuards(JwtAuthWsGuard)
+@UseGuards(JwtAuthWsGuard)
 @WebSocketGateway({ namespace: 'common' })
 export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server
@@ -31,8 +31,7 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
   // 클라이언트 연결 해제 시 처리 로직
   async handleDisconnect(@ConnectedSocket() client: Socket) {
     // 유저가 종료되면 연결된 소켓에 해당 유저 종료했다고 알림
-    const nickname = 'sst' //test용 _id
-    // const nickname =  client['user'].nickname// 올바른 코드
+    const nickname = client['user'].nickname // 올바른 코드
     const friendIds = await this.commonService.sortFriend(nickname)
     for (const friend of friendIds) {
       const friendSocket = this.commonService.getSocketByUserId(
@@ -75,7 +74,6 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('joinchat')
   async handleJoinRoom(
     client: Socket,
-
     payload: { newChatRoomId: Types.ObjectId }, // nickName == userId
   ) {
     const { newChatRoomId } = payload
@@ -141,7 +139,7 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
         this.server.to(chatRoomId.toString()).emit('message', newChat) // 상대방이 (온라인 상태 + 채팅방 참여) 일때 메시지 전송
       } else {
         const receiverSocketId =
-          this.commonService.getSocketByUserId(receiverNickname).id
+          this.commonService.getSocketByUserId(receiverNickname)?.id
         if (receiverSocketId) {
           this.server
             .to(receiverSocketId)
