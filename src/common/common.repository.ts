@@ -54,6 +54,7 @@ export class CommonRepository {
       .findOne({ nickname }, { friends: 1, _id: 0 })
       .lean()
   }
+
   async acceptFriend(data: AddFriendDto): Promise<User> {
     const { userNickname, friendNickname } = data
     const friend = await this.userModel.findOne({ nickname: friendNickname })
@@ -102,20 +103,23 @@ export class CommonRepository {
   }
 
   async getChatRoomMessage(chatRoomObjectId: Types.ObjectId) {
-    return await this.chatRoomModel
+    const chatRoom = await this.chatRoomModel
       .findByIdAndUpdate(
         chatRoomObjectId,
         { $set: { isRead: true } },
         { new: true },
       )
-      .populate({
+      .lean()
+      .exec()
+
+    if (chatRoom) {
+      return await this.chatRoomModel.populate(chatRoom, {
         path: 'chats',
         model: 'Chat',
         options: { sort: { createAt: 1 } },
         populate: { path: 'sender', select: 'nickname' },
       })
-      .lean()
-      .exec()
+    } else return null
   }
 
   async saveMessagetoChatRoom(
