@@ -134,12 +134,12 @@ export class CommonRepository {
 
   async setNewNotification(userId: string) {
     await this.userModel.findOneAndUpdate(
-      { id: userId },
+      { nickname: userId },
       { $set: { newNotification: true } },
     )
   }
 
   async getFriendIds(userId: string) {
-    return await this.userModel.findOne({ id: userId }).lean().exec()
+    return await this.userModel.findOne({ nickname: userId }).lean().exec()
   }
 }
