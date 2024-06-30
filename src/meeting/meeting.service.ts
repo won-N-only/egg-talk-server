@@ -19,6 +19,13 @@ export class OpenViduService {
     const OPENVIDU_SECRET = process.env.OPENVIDU_SECRET
     this.openvidu = new OpenVidu(OPENVIDU_URL, OPENVIDU_SECRET)
   }
+  private shuffleArray<T>(array: T[]): T[] {
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+  }
 
   generateSessionName() {
     return uuidv4()
@@ -180,7 +187,7 @@ export class OpenViduService {
         participants.length,
       )
 
-      if (participants.length === 6) {
+      if (participants.length === 2) {
         await this.startVideoChatSession(sessionName)
         // 새로운 세션을 생성하고 반환
         const newSessionName = this.generateSessionName()
@@ -223,13 +230,12 @@ export class OpenViduService {
       console.error('Error generating tokens: ', error)
     }
   }
-
   startSessionTimer(sessionName: string, server: Server) {
     const timers = [
-      { time: 1, event: 'keyword' },
+      { time: 4, event: 'keyword' },
       { time: 2, event: 'cupidTime' },
       { time: 3, event: 'cam' },
-      { time: 4, event: 'Introduce'},
+      { time: 0.5, event: 'Introduce'},
       { time: 40, event: 'finish' },
     ]
     // 언젠가 세션 같은 방을 만날 수도 있어서 초기화를 시킴
@@ -239,23 +245,30 @@ export class OpenViduService {
     }
 
     timers.forEach(({ time, event }) => {
+      let messageArray: string[] | undefined;
+
       setTimeout(
         () => {
           let message: string
-          if (time === 1) {
+          if (time === 4) {
             const getRandomNumber = () => Math.floor(Math.random() * 20) + 1
             const number = getRandomNumber()
             message = `${number}`
           } 
-          else if(time === 4){
-            const TeamArray = this.getParticipants(sessionName);  // 유저 닉네임 가져옴
-            const RandomTeamArray = shuffleArray(TeamArray);      // 유저를 랜덤으로 셔플함
-            message = `${RandomTeamArray}`                        // 셔플한 랜덤 유저 Array를 Message에 담음
+          else if(time === 0.5){
+            const TeamArray = this.getParticipants(sessionName).map(user=>user.name);  // 유저 닉네임 가져옴
+            const RandomTeamArray = this.shuffleArray(TeamArray);      // 유저를 랜덤으로 셔플함
+            console.log(RandomTeamArray);
+            message = null                       // 셔플한 랜덤 유저 Array를 Message에 담음
+            console.log(message);
+            console.log("성공 !!!!!!!!!!!!!!!!!");
+            const messageArray = RandomTeamArray;
+            console.log(messageArray);
           } 
           else {
             message = `${event}`
           }
-          this.notifySessionParticipants(sessionName, event, message, server)
+          this.notifySessionParticipants(sessionName, event, message, server, messageArray)
         },
         time * 60 * 1000,
       )
@@ -267,6 +280,7 @@ export class OpenViduService {
     eventType: string,
     message: string,
     server: Server,
+    messageArray?: string[]
   ) {
     const participants = this.getParticipants(sessionName)
     if (eventType == 'keyword') {
@@ -274,6 +288,11 @@ export class OpenViduService {
         participants[Math.floor(Math.random() * participants.length)].name
       participants.forEach(({ socket }) => {
         server.to(socket.id).emit(eventType, { message, getRandomParticipant })
+      })
+    }
+    else if (eventType == 'Introduce') {
+      participants.forEach(({ socket }) => {
+        server.to(socket.id).emit(eventType, { messageArray })
       })
     }
     else {
@@ -319,12 +338,5 @@ export class OpenViduService {
       }
     })
     return matches
-  }
-}
-
-function shuffleArray(array) {
-  for (let i = array.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [array[i], array[j]] = [array[j], array[i]]; // swap elements
   }
 }
