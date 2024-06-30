@@ -98,11 +98,11 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('closeChat')
   async closeChat(
     @ConnectedSocket() client: Socket,
-    @MessageBody() payload: { chatRoomdId: Types.ObjectId },
+    @MessageBody() payload: { chatRoomdId: string },
   ) {
     try {
       const { chatRoomdId } = payload
-      client.leave(chatRoomdId.toString())
+      client.leave(chatRoomdId)
     } catch (error) {
       logger.error('채팅방 떠나기 오류', error)
     }
@@ -114,7 +114,7 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody()
     payload: {
       userNickname: string
-      chatRoomId: Types.ObjectId
+      chatRoomId: string
       message: string
       receiverNickname: string
     },
@@ -124,7 +124,7 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       // 상대방이 채팅방에 참여 중인지 확인
       const receiverSocket = (
-        await this.server.in(chatRoomId.toString()).fetchSockets()
+        await this.server.in(chatRoomId).fetchSockets()
       ).find(client => client['user'].nickname === receiverNickname)
 
       /**DTO */
@@ -136,7 +136,7 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
       ) // isReceiverOnline 전달
       // 메시지 전송
       if (receiverSocket) {
-        this.server.to(chatRoomId.toString()).emit('message', newChat) // 상대방이 (온라인 상태 + 채팅방 참여) 일때 메시지 전송
+        this.server.to(chatRoomId).emit('message', newChat) // 상대방이 (온라인 상태 + 채팅방 참여) 일때 메시지 전송
       } else {
         const receiverSocketId =
           this.commonService.getSocketByUserId(receiverNickname)?.id
