@@ -5,7 +5,7 @@ import { Model, Types, ObjectId } from 'mongoose'
 import { AddFriendDto } from './dto/request/notification.dto'
 import { ChatRoom } from '../entities/chat-room.entity'
 import { Notification } from '../entities/notification.entity'
-import { Chat } from 'src/entities/chat.entity'
+import { Chat } from '../entities/chat.entity'
 @Injectable()
 export class CommonRepository {
   constructor(
