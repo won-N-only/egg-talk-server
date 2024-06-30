@@ -52,7 +52,7 @@ export class CommonService {
 
   async sendMessage(
     senderNickName: string,
-    chatRoomId: Types.ObjectId,
+    chatRoomId: string,
     message: string,
     isReceiverOnline: boolean,
   ): Promise<Chat> {
