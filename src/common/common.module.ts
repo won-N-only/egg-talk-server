@@ -7,7 +7,7 @@ import { JwtService } from '@nestjs/jwt'
 import { MongooseModule } from '@nestjs/mongoose'
 import { Chat, ChatSchema } from '../entities/chat.entity'
 import { ChatRoom, ChatRoomSchema } from '../entities/chat-room.entity'
-import { UsersRepository } from 'src/users/users.repository'
+import { UsersRepository } from '../users/users.repository'
 import { User, UserSchema } from '../entities/user.entity'
 import {
   Notification,
