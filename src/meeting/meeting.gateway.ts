@@ -99,9 +99,14 @@ export class MeetingGateway
   }
 
   @SubscribeMessage('cancel')
-  handleCancel(client: Socket, payload: { participantName: string }) {
+  handleCancel(
+    client: Socket,
+    payload: { participantName: string; gender: string },
+  ) {
     const sessions = this.openviduService.getSessions()
-    const { participantName } = payload
+    const { participantName, gender } = payload
+
+    this.openviduService.removeFromQueue(participantName, gender)
 
     for (const sessionName in sessions) {
       if (sessions.hasOwnProperty(sessionName)) {

@@ -246,6 +246,25 @@ export class OpenViduService {
     // }
   }
 
+  removeFromQueue(participantName: string, gender: string) {
+    if (gender === 'male') {
+      console.log('temp : ', participantName)
+      this.maleQueue = this.maleQueue.filter(p => p.name !== participantName)
+      console.log(
+        'Update Male Queue : ',
+        this.maleQueue.map(p => p.name),
+      )
+    } else if (gender === 'female') {
+      this.femaleQueue = this.femaleQueue.filter(
+        p => p.name !== participantName,
+      )
+      console.log(
+        'Update Female Queue : ',
+        this.femaleQueue.map(p => p.name),
+      )
+    }
+  }
+
   async startVideoChatSession(sessionName: string) {
     try {
       const tokens = await this.generateTokens(sessionName)
