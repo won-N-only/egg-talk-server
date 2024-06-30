@@ -125,7 +125,7 @@ export class CommonRepository {
   async saveMessagetoChatRoom(
     sender: string,
     message: string,
-    chatRoomId: Types.ObjectId,
+    chatRoomId: string,
     isReceiverOnline: boolean,
   ): Promise<Chat> {
     const newChat = await this.chatModel.create({ sender, message })
