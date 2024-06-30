@@ -212,38 +212,10 @@ export class OpenViduService {
         'Current waiting participants: ',
         participants.map(p => p.name),
       )
-      console.log(
-        'Current number of waiting participants: ',
-        participants.length,
-      )
     } catch (error) {
       console.error('Error joining queue:', error)
       await this.deleteSession(sessionName)
     }
-
-    //   this.addParticipant(sessionName, participantName, client)
-    //   const participants = this.getParticipants(sessionName)
-    //   console.log(
-    //     'Current waiting participants: ',
-    //     participants.map(p => p.name),
-    //   )
-    //   console.log(
-    //     'Current number of waiting participants: ',
-    //     participants.length,
-    //   )
-
-    //   if (participants.length === 6) {
-    //     await this.startVideoChatSession(sessionName)
-    //     // 새로운 세션을 생성하고 반환
-    //     const newSessionName = this.generateSessionName()
-    //     await this.createSession(newSessionName)
-    //     console.log(`New session prepared: ${newSessionName}`)
-    //   }
-    // } catch (error) {
-    //   console.error('Error joining queue:', error)
-    //   // 세션 참가 실패 시 세션 삭제
-    //   await this.deleteSession(sessionName)
-    // }
   }
 
   removeFromQueue(participantName: string, gender: string) {

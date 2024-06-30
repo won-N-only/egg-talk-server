@@ -63,7 +63,6 @@ export class MeetingGateway
     client: Socket,
     payload: { participantName: string; gender: string },
   ) {
-    console.log('들어옴')
     try {
       const { participantName, gender } = payload
 
