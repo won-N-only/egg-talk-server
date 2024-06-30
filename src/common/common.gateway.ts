@@ -74,10 +74,10 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('joinchat')
   async handleJoinRoom(
     client: Socket,
-    payload: { newChatRoomId: Types.ObjectId }, // nickName == userId
+    payload: { newChatRoomId: string }, // nickName == userId
   ) {
     const { newChatRoomId } = payload
-    const chatRoomId = newChatRoomId.toString()
+    const chatRoomId = newChatRoomId
     // 1. 기존 채팅방 정보 가져오기
 
     const currentRooms = Array.from(client.rooms) // 현재 참여 중인 모든 방
