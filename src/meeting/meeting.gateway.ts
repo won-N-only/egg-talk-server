@@ -214,5 +214,16 @@ export class MeetingGateway
   handleWinnerPrize(
     client: Socket,
     payload: { winners: string[]; losers: string[] },
-  ) {}
+  ) {
+    const { winners, losers } = payload
+    const sessionName = this.roomid.get(winners[0])
+    const participants = this.openviduService.getParticipants(sessionName)
+    participants.forEach(({ socket }) => {
+      this.server
+        .to(socket.id)
+        .emit('finalResults', { winners: winners, losers: losers })
+    })
+    // this.server.to(sessionName).emit('finalResults', {
+    // winners: winners, losers: losers,})
+  }
 }
