@@ -164,8 +164,8 @@ export class MeetingGateway
 
   @SubscribeMessage('forwardDrawing')
   handleFowardDrawing(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() payload: { userName: string; drawing: any },
+    client: Socket,
+    payload: { userName: string; drawing: any },
   ) {
     const { drawing, userName } = payload
     const sessionName = this.roomid.get(userName)
