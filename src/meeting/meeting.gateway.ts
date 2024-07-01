@@ -169,6 +169,10 @@ export class MeetingGateway
   ) {
     const { drawing, userName } = payload
     const sessionName = this.roomid.get(userName)
+    if (!sessionName) {
+      console.error(`세션에 없는 유저이름임: ${userName}`)
+      return
+    }
 
     this.openviduService.saveDrawing(sessionName, userName, drawing)
 
