@@ -313,4 +313,16 @@ export class OpenViduService {
     })
     return matches
   }
+
+  /**<sessionName, <username, drawing>> */
+  private drawings: Record<string, Record<string, string>> = {}
+
+  saveDrawing(sessionName: string, userName: string, drawing: string) {
+    if (!this.drawings[sessionName]) this.drawings[sessionName] = {}
+    this.drawings[sessionName][userName] = drawing
+  }
+
+  getDrawings(sessionName: string): Record<string, string> {
+    return this.drawings[sessionName] || {}
+  }
 }
