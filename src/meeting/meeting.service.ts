@@ -333,4 +333,12 @@ export class OpenViduService {
   /**<sessionName, <username, votedUser>> */
   private votes: Record<string, Record<string, string>> = {}
 
+  saveVote(sessionName: string, userName: string, votedUserName: string) {
+    if (!this.votes[sessionName]) this.votes[sessionName] = {}
+    this.votes[sessionName][userName] = votedUserName
+  }
+
+  getVotes(sessionName: string): Record<string, string> {
+    return this.votes[sessionName] || {}
+  }
 }
