@@ -341,4 +341,24 @@ export class OpenViduService {
   getVotes(sessionName: string): Record<string, string> {
     return this.votes[sessionName] || {}
   }
+
+  calculateWinner(sessionName: string): string {
+    /**저장했던 그림 삭제 */
+    const voteCount: Record<string, number> = {}
+
+    const votes = this.getVotes(sessionName)
+    for (const vote in votes) {
+      const votedUser = votes[vote]
+      if (!voteCount[votedUser]) voteCount[votedUser] = 0
+      voteCount[votedUser]++
+    }
+
+    const winner = Object.keys(voteCount).reduce((a, b) =>
+      voteCount[a] > voteCount[b] ? a : b,
+    )
+
+    /**저장했던 투표 삭제 */
+    delete this.votes[sessionName]
+    return winner
+  }
 }
