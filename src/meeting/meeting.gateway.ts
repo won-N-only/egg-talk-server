@@ -161,4 +161,22 @@ export class MeetingGateway
       console.error('세션에러입니다')
     }
   }
+
+  @SubscribeMessage('forwardDrawing')
+  handleFowardDrawing(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { userName: string; drawing: any },
+  ) {}
+
+  @SubscribeMessage('submitVote')
+  handleSubmitVote(
+    client: Socket,
+    payload: { userName: string; votedUser: string },
+  ) {}
+
+  @SubscribeMessage('winnerPrize')
+  handleWinnerPrize(
+    client: Socket,
+    payload: { winners: string[]; losers: string[] },
+  ) {}
 }
