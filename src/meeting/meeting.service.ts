@@ -10,6 +10,7 @@ export class OpenViduService {
     {}
   private chooseData: Record<string, { sender: string; receiver: string }[]> =
     {}
+  private lastChooseData: Record<string, { sender : string, receiver : string }> = {};
   private timerFlag: Map<string, boolean> = new Map()
   private sessionTimers: Record<string, NodeJS.Timeout> = {}
   public server: Server
@@ -351,6 +352,7 @@ export class OpenViduService {
         choice => choice.sender === receiver && choice.receiver === sender,
       )
       if (isPair) {
+        // matches = [ { pair : [jinyong, test] }]
         matches.push({ pair: [sender, receiver] })
       }
     })
