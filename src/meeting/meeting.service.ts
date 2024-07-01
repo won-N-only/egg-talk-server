@@ -325,4 +325,8 @@ export class OpenViduService {
   getDrawings(sessionName: string): Record<string, string> {
     return this.drawings[sessionName] || {}
   }
+
+  resetDrawings(sessionName: string): void {
+    delete this.drawings[sessionName]
+  }
 }
