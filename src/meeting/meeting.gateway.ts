@@ -166,7 +166,24 @@ export class MeetingGateway
   handleFowardDrawing(
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: { userName: string; drawing: any },
-  ) {}
+  ) {
+    const { drawing, userName } = payload
+    const sessionName = this.roomid.get(userName)
+
+    this.openviduService.saveDrawing(sessionName, userName, drawing)
+
+    const drawings = this.openviduService.getDrawings(sessionName)
+
+    if (Object.keys(drawings).length === 4) {
+      const participants = this.openviduService.getParticipants(sessionName)
+      participants.forEach(({ socket }) => {
+        this.server.to(socket.id).emit('drawingSubmit', drawings)
+      })
+      /**emit 방식 추후 수정 예정 */
+      // this.server.to(sessionName).emit('drawingSubmit', drawings)
+      this.openviduService.resetDrawings(sessionName)
+    }
+  }
 
   @SubscribeMessage('submitVote')
   handleSubmitVote(
