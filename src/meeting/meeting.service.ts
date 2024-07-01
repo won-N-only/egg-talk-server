@@ -262,8 +262,7 @@ export class OpenViduService {
             message = null                       // 셔플한 랜덤 유저 Array를 Message에 담음
             console.log(message);
             console.log("성공 !!!!!!!!!!!!!!!!!");
-            const messageArray = RandomTeamArray;
-            console.log(messageArray);
+            messageArray = RandomTeamArray;
           } 
           else {
             message = `${event}`
@@ -292,7 +291,7 @@ export class OpenViduService {
     }
     else if (eventType == 'Introduce') {
       participants.forEach(({ socket }) => {
-        server.to(socket.id).emit(eventType, { messageArray })
+        server.to(socket.id).emit(eventType, messageArray)
       })
     }
     else {
