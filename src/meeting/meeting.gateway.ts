@@ -9,9 +9,9 @@ import {
 import { UseGuards } from '@nestjs/common'
 import { Server, Socket } from 'socket.io'
 import { OpenViduService } from './meeting.service'
-// import { JwtAuthWsGuard } from '../guards/jwt-auth.ws.guard'
+import { JwtAuthWsGuard } from '../guards/jwt-auth.ws.guard'
 
-// @UseGuards(JwtAuthWsGuard)
+@UseGuards(JwtAuthWsGuard)
 @WebSocketGateway({
   namespace: 'meeting',
   cors: {
