@@ -193,7 +193,22 @@ export class MeetingGateway
   handleSubmitVote(
     client: Socket,
     payload: { userName: string; votedUser: string },
-  ) {}
+  ) {
+    const { userName, votedUser } = payload
+    const sessionName = this.roomid.get(userName)
+    this.openviduService.saveVote(sessionName, userName, votedUser)
+
+    const votes = this.openviduService.getVotes(sessionName)
+
+    if (Object.keys(votes).length === 4) {
+      const winner = this.openviduService.calculateWinner(sessionName)
+      const participants = this.openviduService.getParticipants(sessionName)
+      participants.forEach(({ socket }) => {
+        this.server.to(socket.id).emit('voteResults', { winner })
+      })
+      // this.server.to(sessionName).emit('voteResults', { winner })
+    }
+  }
 
   @SubscribeMessage('winnerPrize')
   handleWinnerPrize(
