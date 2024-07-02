@@ -60,8 +60,8 @@ export class QueueService {
       this.addParticipant(participantName, client, gender)
 
       if (this.maleQueue.length >= 3 && this.femaleQueue.length >= 3) {
-        const readyMales = this.maleQueue.slice(0, 3)
-        const readyFemales = this.femaleQueue.slice(0, 3)
+        const readyMales = this.maleQueue.splice(0, 3)
+        const readyFemales = this.femaleQueue.splice(0, 3)
 
         await this.openviduService.createSession(sessionName)
 
@@ -80,9 +80,6 @@ export class QueueService {
             female.socket,
           )
         })
-
-        this.maleQueue.splice(0, 3)
-        this.femaleQueue.splice(0, 3)
         await this.openviduService.startVideoChatSession(sessionName)
       }
       // 이 부분은 클라 확인차 로그로써 삭제해도 무방 다만 테스트 시 확인이 힘들어짐
