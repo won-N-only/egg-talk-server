@@ -280,6 +280,7 @@ export class OpenViduService {
       { time: 2, event: 'keyword' },
       { time: 3, event: 'cupidTime' },
       { time: 4, event: 'cam' },
+      { time: 5, event: 'drawingContest' },
       { time: 40, event: 'finish' },
     ]
     // 언젠가 세션 같은 방을 만날 수도 있어서 초기화를 시킴
@@ -381,5 +382,53 @@ export class OpenViduService {
       }
     })
     return matches
+  }
+
+  /**<sessionName, <username, drawing>> */
+  private drawings: Record<string, Record<string, string>> = {}
+
+  saveDrawing(sessionName: string, userName: string, drawing: string) {
+    if (!this.drawings[sessionName]) this.drawings[sessionName] = {}
+    this.drawings[sessionName][userName] = drawing
+  }
+
+  getDrawings(sessionName: string): Record<string, string> {
+    return this.drawings[sessionName] || {}
+  }
+
+  resetDrawings(sessionName: string): void {
+    delete this.drawings[sessionName]
+  }
+
+  /**<sessionName, <username, votedUser>> */
+  private votes: Record<string, Record<string, string>> = {}
+
+  saveVote(sessionName: string, userName: string, votedUserName: string) {
+    if (!this.votes[sessionName]) this.votes[sessionName] = {}
+    this.votes[sessionName][userName] = votedUserName
+  }
+
+  getVotes(sessionName: string): Record<string, string> {
+    return this.votes[sessionName] || {}
+  }
+
+  calculateWinner(sessionName: string): string {
+    /**저장했던 그림 삭제 */
+    const voteCount: Record<string, number> = {}
+
+    const votes = this.getVotes(sessionName)
+    for (const vote in votes) {
+      const votedUser = votes[vote]
+      if (!voteCount[votedUser]) voteCount[votedUser] = 0
+      voteCount[votedUser]++
+    }
+
+    const winner = Object.keys(voteCount).reduce((a, b) =>
+      voteCount[a] > voteCount[b] ? a : b,
+    )
+
+    /**저장했던 투표 삭제 */
+    delete this.votes[sessionName]
+    return winner
   }
 }
