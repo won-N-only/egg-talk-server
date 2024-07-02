@@ -72,8 +72,7 @@ export class MeetingGateway
           participantName,
           client,
         )
-        const Nname = participantName.split('-')[0]
-        this.roomid.set(Nname, sessionName)
+        this.roomid.set(participantName, sessionName)
         // this.roomid.set(participantName, sessionName)
       } else {
         console.error('Failed to create or retrieve session')
