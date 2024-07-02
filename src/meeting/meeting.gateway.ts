@@ -143,34 +143,23 @@ export class MeetingGateway
           participants.forEach(({ socket, name }) => {
             // 매칭된 사람이 있는지 체크
             const matchedPair = matches.find(match => match.pair.includes(name))
-            if (matchedPair) {
-              const partner = matchedPair.pair.find(
-                partnerName => partnerName !== name,
+            const partner = matchedPair
+              ? matchedPair.pair.find(partnerName => partnerName !== name)
+              : '0'
+
+            const losers = participants
+              .filter(
+                participant =>
+                  !matchedPairs.some(pair =>
+                    pair.pair.includes(participant.name),
+                  ),
               )
-              this.server.to(socket.id).emit('cupidResult', {
-                lover: partner,
-                loser: participants
-                  .filter(
-                    participant =>
-                      !matchedPairs.some(pair =>
-                        pair.pair.includes(participant.name),
-                      ),
-                  )
-                  .map(participant => participant.name),
-              })
-            } else {
-              this.server.to(socket.id).emit('cupidResult', {
-                lover: '0',
-                loser: participants
-                  .filter(
-                    participant =>
-                      !matchedPairs.some(pair =>
-                        pair.pair.includes(participant.name),
-                      ),
-                  )
-                  .map(participant => participant.name),
-              })
-            }
+              .map(participant => participant.name)
+
+            this.server.to(socket.id).emit('cupidResult', {
+              lover: partner,
+              loser: losers,
+            })
 
             this.server
               .to(socket.id)
