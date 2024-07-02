@@ -59,22 +59,27 @@ export class QueueService {
     try {
       this.addParticipant(participantName, client, gender)
 
-      const readyMales = this.maleQueue
-      const readyFemales = this.femaleQueue
-      if (readyMales.length >= 3 && readyFemales.length >= 3) {
+      if (this.maleQueue.length >= 3 && this.femaleQueue.length >= 3) {
+        const readyMales = this.maleQueue.slice(0, 3)
+        const readyFemales = this.femaleQueue.slice(0, 3)
+
         await this.openviduService.createSession(sessionName)
-        for (let i = 0; i < 3; i++) {
+
+        readyMales.forEach(male => {
           this.openviduService.addParticipant(
             sessionName,
-            readyMales[i].name,
-            readyMales[i].socket,
+            male.name,
+            male.socket,
           )
+        })
+
+        readyFemales.forEach(female => {
           this.openviduService.addParticipant(
             sessionName,
-            readyFemales[i].name,
-            readyFemales[i].socket,
+            female.name,
+            female.socket,
           )
-        }
+        })
 
         this.maleQueue.splice(0, 3)
         this.femaleQueue.splice(0, 3)
