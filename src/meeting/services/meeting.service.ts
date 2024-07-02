@@ -82,6 +82,9 @@ export class OpenViduService {
       this.sessions[sessionName].participants = participants.filter(
         p => p.name !== myid,
       )
+      if (this.sessions[sessionName].participants.length === 0) {
+        this.clearSessionData(sessionName)
+      }
     } else {
       console.error(`Session ${sessionName} does not exist`)
     }
