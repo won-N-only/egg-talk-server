@@ -8,7 +8,8 @@ import {
 } from '@nestjs/websockets'
 import { UseGuards } from '@nestjs/common'
 import { Server, Socket } from 'socket.io'
-import { OpenViduService } from './meeting.service'
+import { OpenViduService } from './services/meeting.service'
+import { QueueService } from './services/queue.service'
 import { JwtAuthWsGuard } from '../guards/jwt-auth.ws.guard'
 
 @UseGuards(JwtAuthWsGuard)
@@ -26,7 +27,10 @@ export class MeetingGateway
 {
   @WebSocketServer() server: Server
   private roomid: Map<string, string> = new Map()
-  constructor(private readonly openviduService: OpenViduService) {}
+  constructor(
+    private readonly openviduService: OpenViduService,
+    private readonly queueService: QueueService,
+  ) {}
   private connectedUsers: { [nickname: string]: string } = {} // nickname: socketId 형태로 변경
   private connectedSockets: { [socketId: string]: string } = {} // socketId: nickname 형태로 변경
   private cupidFlag: Map<string, boolean> = new Map()
@@ -54,10 +58,6 @@ export class MeetingGateway
     this.roomid.delete(participantName)
   }
 
-  // jwt사용시를 위한 코드
-  // async handleReady(client: Socket) {
-  //   try {
-  //     const participantName = client['user'].participantName
   @SubscribeMessage('ready')
   async handleReady(
     client: Socket,
@@ -80,7 +80,7 @@ export class MeetingGateway
         await this.openviduService.findOrCreateAvailableSession()
       if (sessionName) {
         console.log('Session successfully created or retrieved')
-        await this.openviduService.handleJoinQueue(
+        await this.queueService.handleJoinQueue(
           sessionName,
           participantName,
           client,
@@ -105,7 +105,7 @@ export class MeetingGateway
     const sessions = this.openviduService.getSessions()
     const { participantName, gender } = payload
 
-    this.openviduService.removeFromQueue(participantName, gender)
+    this.queueService.removeParticipant(participantName, gender)
 
     for (const sessionName in sessions) {
       if (sessions.hasOwnProperty(sessionName)) {
