@@ -87,6 +87,14 @@ export class OpenViduService {
     }
   }
 
+  clearSessionData(sessionName: string) {
+    console.log(`Clearing session data for ${sessionName}`)
+    delete this.chooseData[sessionName]
+    delete this.sessions[sessionName]
+    delete this.sessionTimers[sessionName]
+    this.timerFlag.delete(sessionName)
+  }
+
   getParticipants(sessionName: string) {
     return this.sessions[sessionName]
       ? this.sessions[sessionName].participants
