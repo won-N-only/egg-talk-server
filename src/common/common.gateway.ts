@@ -26,25 +26,7 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   // 클라이언트 연결 시 처리 로직
-  async handleConnection(@ConnectedSocket() client: Socket) {
-    const nickname = client['user'].nickname;
-    // const nickname = 'jinyong'
-    const friendIds = await this.commonService.sortFriend(nickname)
-    // const friendStat = new Map<string, boolean>();
-    const friendStat: Array<{ [key: string]: boolean }> = [];
-
-    for (const friend of friendIds) {
-      const friendSocket = this.commonService.getSocketByUserId(friend);
-      if (friendSocket) {
-        // 친구가 로그인 되어있다면 { 친구이름 : 참 } 형태로 저장
-        friendStat.push({ [friend]: true }); 
-      } else {
-        // 친구가 로그오프로 되어있다면 { 친구이름 : 거짓 } 형태로 저장
-        friendStat.push({ [friend]: false }); 
-      }
-    }
-    client.emit('friendStat', friendStat);
-  }
+  handleConnection(@ConnectedSocket() client: Socket): void {}
 
   // 클라이언트 연결 해제 시 처리 로직
   async handleDisconnect(@ConnectedSocket() client: Socket) {
@@ -62,6 +44,32 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
     // 연결된 클라이언트 삭제
     this.commonService.removeUser(nickname, client.id)
     logger.log(client.id, '연결이 끊겼습니다.')
+  }
+
+  @SubscribeMessage('friendStat')
+  async friendStat(@ConnectedSocket() client : Socket) {
+    try {
+    const nickname = client['user'].nickname;
+    // const nickname = 'jinyong'
+    const friendIds = await this.commonService.sortFriend(nickname)
+    // const friendStat = new Map<string, boolean>();
+    const friendStat: Array<{ [key: string]: boolean }> = [];
+
+    for (const friend of friendIds) {
+      const friendSocket = this.commonService.getSocketByUserId(friend);
+      if (friendSocket) {
+        // 친구가 로그인 되어있다면 { 친구이름 : 참 } 형태로 저장
+        friendStat.push({ [friend]: true }); 
+      } else {
+        // 친구가 로그오프로 되어있다면 { 친구이름 : 거짓 } 형태로 저장
+        friendStat.push({ [friend]: false }); 
+      }
+    }
+    client.emit('friendStat', friendStat);
+    } catch (error) {
+      logger.error('친구 상태 정보 조회 실패', error)
+      client.disconnect()
+    }
   }
 
   @SubscribeMessage('serverCertificate')
