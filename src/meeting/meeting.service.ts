@@ -22,6 +22,13 @@ export class OpenViduService {
     const OPENVIDU_SECRET = process.env.OPENVIDU_SECRET
     this.openvidu = new OpenVidu(OPENVIDU_URL, OPENVIDU_SECRET)
   }
+  private shuffleArray<T>(array: T[]): T[] {
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+  }
 
   generateSessionName() {
     return uuidv4()
@@ -267,12 +274,12 @@ export class OpenViduService {
       console.error('Error generating tokens: ', error)
     }
   }
-
   startSessionTimer(sessionName: string, server: Server) {
     const timers = [
-      { time: 1, event: 'keyword' },
-      { time: 2, event: 'cupidTime' },
-      { time: 3, event: 'cam' },
+      { time: 0.5, event: 'Introduce'},
+      { time: 2, event: 'keyword' },
+      { time: 3, event: 'cupidTime' },
+      { time: 4, event: 'cam' },
       { time: 40, event: 'finish' },
     ]
     // 언젠가 세션 같은 방을 만날 수도 있어서 초기화를 시킴
@@ -282,17 +289,29 @@ export class OpenViduService {
     }
 
     timers.forEach(({ time, event }) => {
+      let messageArray: string[] | undefined;
+
       setTimeout(
         () => {
           let message: string
-          if (time === 1) {
+          if (time === 2) {
             const getRandomNumber = () => Math.floor(Math.random() * 20) + 1
             const number = getRandomNumber()
             message = `${number}`
-          } else {
+          } 
+          else if(time === 0.5){
+            const TeamArray = this.getParticipants(sessionName).map(user=>user.name);  // 유저 닉네임 가져옴
+            const RandomTeamArray = this.shuffleArray(TeamArray);      // 유저를 랜덤으로 셔플함
+            console.log(RandomTeamArray);
+            message = null                       // 셔플한 랜덤 유저 Array를 Message에 담음
+            console.log(message);
+            console.log("성공 !!!!!!!!!!!!!!!!!");
+            messageArray = RandomTeamArray;
+          } 
+          else {
             message = `${event}`
           }
-          this.notifySessionParticipants(sessionName, event, message, server)
+          this.notifySessionParticipants(sessionName, event, message, server, messageArray)
         },
         time * 50 * 1000,
       )
@@ -304,6 +323,7 @@ export class OpenViduService {
     eventType: string,
     message: string,
     server: Server,
+    messageArray?: string[]
   ) {
     const participants = this.getParticipants(sessionName)
     if (eventType == 'keyword') {
@@ -312,7 +332,13 @@ export class OpenViduService {
       participants.forEach(({ socket }) => {
         server.to(socket.id).emit(eventType, { message, getRandomParticipant })
       })
-    } else {
+    }
+    else if (eventType == 'Introduce') {
+      participants.forEach(({ socket }) => {
+        server.to(socket.id).emit(eventType, messageArray)
+      })
+    }
+    else {
       participants.forEach(({ socket }) => {
         server.to(socket.id).emit(eventType, { message })
       })
