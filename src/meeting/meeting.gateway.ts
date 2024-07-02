@@ -38,10 +38,7 @@ export class MeetingGateway
     console.log('WebSocket initialized')
   }
 
-  handleConnection(client: Socket) {
-    const nickname = client['user'].nickname
-    this.connectedUsers[nickname] = client;
-  }
+  handleConnection(client: Socket) {}
 
   handleDisconnect(client: Socket) {
     const sessions = this.openviduService.getSessions()
@@ -58,8 +55,6 @@ export class MeetingGateway
     delete this.connectedSockets[client.id]
     delete this.connectedUsers[participantName]
     this.roomid.delete(participantName)
-    const nickname = client['user'].nickname
-    delete this.connectedUsers[nickname];
   }
 
   // jwt사용시를 위한 코드
