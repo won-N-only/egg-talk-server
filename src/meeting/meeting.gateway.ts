@@ -8,7 +8,7 @@ import {
 } from '@nestjs/websockets'
 import { UseGuards } from '@nestjs/common'
 import { Server, Socket } from 'socket.io'
-import { OpenViduService } from './meeting.service'
+import { OpenViduService } from './services/meeting.service'
 import { JwtAuthWsGuard } from '../guards/jwt-auth.ws.guard'
 
 @UseGuards(JwtAuthWsGuard)
