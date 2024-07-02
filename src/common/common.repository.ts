@@ -61,11 +61,23 @@ export class CommonRepository {
     if (!friend) throw new Error('없는 유저랍니다.')
 
     try {
+      const notificationsFromFriend = await this.notificationModel
+        .find({ from: friend.nickname })
+        .lean()
+
+      const notificationIds = notificationsFromFriend.map(
+        notification => notification._id,
+      )
+
       await this.userModel.findOneAndUpdate(
         { nickname: userNickname },
-        { $pull: { notifications: { from: friendNickname } } },
+        { $pull: { notifications: { $in: notificationIds } } },
         { new: true },
       )
+
+      await this.notificationModel.deleteMany({
+        from: friend.nickname,
+      })
 
       const newChatRoom = new this.chatRoomModel({ chats: [] })
       await newChatRoom.save()
