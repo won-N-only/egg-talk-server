@@ -13,7 +13,7 @@ import { Server, Socket } from 'socket.io'
 import { Logger } from '@nestjs/common'
 const logger = new Logger('ChatGateway')
 import { CommonService } from './common.service'
-import { AddFriendDto } from './dto/request/notification.dto'
+import { AddFriendDto, AcceptFriend } from './dto/request/notification.dto'
 import { UsersService } from '../users/users.service'
 
 @UseGuards(JwtAuthWsGuard)
@@ -238,13 +238,14 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('reqAcceptFriend')
   async handleAcceptFriend(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: AddFriendDto,
+    @MessageBody() data: AcceptFriend,
   ): Promise<void> {
     try {
+      const { friendNickname } = data
       const updatedUser = await this.commonService.acceptFriend(data)
       client.emit('resAcceptFriend', updatedUser)
-      const friend = await this.usersService.findOne(data.friendNickname)
-      const friendSocket = this.commonService.getSocketByUserId(friend.nickname)
+      const friend = await this.usersService.findOne(friendNickname)
+      const friendSocket = this.commonService.getSocketByUserId(friendNickname)
       friendSocket.emit('friendRequestAccepted', friend)
     } catch (error) {
       client.emit('resAcceptFriendError', error.message)

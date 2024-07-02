@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common'
-import { AddFriendDto } from './dto/request/notification.dto'
+import { AcceptFriend, AddFriendDto } from './dto/request/notification.dto'
 import { UsersRepository } from '../users/users.repository'
 import { Notification } from '../entities/notification.entity'
 import { Types, ObjectId } from 'mongoose'
@@ -110,7 +110,7 @@ export class CommonService {
     return await this.commonRepository.getFriends(nickname)
   }
 
-  async acceptFriend(data: AddFriendDto): Promise<User> {
+  async acceptFriend(data: AcceptFriend): Promise<User> {
     return await this.commonRepository.acceptFriend(data)
   }
 }
