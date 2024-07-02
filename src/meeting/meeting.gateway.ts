@@ -322,8 +322,8 @@ export class MeetingGateway
       const partnerToken = enterToken.find(elem => elem.participant === parterName).token;
 
       if (myToken && partnerToken) {
-        this.server.to(client.id).emit('choice', { sessionName: newSessionName, token: myToken });
-        this.server.to(partner.socket.id).emit('choice', { sessionName: newSessionName, token: partnerToken });
+        this.server.to(client.id).emit('choice', { sessionId: newSessionName, token: myToken });
+        this.server.to(partner.socket.id).emit('choice', { sessionId: newSessionName, token: partnerToken });
       } else {
         console.error("방 생성 실패!");
       }

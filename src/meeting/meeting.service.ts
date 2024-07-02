@@ -182,13 +182,13 @@ export class OpenViduService {
     gender: string,
   ) {
     try {
-      if (gender === 'male') {
+      if (gender === 'MALE') {
         this.maleQueue.push({ name: participantName, socket: client })
         console.log(
           'male Queue : ',
           this.maleQueue.map(p => p.name),
         )
-      } else if (gender === 'female') {
+      } else if (gender === 'FEMALE') {
         this.femaleQueue.push({ name: participantName, socket: client })
         console.log(
           'female Queue : ',
