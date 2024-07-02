@@ -59,12 +59,10 @@ export class MeetingGateway
   //   try {
   //     const participantName = client['user'].participantName
   @SubscribeMessage('ready')
-  async handleReady(
-    client: Socket,
-    payload: { participantName: string; gender: string },
-  ) {
+  async handleReady(client: Socket) {
     try {
-      const { participantName, gender } = payload
+      const participantName = client['user'].nickname
+      const gender = client['user'].gender
 
       const existingSessionName = this.roomid.get(participantName)
       if (existingSessionName) {
