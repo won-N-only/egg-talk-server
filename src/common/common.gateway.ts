@@ -55,16 +55,19 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
     // const friendStat = new Map<string, boolean>();
     const friendStat: Array<{ [key: string]: boolean }> = [];
 
-    for (const friend of friendIds) {
-      const friendSocket = this.commonService.getSocketByUserId(friend);
-      if (friendSocket) {
-        // 친구가 로그인 되어있다면 { 친구이름 : 참 } 형태로 저장
-        friendStat.push({ [friend]: true }); 
-      } else {
-        // 친구가 로그오프로 되어있다면 { 친구이름 : 거짓 } 형태로 저장
-        friendStat.push({ [friend]: false }); 
+    if (friendIds.length > 0) {
+      for (const friend of friendIds) {
+        const friendSocket = this.commonService.getSocketByUserId(friend);
+        if (friendSocket) {
+          // 친구가 로그인 되어있다면 { 친구이름 : 참 } 형태로 저장
+          friendStat.push({ [friend]: true }); 
+        } else {
+          // 친구가 로그오프로 되어있다면 { 친구이름 : 거짓 } 형태로 저장
+          friendStat.push({ [friend]: false }); 
+        }
       }
     }
+    
     client.emit('friendStat', friendStat);
     } catch (error) {
       logger.error('친구 상태 정보 조회 실패', error)
