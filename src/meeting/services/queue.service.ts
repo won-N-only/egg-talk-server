@@ -27,18 +27,25 @@ export class QueueService {
 
   /* 참여자 대기열 삭제 */
   removeParticipant(name: string, gender: string) {
-    if (gender === 'MALE') {
-      this.maleQueue = this.maleQueue.filter(p => p.name !== name)
-      console.log(
-        'Update Male Queue : ',
-        this.maleQueue.map(p => p.name),
-      )
-    } else if (gender === 'FEMALE') {
-      this.femaleQueue = this.femaleQueue.filter(p => p.name !== name)
-      console.log(
-        'Update Female Queue : ',
-        this.femaleQueue.map(p => p.name),
-      )
+    switch (gender) {
+      case 'MALE':
+        this.maleQueue = this.maleQueue.filter(p => p.name !== name)
+        console.log(
+          'Update Male Queue : ',
+          this.maleQueue.map(p => p.name),
+        )
+        break
+
+      case 'FEMALE':
+        this.femaleQueue = this.femaleQueue.filter(p => p.name !== name)
+        console.log(
+          'Update Female Queue : ',
+          this.femaleQueue.map(p => p.name),
+        )
+        break
+      default:
+        console.error('성별 오류입니다.')
+        break
     }
   }
 
