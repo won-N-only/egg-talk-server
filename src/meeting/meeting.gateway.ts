@@ -55,6 +55,11 @@ export class MeetingGateway
     delete this.connectedSockets[client.id]
     delete this.connectedUsers[participantName]
     this.roomid.delete(participantName)
+
+    const nickname = this.connectedSockets[client.id];
+    if (nickname in this.acceptanceStatus) {
+      delete this.acceptanceStatus[nickname];
+    }
   }
 
   // jwt사용시를 위한 코드
@@ -307,7 +312,6 @@ export class MeetingGateway
       const newSessionName = `${myName}-${parterName}`;
       const newSession = await this.openviduService.createSession(newSessionName);
 
-      // const partnerSocket = await this.connectedUsers[parterName]; // 파트너 이름가지고 파트너의 소켓 아이디 가져오기
       const partner = await participant.find(participant => participant.name === parterName )
       this.openviduService.addParticipant(newSessionName, myName, client);
       this.openviduService.addParticipant(newSessionName, myName, partner.socket);
@@ -325,13 +329,6 @@ export class MeetingGateway
       }
     } else {
       this.acceptanceStatus[myName] = true;
-
-      setTimeout(() => {
-        if (this.acceptanceStatus[parterName] !== true ) {
-          this.server.to(client.id).emit("acceptTimeout");
-          this.acceptanceStatus[myName] = false;
-        }
-      }, 10000); // 10초 대기후 자동으로 false;
     }
   }
 }
