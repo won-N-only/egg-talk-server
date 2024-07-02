@@ -9,9 +9,9 @@ import {
 import { UseGuards } from '@nestjs/common'
 import { Server, Socket } from 'socket.io'
 import { OpenViduService } from './meeting.service'
-// import { JwtAuthWsGuard } from '../guards/jwt-auth.ws.guard'
+import { JwtAuthWsGuard } from '../guards/jwt-auth.ws.guard'
 
-// @UseGuards(JwtAuthWsGuard)
+@UseGuards(JwtAuthWsGuard)
 @WebSocketGateway({
   namespace: 'meeting',
   cors: {
@@ -192,6 +192,66 @@ export class MeetingGateway
     } else {
       console.error('세션에러입니다')
     }
+  }
+
+  @SubscribeMessage('forwardDrawing')
+  handleFowardDrawing(
+    client: Socket,
+    payload: { userName: string; drawing: any },
+  ) {
+    const { drawing, userName } = payload
+    const sessionName = this.roomid.get(userName)
+    if (!sessionName) {
+      console.error(`세션에 없는 유저이름임: ${userName}`)
+      return
+    }
+
+    this.openviduService.saveDrawing(sessionName, userName, drawing)
+
+    const drawings = this.openviduService.getDrawings(sessionName)
+
+    if (Object.keys(drawings).length === 6) {
+      const participants = this.openviduService.getParticipants(sessionName)
+      participants.forEach(({ socket }) => {
+        this.server.to(socket.id).emit('drawingSubmit', drawings)
+      })
+      this.openviduService.resetDrawings(sessionName)
+    }
+  }
+
+  @SubscribeMessage('submitVote')
+  handleSubmitVote(
+    client: Socket,
+    payload: { userName: string; votedUser: string },
+  ) {
+    const { userName, votedUser } = payload
+    const sessionName = this.roomid.get(userName)
+    this.openviduService.saveVote(sessionName, userName, votedUser)
+
+    const votes = this.openviduService.getVotes(sessionName)
+
+    if (Object.keys(votes).length === 6) {
+      const winner = this.openviduService.calculateWinner(sessionName)
+      const participants = this.openviduService.getParticipants(sessionName)
+      participants.forEach(({ socket }) => {
+        this.server.to(socket.id).emit('voteResults', { winner })
+      })
+    }
+  }
+
+  @SubscribeMessage('winnerPrize')
+  handleWinnerPrize(
+    client: Socket,
+    payload: { winners: string[]; losers: string[] },
+  ) {
+    const { winners, losers } = payload
+    const sessionName = this.roomid.get(winners[0])
+    const participants = this.openviduService.getParticipants(sessionName)
+    participants.forEach(({ socket }) => {
+      this.server
+        .to(socket.id)
+        .emit('finalResults', { winners: winners, losers: losers })
+    })
   }
 
 
