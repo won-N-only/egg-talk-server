@@ -232,10 +232,10 @@ export class OpenViduService {
   }
   startSessionTimer(sessionName: string, server: Server) {
     const timers = [
-      { time: 4, event: 'keyword' },
-      { time: 2, event: 'cupidTime' },
-      { time: 3, event: 'cam' },
       { time: 0.5, event: 'Introduce'},
+      { time: 2, event: 'keyword' },
+      { time: 3, event: 'cupidTime' },
+      { time: 4, event: 'cam' },
       { time: 40, event: 'finish' },
     ]
     // 언젠가 세션 같은 방을 만날 수도 있어서 초기화를 시킴
@@ -250,7 +250,7 @@ export class OpenViduService {
       setTimeout(
         () => {
           let message: string
-          if (time === 4) {
+          if (time === 2) {
             const getRandomNumber = () => Math.floor(Math.random() * 20) + 1
             const number = getRandomNumber()
             message = `${number}`
