@@ -54,10 +54,6 @@ export class MeetingGateway
     this.roomid.delete(participantName)
   }
 
-  // jwt사용시를 위한 코드
-  // async handleReady(client: Socket) {
-  //   try {
-  //     const participantName = client['user'].participantName
   @SubscribeMessage('ready')
   async handleReady(client: Socket) {
     try {
