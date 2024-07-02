@@ -26,7 +26,25 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   // 클라이언트 연결 시 처리 로직
-  handleConnection(@ConnectedSocket() client: Socket): void {}
+  async handleConnection(@ConnectedSocket() client: Socket) {
+    const nickname = client['user'].nickname;
+    // const nickname = 'jinyong'
+    const friendIds = await this.commonService.sortFriend(nickname)
+    // const friendStat = new Map<string, boolean>();
+    const friendStat: Array<{ [key: string]: boolean }> = [];
+
+    for (const friend of friendIds) {
+      const friendSocket = this.commonService.getSocketByUserId(friend);
+      if (friendSocket) {
+        // 친구가 로그인 되어있다면 { 친구이름 : 참 } 형태로 저장
+        friendStat.push({ [friend]: true }); 
+      } else {
+        // 친구가 로그오프로 되어있다면 { 친구이름 : 거짓 } 형태로 저장
+        friendStat.push({ [friend]: false }); 
+      }
+    }
+    client.emit('friendStat', friendStat);
+  }
 
   // 클라이언트 연결 해제 시 처리 로직
   async handleDisconnect(@ConnectedSocket() client: Socket) {
