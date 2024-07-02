@@ -73,7 +73,6 @@ export class MeetingGateway
           client,
         )
         this.roomid.set(participantName, sessionName)
-        // this.roomid.set(participantName, sessionName)
       } else {
         console.error('Failed to create or retrieve session')
       }
@@ -182,8 +181,6 @@ export class MeetingGateway
       participants.forEach(({ socket }) => {
         this.server.to(socket.id).emit('drawingSubmit', drawings)
       })
-      /**emit 방식 추후 수정 예정 */
-      // this.server.to(sessionName).emit('drawingSubmit', drawings)
       this.openviduService.resetDrawings(sessionName)
     }
   }
@@ -205,7 +202,6 @@ export class MeetingGateway
       participants.forEach(({ socket }) => {
         this.server.to(socket.id).emit('voteResults', { winner })
       })
-      // this.server.to(sessionName).emit('voteResults', { winner })
     }
   }
 
@@ -222,7 +218,5 @@ export class MeetingGateway
         .to(socket.id)
         .emit('finalResults', { winners: winners, losers: losers })
     })
-    // this.server.to(sessionName).emit('finalResults', {
-    // winners: winners, losers: losers,})
   }
 }
