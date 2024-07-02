@@ -16,7 +16,7 @@ import { CommonService } from './common.service'
 import { Types } from 'mongoose'
 import { AddFriendDto } from './dto/request/notification.dto'
 
-//@UseGuards(JwtAuthWsGuard)
+@UseGuards(JwtAuthWsGuard)
 @WebSocketGateway({ namespace: 'common' })
 export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server
@@ -31,8 +31,7 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
   // 클라이언트 연결 해제 시 처리 로직
   async handleDisconnect(@ConnectedSocket() client: Socket) {
     // 유저가 종료되면 연결된 소켓에 해당 유저 종료했다고 알림
-    const nickname = 'sst' //test용 _id
-    // const nickname =  client['user'].nickname// 올바른 코드
+    const nickname = client['user'].nickname // 올바른 코드
     const friendIds = await this.commonService.sortFriend(nickname)
     for (const friend of friendIds) {
       const friendSocket = this.commonService.getSocketByUserId(
@@ -45,6 +44,35 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
     // 연결된 클라이언트 삭제
     this.commonService.removeUser(nickname, client.id)
     logger.log(client.id, '연결이 끊겼습니다.')
+  }
+
+  @SubscribeMessage('friendStat')
+  async friendStat(@ConnectedSocket() client : Socket) {
+    try {
+    const nickname = client['user'].nickname;
+    // const nickname = 'jinyong'
+    const friendIds = await this.commonService.sortFriend(nickname)
+    // const friendStat = new Map<string, boolean>();
+    const friendStat: Array<{ [key: string]: boolean }> = [];
+
+    if (friendIds.length > 0) {
+      for (const friend of friendIds) {
+        const friendSocket = this.commonService.getSocketByUserId(friend);
+        if (friendSocket) {
+          // 친구가 로그인 되어있다면 { 친구이름 : 참 } 형태로 저장
+          friendStat.push({ [friend]: true }); 
+        } else {
+          // 친구가 로그오프로 되어있다면 { 친구이름 : 거짓 } 형태로 저장
+          friendStat.push({ [friend]: false }); 
+        }
+      }
+    }
+    
+    client.emit('friendStat', friendStat);
+    } catch (error) {
+      logger.error('친구 상태 정보 조회 실패', error)
+      client.disconnect()
+    }
   }
 
   @SubscribeMessage('serverCertificate')
@@ -75,11 +103,10 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('joinchat')
   async handleJoinRoom(
     client: Socket,
-
-    payload: { newChatRoomId: Types.ObjectId }, // nickName == userId
+    payload: { newChatRoomId: string }, // nickName == userId
   ) {
     const { newChatRoomId } = payload
-    const chatRoomId = newChatRoomId.toString()
+    const chatRoomId = newChatRoomId
     // 1. 기존 채팅방 정보 가져오기
 
     const currentRooms = Array.from(client.rooms) // 현재 참여 중인 모든 방
@@ -100,11 +127,11 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('closeChat')
   async closeChat(
     @ConnectedSocket() client: Socket,
-    @MessageBody() payload: { chatRoomdId: Types.ObjectId },
+    @MessageBody() payload: { chatRoomdId: string },
   ) {
     try {
       const { chatRoomdId } = payload
-      client.leave(chatRoomdId.toString())
+      client.leave(chatRoomdId)
     } catch (error) {
       logger.error('채팅방 떠나기 오류', error)
     }
@@ -116,7 +143,7 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody()
     payload: {
       userNickname: string
-      chatRoomId: Types.ObjectId
+      chatRoomId: string
       message: string
       receiverNickname: string
     },
@@ -126,7 +153,7 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       // 상대방이 채팅방에 참여 중인지 확인
       const receiverSocket = (
-        await this.server.in(chatRoomId.toString()).fetchSockets()
+        await this.server.in(chatRoomId).fetchSockets()
       ).find(client => client['user'].nickname === receiverNickname)
 
       /**DTO */
@@ -138,10 +165,10 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
       ) // isReceiverOnline 전달
       // 메시지 전송
       if (receiverSocket) {
-        this.server.to(chatRoomId.toString()).emit('message', newChat) // 상대방이 (온라인 상태 + 채팅방 참여) 일때 메시지 전송
+        this.server.to(chatRoomId).emit('message', newChat) // 상대방이 (온라인 상태 + 채팅방 참여) 일때 메시지 전송
       } else {
         const receiverSocketId =
-          this.commonService.getSocketByUserId(receiverNickname).id
+          this.commonService.getSocketByUserId(receiverNickname)?.id
         if (receiverSocketId) {
           this.server
             .to(receiverSocketId)

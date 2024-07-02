@@ -5,7 +5,7 @@ import { Model, Types, ObjectId } from 'mongoose'
 import { AddFriendDto } from './dto/request/notification.dto'
 import { ChatRoom } from '../entities/chat-room.entity'
 import { Notification } from '../entities/notification.entity'
-import { Chat } from 'src/entities/chat.entity'
+import { Chat } from '../entities/chat.entity'
 @Injectable()
 export class CommonRepository {
   constructor(
@@ -54,6 +54,7 @@ export class CommonRepository {
       .findOne({ nickname }, { friends: 1, _id: 0 })
       .lean()
   }
+
   async acceptFriend(data: AddFriendDto): Promise<User> {
     const { userNickname, friendNickname } = data
     const friend = await this.userModel.findOne({ nickname: friendNickname })
@@ -102,26 +103,29 @@ export class CommonRepository {
   }
 
   async getChatRoomMessage(chatRoomObjectId: Types.ObjectId) {
-    return await this.chatRoomModel
+    const chatRoom = await this.chatRoomModel
       .findByIdAndUpdate(
         chatRoomObjectId,
         { $set: { isRead: true } },
         { new: true },
       )
-      .populate({
+      .lean()
+      .exec()
+
+    if (chatRoom) {
+      return await this.chatRoomModel.populate(chatRoom, {
         path: 'chats',
         model: 'Chat',
         options: { sort: { createAt: 1 } },
         populate: { path: 'sender', select: 'nickname' },
       })
-      .lean()
-      .exec()
+    } else return null
   }
 
   async saveMessagetoChatRoom(
     sender: string,
     message: string,
-    chatRoomId: Types.ObjectId,
+    chatRoomId: string,
     isReceiverOnline: boolean,
   ): Promise<Chat> {
     const newChat = await this.chatModel.create({ sender, message })
@@ -134,12 +138,12 @@ export class CommonRepository {
 
   async setNewNotification(userId: string) {
     await this.userModel.findOneAndUpdate(
-      { id: userId },
+      { nickname: userId },
       { $set: { newNotification: true } },
     )
   }
 
   async getFriendIds(userId: string) {
-    return await this.userModel.findOne({ id: userId }).lean().exec()
+    return await this.userModel.findOne({ nickname: userId }).lean().exec()
   }
 }

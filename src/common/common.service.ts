@@ -52,7 +52,7 @@ export class CommonService {
 
   async sendMessage(
     senderNickName: string,
-    chatRoomId: Types.ObjectId,
+    chatRoomId: string,
     message: string,
     isReceiverOnline: boolean,
   ): Promise<Chat> {
@@ -84,7 +84,7 @@ export class CommonService {
     // 내 친구에게만 알림 보내면됨
     try {
       const friendIds = await this.commonRepository.getFriendIds(userId)
-      return friendIds.friends.map(elem => elem.friend)
+      return friendIds?.friends.map(elem => elem.friend)
     } catch (error) {
       throw error
     }
