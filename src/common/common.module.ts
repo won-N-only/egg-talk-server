@@ -8,6 +8,7 @@ import { MongooseModule } from '@nestjs/mongoose'
 import { Chat, ChatSchema } from '../entities/chat.entity'
 import { ChatRoom, ChatRoomSchema } from '../entities/chat-room.entity'
 import { UsersRepository } from '../users/users.repository'
+import { UsersService } from '../users/users.service'
 import { User, UserSchema } from '../entities/user.entity'
 import {
   Notification,
@@ -30,6 +31,7 @@ import {
     JwtService,
     JwtAuthWsGuard,
     UsersRepository,
+    UsersService,
   ],
 })
 export class CommonModule {}
