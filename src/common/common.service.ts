@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common'
-import { AddFriendDto } from './dto/request/notification.dto'
+import { AcceptFriend, AddFriendDto } from './dto/request/notification.dto'
 import { UsersRepository } from '../users/users.repository'
 import { Notification } from '../entities/notification.entity'
 import { Types, ObjectId } from 'mongoose'
@@ -52,7 +52,7 @@ export class CommonService {
 
   async sendMessage(
     senderNickName: string,
-    chatRoomId: Types.ObjectId,
+    chatRoomId: string,
     message: string,
     isReceiverOnline: boolean,
   ): Promise<Chat> {
@@ -84,7 +84,7 @@ export class CommonService {
     // 내 친구에게만 알림 보내면됨
     try {
       const friendIds = await this.commonRepository.getFriendIds(userId)
-      return friendIds.friends.map(elem => elem.friend)
+      return friendIds?.friends.map(elem => elem.friend)
     } catch (error) {
       throw error
     }
@@ -110,7 +110,7 @@ export class CommonService {
     return await this.commonRepository.getFriends(nickname)
   }
 
-  async acceptFriend(data: AddFriendDto): Promise<User> {
+  async acceptFriend(data: AcceptFriend): Promise<User> {
     return await this.commonRepository.acceptFriend(data)
   }
 }

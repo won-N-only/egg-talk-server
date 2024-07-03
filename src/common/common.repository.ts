@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { User, Friend } from '../entities/user.entity'
 import { Model, Types, ObjectId } from 'mongoose'
-import { AddFriendDto } from './dto/request/notification.dto'
+import { AcceptFriend, AddFriendDto } from './dto/request/notification.dto'
 import { ChatRoom } from '../entities/chat-room.entity'
 import { Notification } from '../entities/notification.entity'
 import { Chat } from '../entities/chat.entity'
@@ -54,17 +54,23 @@ export class CommonRepository {
       .findOne({ nickname }, { friends: 1, _id: 0 })
       .lean()
   }
-  async acceptFriend(data: AddFriendDto): Promise<User> {
-    const { userNickname, friendNickname } = data
+
+  async acceptFriend(data: AcceptFriend): Promise<User> {
+    const { userNickname, friendNickname, notificationId } = data
     const friend = await this.userModel.findOne({ nickname: friendNickname })
     if (!friend) throw new Error('없는 유저랍니다.')
+    const notificationObjectId = new Types.ObjectId(notificationId)
 
     try {
-      await this.userModel.findOneAndUpdate(
-        { nickname: userNickname },
-        { $pull: { notifications: { from: friendNickname } } },
-        { new: true },
-      )
+      await this.userModel
+        .findOneAndUpdate(
+          { nickname: userNickname },
+          { $pull: { notifications: notificationObjectId } },
+          { new: true },
+        )
+        .exec()
+
+      await this.notificationModel.deleteOne({ _id: notificationId })
 
       const newChatRoom = new this.chatRoomModel({ chats: [] })
       await newChatRoom.save()
@@ -102,26 +108,29 @@ export class CommonRepository {
   }
 
   async getChatRoomMessage(chatRoomObjectId: Types.ObjectId) {
-    return await this.chatRoomModel
+    const chatRoom = await this.chatRoomModel
       .findByIdAndUpdate(
         chatRoomObjectId,
         { $set: { isRead: true } },
         { new: true },
       )
-      .populate({
+      .lean()
+      .exec()
+
+    if (chatRoom) {
+      return await this.chatRoomModel.populate(chatRoom, {
         path: 'chats',
         model: 'Chat',
         options: { sort: { createAt: 1 } },
         populate: { path: 'sender', select: 'nickname' },
       })
-      .lean()
-      .exec()
+    } else return null
   }
 
   async saveMessagetoChatRoom(
     sender: string,
     message: string,
-    chatRoomId: Types.ObjectId,
+    chatRoomId: string,
     isReceiverOnline: boolean,
   ): Promise<Chat> {
     const newChat = await this.chatModel.create({ sender, message })
