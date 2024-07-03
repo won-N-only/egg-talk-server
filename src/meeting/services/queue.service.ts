@@ -49,17 +49,25 @@ export class QueueService {
     }
   }
 
+  async findOrCreateNewSession(): Promise<string> {
+    const newSessionName = this.openviduService.generateSessionName()
+    await this.openviduService.createSession(newSessionName)
+    console.log(`Creating and returning new session: ${newSessionName}`)
+    return newSessionName
+  }
+
   /* 남녀 3명씩 끊어서 처리하는 작업 */
   async handleJoinQueue(
-    sessionName: string,
     participantName: string,
     client: Socket,
     gender: string,
   ) {
+    let sessionName = ''
     try {
       this.addParticipant(participantName, client, gender)
 
       if (this.maleQueue.length >= 3 && this.femaleQueue.length >= 3) {
+        sessionName = await this.findOrCreateNewSession()
         const readyMales = this.maleQueue.splice(0, 3)
         const readyFemales = this.femaleQueue.splice(0, 3)
 
@@ -81,6 +89,7 @@ export class QueueService {
           )
         })
         await this.openviduService.startVideoChatSession(sessionName)
+        return sessionName
       }
       // 이 부분은 클라 확인차 로그로써 삭제해도 무방 다만 테스트 시 확인이 힘들어짐
       const participants = this.openviduService.getParticipants(sessionName)
