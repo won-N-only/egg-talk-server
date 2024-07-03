@@ -76,14 +76,18 @@ export class MeetingGateway
         this.roomid.delete(participantName)
       }
 
-      const sessionName = await this.queueService.handleJoinQueue(
-          participantName,
-          client,
-          gender,
-        )
-        this.roomid.set(participantName, sessionName)
-        this.connectedUsers[participantName] = client.id
-        this.connectedSockets[client.id] = participantName
+      const { sessionName, readyMales, readyFemales } =
+        await this.queueService.handleJoinQueue(participantName, client, gender)
+      if (sessionName && readyFemales && readyMales) {
+        readyMales.forEach(male => {
+          this.roomid.set(male.name, sessionName)
+        })
+        readyFemales.forEach(female => {
+          this.roomid.set(female.name, sessionName)
+        })
+      }
+      this.connectedUsers[participantName] = client.id
+      this.connectedSockets[client.id] = participantName
     } catch (error) {
       console.log('Error handling join Queue request:', error)
     }

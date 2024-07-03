@@ -89,7 +89,7 @@ export class QueueService {
           )
         })
         await this.openviduService.startVideoChatSession(sessionName)
-        return sessionName
+        return { sessionName, readyMales, readyFemales }
       }
       // 이 부분은 클라 확인차 로그로써 삭제해도 무방 다만 테스트 시 확인이 힘들어짐
       const participants = this.openviduService.getParticipants(sessionName)
@@ -97,6 +97,7 @@ export class QueueService {
         'Current waiting participants: ',
         participants.map(p => p.name),
       )
+      return { sessionName }
     } catch (error) {
       console.error('Error joining queue:', error)
       await this.openviduService.deleteSession(sessionName)
