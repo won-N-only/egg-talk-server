@@ -82,9 +82,20 @@ export class OpenViduService {
       this.sessions[sessionName].participants = participants.filter(
         p => p.name !== myid,
       )
+      if (this.sessions[sessionName].participants.length === 0) {
+        this.clearSessionData(sessionName)
+      }
     } else {
       console.error(`Session ${sessionName} does not exist`)
     }
+  }
+
+  clearSessionData(sessionName: string) {
+    console.log(`Clearing session data for ${sessionName}`)
+    delete this.chooseData[sessionName]
+    delete this.sessions[sessionName]
+    delete this.sessionTimers[sessionName]
+    this.timerFlag.delete(sessionName)
   }
 
   getParticipants(sessionName: string) {

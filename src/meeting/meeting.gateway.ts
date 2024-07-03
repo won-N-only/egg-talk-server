@@ -232,4 +232,20 @@ export class MeetingGateway
         .emit('finalResults', { winners: winners, losers: losers })
     })
   }
+
+  @SubscribeMessage('leave')
+  handleLeave(client: Socket, payload: { participantName }) {
+    const sessionName = this.roomid.get(payload.participantName)
+    if (sessionName) {
+      this.openviduService.removeParticipant(
+        sessionName,
+        client,
+        payload.participantName,
+      )
+    }
+    this.roomid.delete(payload.participantName)
+    this.cupidFlag.delete(sessionName)
+    delete this.connectedUsers[payload.participantName]
+    delete this.connectedSockets[client.id]
+  }
 }
