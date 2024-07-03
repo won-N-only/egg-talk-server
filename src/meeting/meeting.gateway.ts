@@ -84,9 +84,6 @@ export class MeetingGateway
         this.roomid.set(participantName, sessionName)
         this.connectedUsers[participantName] = client.id
         this.connectedSockets[client.id] = participantName
-      } else {
-        console.error('Failed to create or retrieve session')
-      }
     } catch (error) {
       console.log('Error handling join Queue request:', error)
     }
