@@ -76,22 +76,18 @@ export class MeetingGateway
         this.roomid.delete(participantName)
       }
 
-      const sessionName =
-        await this.openviduService.findOrCreateAvailableSession()
-      if (sessionName) {
-        console.log('Session successfully created or retrieved')
-        await this.queueService.handleJoinQueue(
-          sessionName,
-          participantName,
-          client,
-          gender,
-        )
-        this.roomid.set(participantName, sessionName)
-        this.connectedUsers[participantName] = client.id
-        this.connectedSockets[client.id] = participantName
-      } else {
-        console.error('Failed to create or retrieve session')
+      const { sessionName, readyMales, readyFemales } =
+        await this.queueService.handleJoinQueue(participantName, client, gender)
+      if (sessionName && readyFemales && readyMales) {
+        readyMales.forEach(male => {
+          this.roomid.set(male.name, sessionName)
+        })
+        readyFemales.forEach(female => {
+          this.roomid.set(female.name, sessionName)
+        })
       }
+      this.connectedUsers[participantName] = client.id
+      this.connectedSockets[client.id] = participantName
     } catch (error) {
       console.log('Error handling join Queue request:', error)
     }

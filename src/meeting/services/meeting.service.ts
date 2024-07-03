@@ -165,26 +165,6 @@ export class OpenViduService {
     return this.sessions[sessionName]?.session
   }
 
-  async findOrCreateAvailableSession(): Promise<string> {
-    console.log('Finding or creating available session')
-
-    for (const sessionName in this.sessions) {
-      if (this.sessions.hasOwnProperty(sessionName)) {
-        const participants = this.sessions[sessionName].participants
-
-        if (participants.length < 6) {
-          console.log(`Returning existing session: ${sessionName}`)
-          return sessionName
-        }
-      }
-    }
-
-    const newSessionName = this.generateSessionName()
-    await this.createSession(newSessionName)
-    console.log(`Creating and returning new session: ${newSessionName}`)
-    return newSessionName
-  }
-
   async startVideoChatSession(sessionName: string) {
     try {
       const tokens = await this.generateTokens(sessionName)
