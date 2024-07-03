@@ -76,12 +76,7 @@ export class MeetingGateway
         this.roomid.delete(participantName)
       }
 
-      const sessionName =
-        await this.openviduService.findOrCreateAvailableSession()
-      if (sessionName) {
-        console.log('Session successfully created or retrieved')
-        await this.queueService.handleJoinQueue(
-          sessionName,
+      const sessionName = await this.queueService.handleJoinQueue(
           participantName,
           client,
           gender,
