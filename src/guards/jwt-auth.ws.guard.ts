@@ -14,7 +14,6 @@ export class JwtAuthWsGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const client = context.switchToWs().getClient<Socket>()
     const token = this.extractTokenFromHeader(client)
-
     if (!token) {
       throw new UnauthorizedException('Token not found')
     }

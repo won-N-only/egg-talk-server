@@ -32,6 +32,7 @@ export class AuthController {
     const { access_token } = await this.authService.signIn(signInUserDto)
     response.setHeader('Authorization', `${access_token}`)
 
+
     return new MessageResponseDto('Sign-in successful')
   }
 }

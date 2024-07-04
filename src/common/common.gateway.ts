@@ -1,23 +1,35 @@
 import {
-  WebSocketGateway,
-  WebSocketServer,
-  SubscribeMessage,
-  OnGatewayConnection,
-  OnGatewayDisconnect,
   ConnectedSocket,
   MessageBody,
+  OnGatewayConnection,
+  OnGatewayDisconnect,
+  SubscribeMessage,
+  WebSocketGateway,
+  WebSocketServer,
 } from '@nestjs/websockets'
-import { UseGuards } from '@nestjs/common'
+import { Logger, UseGuards } from '@nestjs/common'
 import { JwtAuthWsGuard } from '../guards/jwt-auth.ws.guard'
 import { Server, Socket } from 'socket.io'
-import { Logger } from '@nestjs/common'
-const logger = new Logger('ChatGateway')
 import { CommonService } from './common.service'
-import { AddFriendDto, AcceptFriend } from './dto/request/notification.dto'
+import { AcceptFriend, AddFriendDto } from './dto/request/notification.dto'
 import { UsersService } from '../users/users.service'
 
+const logger = new Logger('ChatGateway')
+
 @UseGuards(JwtAuthWsGuard)
-@WebSocketGateway({ namespace: 'common' })
+@WebSocketGateway({
+  namespace: 'common',
+  cors: {
+    origin: [
+      'http://localhost:3000',
+      'https://egg-signal-app.syeong.link',
+      'https://temp-git-main-hyeong1s-projects.vercel.app',
+    ], 
+    methods: ['GET', 'POST'],
+    allowedHeaders: ['Content-Type'],
+    credentials: true,
+  },
+})
 export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server
 
@@ -52,7 +64,6 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('friendStat')
   async friendStat(@ConnectedSocket() client: Socket) {
     try {
-      console.log('friendStat 상 클라이언트 : ', client)
       const nickname = client['user'].nickname
       // const nickname = 'jinyong'
       const friendIds = await this.commonService.sortFriend(nickname)
@@ -82,7 +93,6 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('serverCertificate')
   async serverCertificate(@ConnectedSocket() client: Socket) {
     try {
-      console.log('serverCertificate 상 클라이언트 : ', client)
       const { nickname } = client['user']
       // 현재 이 게이트웨이에 존재하는 모든 클라이언트를 식별할 수 있는 array 생성
       this.commonService.addUser(nickname, client)
