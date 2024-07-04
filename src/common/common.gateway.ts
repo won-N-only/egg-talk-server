@@ -34,7 +34,6 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
   // 클라이언트 연결 해제 시 처리 로직
   async handleDisconnect(@ConnectedSocket() client: Socket) {
     // 유저가 종료되면 연결된 소켓에 해당 유저 종료했다고 알림
-    console.log('디스커넥트 상 클라이언트 : ', client)
     const nickname = client['user'].nickname // 올바른 코드
     const friendIds = await this.commonService.sortFriend(nickname)
     for (const friend of friendIds) {
