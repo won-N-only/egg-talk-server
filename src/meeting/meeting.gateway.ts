@@ -170,7 +170,7 @@ export class MeetingGateway
   }
 
   @SubscribeMessage('forwardDrawing')
-  handleFowardDrawing(
+  handleForwardDrawing(
     client: Socket,
     payload: { userName: string; drawing: string; photo: string },
   ) {
