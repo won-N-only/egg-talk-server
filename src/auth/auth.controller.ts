@@ -33,8 +33,7 @@ export class AuthController {
     response.cookie('access_token', access_token, {
       sameSite: 'none',
       path: '/',
-      // secure: true,
-
+      secure: true,
     })
 
     return new MessageResponseDto('Sign-in successful')

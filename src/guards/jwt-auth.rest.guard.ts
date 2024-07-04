@@ -15,6 +15,8 @@ export class JwtAuthRestGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<Request>()
     const token = this.extractTokenFromCookie(request)
 
+    console.log(token, '토큰')
+
     if (!token) {
       throw new UnauthorizedException('Token not found')
     }
