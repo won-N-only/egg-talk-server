@@ -8,7 +8,8 @@ import {
 } from '@nestjs/websockets'
 import { UseGuards } from '@nestjs/common'
 import { Server, Socket } from 'socket.io'
-import { OpenViduService } from './meeting.service'
+import { OpenViduService } from './services/meeting.service'
+import { QueueService } from './services/queue.service'
 import { JwtAuthWsGuard } from '../guards/jwt-auth.ws.guard'
 
 @UseGuards(JwtAuthWsGuard)
@@ -26,8 +27,12 @@ export class MeetingGateway
 {
   @WebSocketServer() server: Server
   private roomid: Map<string, string> = new Map()
-  constructor(private readonly openviduService: OpenViduService) {}
-  private connectedUsers: { [nickname: string]: Socket } = {} // nickname: socket 형태로 변경
+
+  constructor(
+    private readonly openviduService: OpenViduService,
+    private readonly queueService: QueueService,
+  ) {}
+  private connectedUsers: { [nickname: string]: Socket } = {} // nickname: socketId 형태로 변경
   private connectedSockets: { [socketId: string]: string } = {} // socketId: nickname 형태로 변경
   private cupidFlag: Map<string, boolean> = new Map()
   private lastCupidFlag: Map<string,boolean> = new Map()
@@ -62,10 +67,6 @@ export class MeetingGateway
     }
   }
 
-  // jwt사용시를 위한 코드
-  // async handleReady(client: Socket) {
-  //   try {
-  //     const participantName = client['user'].participantName
   @SubscribeMessage('ready')
   async handleReady(
     client: Socket,
@@ -84,22 +85,19 @@ export class MeetingGateway
         this.roomid.delete(participantName)
       }
 
-      const sessionName =
-        await this.openviduService.findOrCreateAvailableSession()
-      if (sessionName) {
-        console.log('Session successfully created or retrieved')
-        await this.openviduService.handleJoinQueue(
-          sessionName,
-          participantName,
-          client,
-          gender,
-        )
-        this.roomid.set(participantName, sessionName)
-        this.connectedUsers[participantName] = client
-        this.connectedSockets[client.id] = participantName
-      } else {
-        console.error('Failed to create or retrieve session')
+
+      const { sessionName, readyMales, readyFemales } =
+        await this.queueService.handleJoinQueue(participantName, client, gender)
+      if (sessionName && readyFemales && readyMales) {
+        readyMales.forEach(male => {
+          this.roomid.set(male.name, sessionName)
+        })
+        readyFemales.forEach(female => {
+          this.roomid.set(female.name, sessionName)
+        })
       }
+      this.connectedUsers[participantName] = client
+      this.connectedSockets[client.id] = participantName
     } catch (error) {
       console.log('Error handling join Queue request:', error)
     }
@@ -113,7 +111,7 @@ export class MeetingGateway
     const sessions = this.openviduService.getSessions()
     const { participantName, gender } = payload
 
-    this.openviduService.removeFromQueue(participantName, gender)
+    this.queueService.removeParticipant(participantName, gender)
 
     for (const sessionName in sessions) {
       if (sessions.hasOwnProperty(sessionName)) {
@@ -153,34 +151,23 @@ export class MeetingGateway
           participants.forEach(({ socket, name }) => {
             // 매칭된 사람이 있는지 체크
             const matchedPair = matches.find(match => match.pair.includes(name))
-            if (matchedPair) {
-              const partner = matchedPair.pair.find(
-                partnerName => partnerName !== name,
+            const partner = matchedPair
+              ? matchedPair.pair.find(partnerName => partnerName !== name)
+              : '0'
+
+            const losers = participants
+              .filter(
+                participant =>
+                  !matchedPairs.some(pair =>
+                    pair.pair.includes(participant.name),
+                  ),
               )
-              this.server.to(socket.id).emit('cupidResult', {
-                lover: partner,
-                loser: participants
-                  .filter(
-                    participant =>
-                      !matchedPairs.some(pair =>
-                        pair.pair.includes(participant.name),
-                      ),
-                  )
-                  .map(participant => participant.name),
-              })
-            } else {
-              this.server.to(socket.id).emit('cupidResult', {
-                lover: '0',
-                loser: participants
-                  .filter(
-                    participant =>
-                      !matchedPairs.some(pair =>
-                        pair.pair.includes(participant.name),
-                      ),
-                  )
-                  .map(participant => participant.name),
-              })
-            }
+              .map(participant => participant.name)
+
+            this.server.to(socket.id).emit('cupidResult', {
+              lover: partner,
+              loser: losers,
+            })
 
             this.server
               .to(socket.id)
@@ -330,5 +317,21 @@ export class MeetingGateway
     } else {
       this.acceptanceStatus[myName] = true;
     }
+  }
+
+  @SubscribeMessage('leave')
+  handleLeave(client: Socket, payload: { participantName }) {
+    const sessionName = this.roomid.get(payload.participantName)
+    if (sessionName) {
+      this.openviduService.removeParticipant(
+        sessionName,
+        client,
+        payload.participantName,
+      )
+    }
+    this.roomid.delete(payload.participantName)
+    this.cupidFlag.delete(sessionName)
+    delete this.connectedUsers[payload.participantName]
+    delete this.connectedSockets[client.id]
   }
 }
