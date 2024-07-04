@@ -13,7 +13,7 @@ export class JwtAuthRestGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>()
-    const token = this.extractTokenFromCookie(request)
+    const token = this.extractTokenFromHeader(request)
 
     if (!token) {
       throw new UnauthorizedException('Token not found')
@@ -30,7 +30,10 @@ export class JwtAuthRestGuard implements CanActivate {
     return true
   }
 
-  private extractTokenFromCookie(request: Request): string | undefined {
-    return request.cookies['access_token']
+  private extractTokenFromHeader(request: Request): string | undefined {
+    const authHeaders = request.headers.authorization
+    if (!authHeaders) return undefined
+
+    return authHeaders
   }
 }

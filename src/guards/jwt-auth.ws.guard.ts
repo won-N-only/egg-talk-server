@@ -13,8 +13,7 @@ export class JwtAuthWsGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const client = context.switchToWs().getClient<Socket>()
-    const token = this.extractTokenFromCookie(client)
-    console.log('jwt-auth 상 클라이언트 : ', client, '그리고 토큰은 ', token)
+    const token = this.extractTokenFromHeader(client)
 
     if (!token) {
       throw new UnauthorizedException('Token not found')
@@ -31,19 +30,10 @@ export class JwtAuthWsGuard implements CanActivate {
     return true
   }
 
-  private extractTokenFromCookie(client: Socket): string | undefined {
-    const cookies = client.handshake.headers.cookie
-    if (!cookies) {
-      return undefined
-    }
+  private extractTokenFromHeader(client: Socket): string | undefined {
+    const { token } = client.handshake.auth
+    if (!token) return undefined
 
-    const jwtCookie = cookies
-      .split(';')
-      .find(c => c.trim().startsWith('access_token='))
-    if (!jwtCookie) {
-      return undefined
-    }
-
-    return jwtCookie.split('=')[1]
+    return token
   }
 }

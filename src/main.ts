@@ -8,7 +8,8 @@ async function bootstrap() {
   app.enableCors({
     origin: ['http://localhost:3000'], // 개발 서버와 배포 서버 허용
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    exposedHeaders: ['Authorization'],
     credentials: true,
   })
 
