@@ -34,7 +34,6 @@ export class AuthController {
       sameSite: 'none',
       path: '/',
       secure: true,
-      domain: 'syeong.link'
     })
 
     return new MessageResponseDto('Sign-in successful')
