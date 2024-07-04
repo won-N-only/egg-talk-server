@@ -14,6 +14,7 @@ export class JwtAuthWsGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const client = context.switchToWs().getClient<Socket>()
     const token = this.extractTokenFromCookie(client)
+    console.log('jwt-auth 상 클라이언트 : ', client, '그리고 토큰은 ', token)
 
     if (!token) {
       throw new UnauthorizedException('Token not found')
