@@ -34,6 +34,7 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
   // 클라이언트 연결 해제 시 처리 로직
   async handleDisconnect(@ConnectedSocket() client: Socket) {
     // 유저가 종료되면 연결된 소켓에 해당 유저 종료했다고 알림
+    console.log('디스커넥트 상 클라이언트 : ', client)
     const nickname = client['user'].nickname // 올바른 코드
     const friendIds = await this.commonService.sortFriend(nickname)
     for (const friend of friendIds) {
@@ -50,28 +51,29 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('friendStat')
-  async friendStat(@ConnectedSocket() client : Socket) {
+  async friendStat(@ConnectedSocket() client: Socket) {
     try {
-    const nickname = client['user'].nickname;
-    // const nickname = 'jinyong'
-    const friendIds = await this.commonService.sortFriend(nickname)
-    // const friendStat = new Map<string, boolean>();
-    const friendStat: Array<{ [key: string]: boolean }> = [];
+      console.log('friendStat 상 클라이언트 : ', client)
+      const nickname = client['user'].nickname
+      // const nickname = 'jinyong'
+      const friendIds = await this.commonService.sortFriend(nickname)
+      // const friendStat = new Map<string, boolean>();
+      const friendStat: Array<{ [key: string]: boolean }> = []
 
-    if (friendIds.length > 0) {
-      for (const friend of friendIds) {
-        const friendSocket = this.commonService.getSocketByUserId(friend);
-        if (friendSocket) {
-          // 친구가 로그인 되어있다면 { 친구이름 : 참 } 형태로 저장
-          friendStat.push({ [friend]: true }); 
-        } else {
-          // 친구가 로그오프로 되어있다면 { 친구이름 : 거짓 } 형태로 저장
-          friendStat.push({ [friend]: false }); 
+      if (friendIds.length > 0) {
+        for (const friend of friendIds) {
+          const friendSocket = this.commonService.getSocketByUserId(friend)
+          if (friendSocket) {
+            // 친구가 로그인 되어있다면 { 친구이름 : 참 } 형태로 저장
+            friendStat.push({ [friend]: true })
+          } else {
+            // 친구가 로그오프로 되어있다면 { 친구이름 : 거짓 } 형태로 저장
+            friendStat.push({ [friend]: false })
+          }
         }
       }
-    }
-    
-    client.emit('friendStat', friendStat);
+
+      client.emit('friendStat', friendStat)
     } catch (error) {
       logger.error('친구 상태 정보 조회 실패', error)
       client.disconnect()
@@ -81,6 +83,7 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('serverCertificate')
   async serverCertificate(@ConnectedSocket() client: Socket) {
     try {
+      console.log('serverCertificate 상 클라이언트 : ', client)
       const { nickname } = client['user']
       // 현재 이 게이트웨이에 존재하는 모든 클라이언트를 식별할 수 있는 array 생성
       this.commonService.addUser(nickname, client)
