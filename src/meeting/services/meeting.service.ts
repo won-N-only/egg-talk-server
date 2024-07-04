@@ -205,7 +205,7 @@ export class OpenViduService {
       { time: 3, event: 'cupidTime' },
       { time: 4, event: 'cam' },
       { time: 5, event: 'drawingContest' },
-      { tiem: 6, event: 'lastCupidTime' },
+      { time: 6, event: 'lastCupidTime' },
       { time: 40, event: 'finish' },
     ]
     // 언젠가 세션 같은 방을 만날 수도 있어서 초기화를 시킴
