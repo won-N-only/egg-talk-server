@@ -14,6 +14,7 @@ async function bootstrap() {
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type'],
     credentials: true,
+    optionsSuccessStatus: 204
   })
 
   await app.listen(80)
