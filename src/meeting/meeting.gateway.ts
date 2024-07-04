@@ -172,14 +172,16 @@ export class MeetingGateway
   @SubscribeMessage('forwardDrawing')
   handleFowardDrawing(
     client: Socket,
-    payload: { userName: string; drawing: any },
+    payload: { userName: string; drawing: string; photo: string },
   ) {
-    const { drawing, userName } = payload
+    const { drawing, userName, photo } = payload
     const sessionName = this.roomid.get(userName)
     if (!sessionName) {
       console.error(`세션에 없는 유저이름임: ${userName}`)
       return
     }
+
+    this.openviduService.savePhoto(sessionName, userName, photo)
 
     this.openviduService.saveDrawing(sessionName, userName, drawing)
 
