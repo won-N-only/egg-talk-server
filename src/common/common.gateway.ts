@@ -20,7 +20,11 @@ const logger = new Logger('ChatGateway')
 @WebSocketGateway({
   namespace: 'common',
   cors: {
-    origin: '*', // 모든 출처에서의 요청 허용
+    origin: [
+      'http://localhost:3000',
+      'https://egg-signal-app.syeong.link',
+      'https://temp-git-main-hyeong1s-projects.vercel.app',
+    ], 
     methods: ['GET', 'POST'],
     allowedHeaders: ['Content-Type'],
     credentials: true,
