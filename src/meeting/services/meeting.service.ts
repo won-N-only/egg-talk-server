@@ -326,6 +326,18 @@ export class OpenViduService {
     delete this.drawings[sessionName]
   }
 
+  /**<sessionName, <username, phtos>> */
+  private photos: Record<string, Record<string, string>> = {}
+
+  savePhoto(sessionName: string, userName: string, photo: string) {
+    if (!this.photos[sessionName]) this.photos[sessionName] = {}
+    this.photos[sessionName][userName] = photo
+  }
+
+  getPhotos(sessionName: string, userName: string) {
+    return this.photos[sessionName] || {}
+  }
+
   /**<sessionName, <username, votedUser>> */
   private votes: Record<string, Record<string, string>> = {}
 
