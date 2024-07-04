@@ -30,11 +30,8 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ) {
     const { access_token } = await this.authService.signIn(signInUserDto)
-    response.cookie('access_token', access_token, {
-      sameSite: 'none',
-      path: '/',
-      secure: true,
-    })
+    response.setHeader('Authorization', `${access_token}`)
+
 
     return new MessageResponseDto('Sign-in successful')
   }

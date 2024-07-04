@@ -12,7 +12,8 @@ async function bootstrap() {
       'https://temp-git-main-hyeong1s-projects.vercel.app',
     ],  // 개발 서버와 배포 서버 허용
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    exposedHeaders: ['Authorization'],
     credentials: true,
     optionsSuccessStatus: 204
   })
