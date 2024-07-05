@@ -197,6 +197,15 @@ export class MeetingGateway
     }
   }
 
+  @SubscribeMessage('startTimer')
+  handleStartTimer(client: Socket, payload: { sessionName: string }) {
+    const { sessionName } = payload
+    if (this.timerFlag.get(sessionName) == undefined) {
+      this.openviduService.startSessionTimer(sessionName, this.server)
+      this.timerFlag.set(sessionName, true)
+    }
+  }
+
   @SubscribeMessage('forwardDrawing')
   handleFowardDrawing(
     client: Socket,
