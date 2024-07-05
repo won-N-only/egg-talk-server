@@ -87,8 +87,6 @@ export class MeetingGateway
         participantName = payload.participantName
         gender = payload.gender
       }
-      // const participantName = client['user'].nickname
-      // const gender = client['user'].gender
 
       const existingSessionName = this.roomid.get(participantName)
       if (existingSessionName) {
