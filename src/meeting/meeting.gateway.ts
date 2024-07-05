@@ -63,12 +63,10 @@ export class MeetingGateway
   }
 
   @SubscribeMessage('ready')
-  async handleReady(
-    client: Socket,
-    payload: { participantName: string; gender: string },
-  ) {
+  async handleReady(client: Socket) {
     try {
-      const { participantName, gender } = payload
+      const participantName = client['user'].nickname
+      const gender = client['user'].gender
 
       const existingSessionName = this.roomid.get(participantName)
       if (existingSessionName) {
@@ -98,12 +96,10 @@ export class MeetingGateway
   }
 
   @SubscribeMessage('cancel')
-  handleCancel(
-    client: Socket,
-    payload: { participantName: string; gender: string },
-  ) {
+  handleCancel(client: Socket) {
     const sessions = this.openviduService.getSessions()
-    const { participantName, gender } = payload
+    const participantName = client['user'].nickname
+    const gender = client['user'].gender
 
     this.queueService.removeParticipant(participantName, gender)
 
