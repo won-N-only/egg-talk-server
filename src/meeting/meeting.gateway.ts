@@ -48,6 +48,11 @@ export class MeetingGateway
   handleDisconnect(client: Socket) {
     const sessions = this.openviduService.getSessions()
     const participantName = this.connectedSockets[client.id]
+    if (!sessions.length) {
+      const gender = client['user'].gender
+      this.queueService.removeParticipant(participantName, gender)
+    }
+
     for (const sessionName in sessions) {
       if (sessions.hasOwnProperty(sessionName)) {
         this.openviduService.removeParticipant(
