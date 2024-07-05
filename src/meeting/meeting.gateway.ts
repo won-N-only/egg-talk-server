@@ -38,8 +38,7 @@ export class MeetingGateway
     private readonly queueService: QueueService,
     private readonly configService: ConfigService,
   ) {
-    this.isDevelopment =
-      this.configService.get<string>('NODE_ENV') === 'development'
+    this.isDevelopment = this.configService.get<string>('NODE_ENV') === 'dev'
   }
   private connectedUsers: { [nickname: string]: string } = {} // nickname: socketId 형태로 변경
   private connectedSockets: { [socketId: string]: string } = {} // socketId: nickname 형태로 변경
@@ -76,7 +75,7 @@ export class MeetingGateway
   @SubscribeMessage('ready')
   async handleReady(
     client: Socket,
-    payload: { userName: string; gender: string },
+    payload: { participantName: string; gender: string },
   ) {
     try {
       let participantName
@@ -85,7 +84,7 @@ export class MeetingGateway
         participantName = client['user'].nickname
         gender = client['user'].gender
       } else {
-        participantName = payload.userName
+        participantName = payload.participantName
         gender = payload.gender
       }
       // const participantName = client['user'].nickname
