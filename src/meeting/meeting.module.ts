@@ -5,6 +5,7 @@ import { MeetingRepository } from './meeting.repository'
 import { JwtAuthWsGuard } from '../guards/jwt-auth.ws.guard'
 import { JwtService } from '@nestjs/jwt'
 import { QueueService } from './services/queue.service'
+import { ConfigService } from '@nestjs/config'
 
 @Module({
   providers: [
@@ -14,6 +15,7 @@ import { QueueService } from './services/queue.service'
     MeetingRepository,
     JwtService,
     JwtAuthWsGuard,
+    ConfigService,
   ],
 })
 export class MeetingModule {}
