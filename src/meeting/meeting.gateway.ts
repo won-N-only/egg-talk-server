@@ -43,6 +43,7 @@ export class MeetingGateway
   private connectedUsers: { [nickname: string]: string } = {} // nickname: socketId 형태로 변경
   private connectedSockets: { [socketId: string]: string } = {} // socketId: nickname 형태로 변경
   private cupidFlag: Map<string, boolean> = new Map()
+  private timerFlag: Map<string, boolean> = new Map()
   afterInit(server: Server) {
     this.openviduService.server = server
     console.log('WebSocket initialized')
@@ -270,5 +271,6 @@ export class MeetingGateway
     this.cupidFlag.delete(sessionName)
     delete this.connectedUsers[payload.participantName]
     delete this.connectedSockets[client.id]
+    this.timerFlag.delete(sessionName)
   }
 }
