@@ -24,10 +24,10 @@ export class OpenViduService {
   }
   private shuffleArray<T>(array: T[]): T[] {
     for (let i = array.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [array[i], array[j]] = [array[j], array[i]];
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[array[i], array[j]] = [array[j], array[i]]
     }
-    return array;
+    return array
   }
 
   generateSessionName() {
@@ -82,9 +82,20 @@ export class OpenViduService {
       this.sessions[sessionName].participants = participants.filter(
         p => p.name !== myid,
       )
+      if (this.sessions[sessionName].participants.length === 0) {
+        this.clearSessionData(sessionName)
+      }
     } else {
       console.error(`Session ${sessionName} does not exist`)
     }
+  }
+
+  clearSessionData(sessionName: string) {
+    console.log(`Clearing session data for ${sessionName}`)
+    delete this.chooseData[sessionName]
+    delete this.sessions[sessionName]
+    delete this.sessionTimers[sessionName]
+    this.timerFlag.delete(sessionName)
   }
 
   getParticipants(sessionName: string) {
@@ -154,95 +165,6 @@ export class OpenViduService {
     return this.sessions[sessionName]?.session
   }
 
-  async findOrCreateAvailableSession(): Promise<string> {
-    console.log('Finding or creating available session')
-
-    for (const sessionName in this.sessions) {
-      if (this.sessions.hasOwnProperty(sessionName)) {
-        const participants = this.sessions[sessionName].participants
-
-        if (participants.length < 6) {
-          console.log(`Returning existing session: ${sessionName}`)
-          return sessionName
-        }
-      }
-    }
-
-    const newSessionName = this.generateSessionName()
-    await this.createSession(newSessionName)
-    console.log(`Creating and returning new session: ${newSessionName}`)
-    return newSessionName
-  }
-
-  async handleJoinQueue(
-    sessionName: string,
-    participantName: string,
-    client: Socket,
-    gender: string,
-  ) {
-    try {
-      if (gender === 'male') {
-        this.maleQueue.push({ name: participantName, socket: client })
-        console.log(
-          'male Queue : ',
-          this.maleQueue.map(p => p.name),
-        )
-      } else if (gender === 'female') {
-        this.femaleQueue.push({ name: participantName, socket: client })
-        console.log(
-          'female Queue : ',
-          this.femaleQueue.map(p => p.name),
-        )
-      }
-
-      if (this.maleQueue.length >= 3 && this.femaleQueue.length >= 3) {
-        await this.createSession(sessionName)
-        for (let i = 0; i < 3; i++) {
-          this.addParticipant(
-            sessionName,
-            this.maleQueue[i].name,
-            this.maleQueue[i].socket,
-          )
-          this.addParticipant(
-            sessionName,
-            this.femaleQueue[i].name,
-            this.femaleQueue[i].socket,
-          )
-        }
-        this.maleQueue.splice(0, 3)
-        this.femaleQueue.splice(0, 3)
-        await this.startVideoChatSession(sessionName)
-      }
-      const participants = this.getParticipants(sessionName)
-      console.log(
-        'Current waiting participants: ',
-        participants.map(p => p.name),
-      )
-    } catch (error) {
-      console.error('Error joining queue:', error)
-      await this.deleteSession(sessionName)
-    }
-  }
-
-  removeFromQueue(participantName: string, gender: string) {
-    if (gender === 'male') {
-      console.log('temp : ', participantName)
-      this.maleQueue = this.maleQueue.filter(p => p.name !== participantName)
-      console.log(
-        'Update Male Queue : ',
-        this.maleQueue.map(p => p.name),
-      )
-    } else if (gender === 'female') {
-      this.femaleQueue = this.femaleQueue.filter(
-        p => p.name !== participantName,
-      )
-      console.log(
-        'Update Female Queue : ',
-        this.femaleQueue.map(p => p.name),
-      )
-    }
-  }
-
   async startVideoChatSession(sessionName: string) {
     try {
       const tokens = await this.generateTokens(sessionName)
@@ -276,7 +198,7 @@ export class OpenViduService {
   }
   startSessionTimer(sessionName: string, server: Server) {
     const timers = [
-      { time: 0.5, event: 'Introduce'},
+      { time: 0.5, event: 'Introduce' },
       { time: 2, event: 'keyword' },
       { time: 3, event: 'cupidTime' },
       { time: 4, event: 'cam' },
@@ -290,7 +212,7 @@ export class OpenViduService {
     }
 
     timers.forEach(({ time, event }) => {
-      let messageArray: string[] | undefined;
+      let messageArray: string[] | undefined
 
       setTimeout(
         () => {
@@ -299,20 +221,26 @@ export class OpenViduService {
             const getRandomNumber = () => Math.floor(Math.random() * 20) + 1
             const number = getRandomNumber()
             message = `${number}`
-          } 
-          else if(time === 0.5){
-            const TeamArray = this.getParticipants(sessionName).map(user=>user.name);  // 유저 닉네임 가져옴
-            const RandomTeamArray = this.shuffleArray(TeamArray);      // 유저를 랜덤으로 셔플함
-            console.log(RandomTeamArray);
-            message = null                       // 셔플한 랜덤 유저 Array를 Message에 담음
-            console.log(message);
-            console.log("성공 !!!!!!!!!!!!!!!!!");
-            messageArray = RandomTeamArray;
-          } 
-          else {
+          } else if (time === 0.5) {
+            const TeamArray = this.getParticipants(sessionName).map(
+              user => user.name,
+            ) // 유저 닉네임 가져옴
+            const RandomTeamArray = this.shuffleArray(TeamArray) // 유저를 랜덤으로 셔플함
+            console.log(RandomTeamArray)
+            message = null // 셔플한 랜덤 유저 Array를 Message에 담음
+            console.log(message)
+            console.log('성공 !!!!!!!!!!!!!!!!!')
+            messageArray = RandomTeamArray
+          } else {
             message = `${event}`
           }
-          this.notifySessionParticipants(sessionName, event, message, server, messageArray)
+          this.notifySessionParticipants(
+            sessionName,
+            event,
+            message,
+            server,
+            messageArray,
+          )
         },
         time * 50 * 1000,
       )
@@ -324,7 +252,7 @@ export class OpenViduService {
     eventType: string,
     message: string,
     server: Server,
-    messageArray?: string[]
+    messageArray?: string[],
   ) {
     const participants = this.getParticipants(sessionName)
     if (eventType == 'keyword') {
@@ -333,13 +261,11 @@ export class OpenViduService {
       participants.forEach(({ socket }) => {
         server.to(socket.id).emit(eventType, { message, getRandomParticipant })
       })
-    }
-    else if (eventType == 'Introduce') {
+    } else if (eventType == 'Introduce') {
       participants.forEach(({ socket }) => {
         server.to(socket.id).emit(eventType, messageArray)
       })
-    }
-    else {
+    } else {
       participants.forEach(({ socket }) => {
         server.to(socket.id).emit(eventType, { message })
       })
