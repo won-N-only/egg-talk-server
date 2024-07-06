@@ -217,7 +217,7 @@ export class OpenViduService {
       setTimeout(
         () => {
           let message: string
-          if (time === 2) {
+          if (time === 3) {
             const getRandomNumber = () => Math.floor(Math.random() * 20) + 1
             const number = getRandomNumber()
             message = `${number}`
