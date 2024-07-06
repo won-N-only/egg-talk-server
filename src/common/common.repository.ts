@@ -166,9 +166,9 @@ export class CommonRepository {
   }
   async changeReadMessage(receiverNickname: string, userNickname: string) {
     try{
-      const user = await this.userModel.findOne({nickname : receiverNickname});
+      const user = await this.userModel.findOne({nickname : userNickname});
 
-      const friendToUpdateIndex = user.friends.findIndex(friend => friend.friend == userNickname);
+      const friendToUpdateIndex = user.friends.findIndex(friend => friend.friend == receiverNickname);
   
       user.friends[friendToUpdateIndex].newMessage = false;
       await user.save();
