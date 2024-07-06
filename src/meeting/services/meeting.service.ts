@@ -350,7 +350,7 @@ export class OpenViduService {
     return this.votes[sessionName] || {}
   }
 
-  calculateWinner(sessionName: string): string {
+  calculateWinner(sessionName: string): { winner: string; losers: string[] } {
     /**저장했던 그림 삭제 */
     const voteCount: Record<string, number> = {}
 
@@ -365,8 +365,9 @@ export class OpenViduService {
       voteCount[a] > voteCount[b] ? a : b,
     )
 
-    /**저장했던 투표 삭제 */
+    const losers = Object.keys(voteCount).filter(user => user !== winner)
+
     delete this.votes[sessionName]
-    return winner
+    return { winner, losers }
   }
 }

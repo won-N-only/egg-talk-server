@@ -208,11 +208,13 @@ export class MeetingGateway
     const votes = this.openviduService.getVotes(sessionName)
 
     if (Object.keys(votes).length === 6) {
-      const winner = this.openviduService.calculateWinner(sessionName)
+      const { winner, losers } =
+        this.openviduService.calculateWinner(sessionName)
       const participants = this.openviduService.getParticipants(sessionName)
       participants.forEach(({ socket }) => {
         this.server.to(socket.id).emit('voteResults', {
           winner,
+          losers,
           photos: this.openviduService.getPhotos(sessionName, userName),
         })
       })
