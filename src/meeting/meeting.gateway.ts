@@ -323,22 +323,23 @@ export class MeetingGateway
   }
 
   @SubscribeMessage('moveToPrivateRoom')
-  async handleMoveToPrivateRoom(client: Socket, payload : {sessionName:string; myName:string; parterName:string})
-  {
-    const { sessionName, myName, parterName } = payload;
+  async handleMoveToPrivateRoom(client: Socket, payload : {sessionName:string; myName:string; partnerName:string})
+  { 
+    
+    const { sessionName, myName, partnerName } = payload;
     const participant = this.openviduService.getParticipants(sessionName);
-    if (this.acceptanceStatus[parterName] === true) {
-      const newSessionName = `${myName}-${parterName}`;
+    if (this.acceptanceStatus[partnerName] === true) {
+      const newSessionName = `${myName}-${partnerName}`;
       const newSession = await this.openviduService.createSession(newSessionName);
 
-      const partner = await participant.find(participant => participant.name === parterName )
+      const partner = await participant.find(participant => participant.name === partnerName )
       this.openviduService.addParticipant(newSessionName, myName, client);
-      this.openviduService.addParticipant(newSessionName, myName, partner.socket);
+      this.openviduService.addParticipant(newSessionName, partnerName, partner.socket);
 
       const enterToken = await this.openviduService.generateTokens(newSessionName);
 
       const myToken = enterToken.find(elem => elem.participant === myName).token;
-      const partnerToken = enterToken.find(elem => elem.participant === parterName).token;
+      const partnerToken = enterToken.find(elem => elem.participant === partnerName).token;
 
       if (myToken && partnerToken) {
         this.server.to(client.id).emit('choice', { sessionId: newSessionName, token: myToken });
