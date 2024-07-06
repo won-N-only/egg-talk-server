@@ -11,12 +11,24 @@ export class QueueService {
   /* 참여자 대기열 추가 */
   addParticipant(name: string, socket: Socket, gender: string) {
     if (gender === 'MALE') {
+      const index = this.maleQueue.findIndex(p => p.name === name)
+      if (index !== -1) {
+        // 기존 참가자를 제거
+        this.maleQueue.splice(index, 1)
+      }
+      // 새로운 참가자 추가
       this.maleQueue.push({ name, socket })
       console.log(
         'male Queue : ',
         this.maleQueue.map(p => p.name),
       )
     } else if (gender === 'FEMALE') {
+      const index = this.femaleQueue.findIndex(p => p.name === name)
+      if (index !== -1) {
+        // 기존 참가자를 제거
+        this.femaleQueue.splice(index, 1)
+      }
+      // 새로운 참가자 추가
       this.femaleQueue.push({ name, socket })
       console.log(
         'female Queue : ',
@@ -25,7 +37,6 @@ export class QueueService {
     }
   }
 
-  /* 참여자 대기열 삭제 */
   removeParticipant(name: string, gender: string) {
     switch (gender) {
       case 'MALE':
