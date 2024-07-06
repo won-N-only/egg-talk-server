@@ -118,7 +118,10 @@ export class MeetingGateway
   }
 
   @SubscribeMessage('cancel')
-  handleCancel(client: Socket, payload: { userName: string; gender: string }) {
+  handleCancel(
+    client: Socket,
+    payload: { participantName: string; gender: string },
+  ) {
     const sessions = this.openviduService.getSessions()
     let participantName
     let gender
@@ -126,7 +129,7 @@ export class MeetingGateway
       participantName = client['user'].nickname
       gender = client['user'].gender
     } else {
-      participantName = payload.userName
+      participantName = payload.participantName
       gender = payload.gender
     }
 
