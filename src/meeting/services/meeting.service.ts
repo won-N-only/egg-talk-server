@@ -10,6 +10,8 @@ export class MeetingService {
     {}
   private chooseData: Record<string, { sender: string; receiver: string }[]> =
     {}
+  private lastChooseData: Record<string, { sender: string; receiver: string }> =
+    {}
   private timerFlag: Map<string, boolean> = new Map()
   private sessionTimers: Record<string, NodeJS.Timeout> = {}
   public server: Server
@@ -200,6 +202,7 @@ export class MeetingService {
       { time: 3, event: 'cupidTime' },
       { time: 4, event: 'cam' },
       { time: 5, event: 'drawingContest' },
+      { time: 6, event: 'lastCupidTime' },
       { time: 40, event: 'finish' },
     ]
     // 언젠가 세션 같은 방을 만날 수도 있어서 초기화를 시킴
@@ -289,6 +292,12 @@ export class MeetingService {
     }
   }
 
+  removeChooseData(sessionName: string) {
+    if (!this.chooseData[sessionName]){
+      delete this.chooseData[sessionName];
+    }
+  }
+
   getChooseData(sessionName: string) {
     return this.chooseData[sessionName] || []
   }
@@ -301,6 +310,7 @@ export class MeetingService {
         choice => choice.sender === receiver && choice.receiver === sender,
       )
       if (isPair) {
+        // matches = [ { pair : [jinyong, test] }]
         matches.push({ pair: [sender, receiver] })
       }
     })
