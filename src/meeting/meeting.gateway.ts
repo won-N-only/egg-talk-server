@@ -8,7 +8,7 @@ import {
 } from '@nestjs/websockets'
 import { UseGuards } from '@nestjs/common'
 import { Server, Socket } from 'socket.io'
-import { OpenViduService } from './services/meeting.service'
+import { MeetingService } from './services/meeting.service'
 import { QueueService } from './services/queue.service'
 import { ConfigService } from '@nestjs/config'
 import { JwtAuthWsGuard } from '../guards/jwt-auth.ws.guard'
@@ -34,7 +34,7 @@ export class MeetingGateway
   private roomid: Map<string, string> = new Map()
   private isDevelopment: boolean
   constructor(
-    private readonly openviduService: OpenViduService,
+    private readonly meetingService: MeetingService,
     private readonly queueService: QueueService,
     private readonly configService: ConfigService,
   ) {
@@ -47,14 +47,14 @@ export class MeetingGateway
 
   private acceptanceStatus: Record<string, boolean> = {};
   afterInit(server: Server) {
-    this.openviduService.server = server
+    this.meetingService.server = server
     console.log('WebSocket initialized')
   }
 
   handleConnection(client: Socket) {}
 
   handleDisconnect(client: Socket) {
-    const sessions = this.openviduService.getSessions()
+    const sessions = this.meetingService.getSessions()
     const participantName = this.connectedSockets[client.id]
     if (!sessions.length) {
       const gender = client['user'].gender
@@ -63,7 +63,7 @@ export class MeetingGateway
 
     for (const sessionName in sessions) {
       if (sessions.hasOwnProperty(sessionName)) {
-        this.openviduService.removeParticipant(
+        this.meetingService.removeParticipant(
           sessionName,
           client,
           participantName,
@@ -100,7 +100,7 @@ export class MeetingGateway
 
       const existingSessionName = this.roomid.get(participantName)
       if (existingSessionName) {
-        this.openviduService.removeParticipant(
+        this.meetingService.removeParticipant(
           existingSessionName,
           client,
           participantName,
@@ -131,7 +131,7 @@ export class MeetingGateway
     client: Socket,
     payload: { participantName: string; gender: string },
   ) {
-    const sessions = this.openviduService.getSessions()
+    const sessions = this.meetingService.getSessions()
     let participantName
     let gender
     if (this.isDevelopment) {
@@ -146,7 +146,7 @@ export class MeetingGateway
 
     for (const sessionName in sessions) {
       if (sessions.hasOwnProperty(sessionName)) {
-        this.openviduService.removeParticipant(
+        this.meetingService.removeParticipant(
           sessionName,
           client,
           participantName,
@@ -163,16 +163,16 @@ export class MeetingGateway
     // 해당 소켓이 존재하는 방을 찾기 위함
     const sessionName = this.roomid.get(payload.sender)
     if (sessionName) {
-      this.openviduService.storeChoose(
+      this.meetingService.storeChoose(
         sessionName,
         payload.sender,
         payload.receiver,
       )
-      const chooseData = this.openviduService.getChooseData(sessionName)
-      // [{jinyong : test}, {test,jinyong}, {test1 : test2}, {test2: test3}]
+
+      const chooseData = this.meetingService.getChooseData(sessionName)
       if (chooseData.length === 6) {
-        const participants = this.openviduService.getParticipants(sessionName)
-        const matches = this.openviduService.findMatchingPairs(sessionName)
+        const participants = this.meetingService.getParticipants(sessionName)
+        const matches = this.meetingService.findMatchingPairs(sessionName)
 
         const matchedPairs = matches.map(match => ({
           pair: match.pair,
@@ -225,16 +225,16 @@ export class MeetingGateway
       return
     }
 
-    this.openviduService.saveDrawing(sessionName, userName, drawing)
+    this.meetingService.saveDrawing(sessionName, userName, drawing)
 
-    const drawings = this.openviduService.getDrawings(sessionName)
+    const drawings = this.meetingService.getDrawings(sessionName)
 
     if (Object.keys(drawings).length === 6) {
-      const participants = this.openviduService.getParticipants(sessionName)
+      const participants = this.meetingService.getParticipants(sessionName)
       participants.forEach(({ socket }) => {
         this.server.to(socket.id).emit('drawingSubmit', drawings)
       })
-      this.openviduService.resetDrawings(sessionName)
+      this.meetingService.resetDrawings(sessionName)
     }
   }
 
@@ -245,13 +245,13 @@ export class MeetingGateway
   ) {
     const { userName, votedUser } = payload
     const sessionName = this.roomid.get(userName)
-    this.openviduService.saveVote(sessionName, userName, votedUser)
+    this.meetingService.saveVote(sessionName, userName, votedUser)
 
-    const votes = this.openviduService.getVotes(sessionName)
+    const votes = this.meetingService.getVotes(sessionName)
 
     if (Object.keys(votes).length === 6) {
-      const winner = this.openviduService.calculateWinner(sessionName)
-      const participants = this.openviduService.getParticipants(sessionName)
+      const winner = this.meetingService.calculateWinner(sessionName)
+      const participants = this.meetingService.getParticipants(sessionName)
       participants.forEach(({ socket }) => {
         this.server.to(socket.id).emit('voteResults', { winner })
       })
@@ -265,7 +265,7 @@ export class MeetingGateway
   ) {
     const { winners, losers } = payload
     const sessionName = this.roomid.get(winners[0])
-    const participants = this.openviduService.getParticipants(sessionName)
+    const participants = this.meetingService.getParticipants(sessionName)
     participants.forEach(({ socket }) => {
       this.server
         .to(socket.id)
@@ -356,7 +356,7 @@ export class MeetingGateway
   handleLeave(client: Socket, payload: { participantName }) {
     const sessionName = this.roomid.get(payload.participantName)
     if (sessionName) {
-      this.openviduService.removeParticipant(
+      this.meetingService.removeParticipant(
         sessionName,
         client,
         payload.participantName,

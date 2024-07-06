@@ -4,7 +4,7 @@ import { Socket, Server } from 'socket.io'
 import { v4 as uuidv4 } from 'uuid'
 
 @Injectable()
-export class OpenViduService {
+export class MeetingService {
   private openvidu: OpenVidu
   private sessions: Record<string, { session: Session; participants: any[] }> =
     {}
@@ -15,9 +15,6 @@ export class OpenViduService {
   private timerFlag: Map<string, boolean> = new Map()
   private sessionTimers: Record<string, NodeJS.Timeout> = {}
   public server: Server
-
-  private maleQueue: { name: string; socket: Socket }[] = []
-  private femaleQueue: { name: string; socket: Socket }[] = []
 
   constructor() {
     const OPENVIDU_URL = process.env.OPENVIDU_URL
@@ -200,7 +197,7 @@ export class OpenViduService {
   }
   startSessionTimer(sessionName: string, server: Server) {
     const timers = [
-      { time: 0.5, event: 'Introduce' },
+      { time: 0.5, event: 'introduce' },
       { time: 2, event: 'keyword' },
       { time: 3, event: 'cupidTime' },
       { time: 4, event: 'cam' },
@@ -220,11 +217,11 @@ export class OpenViduService {
       setTimeout(
         () => {
           let message: string
-          if (time === 2) {
+          if (event === 'keyword') {
             const getRandomNumber = () => Math.floor(Math.random() * 20) + 1
             const number = getRandomNumber()
             message = `${number}`
-          } else if (time === 0.5) {
+          } else if (event === 'introduce') {
             const TeamArray = this.getParticipants(sessionName).map(
               user => user.name,
             ) // 유저 닉네임 가져옴
@@ -264,7 +261,7 @@ export class OpenViduService {
       participants.forEach(({ socket }) => {
         server.to(socket.id).emit(eventType, { message, getRandomParticipant })
       })
-    } else if (eventType == 'Introduce') {
+    } else if (eventType == 'introduce') {
       participants.forEach(({ socket }) => {
         server.to(socket.id).emit(eventType, messageArray)
       })
