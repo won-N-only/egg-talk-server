@@ -151,4 +151,17 @@ export class CommonRepository {
   async getFriendIds(userId: string) {
     return await this.userModel.findOne({ nickname: userId }).lean().exec()
   }
+
+  async changeNewMessage(receiverNickname: string, userNickname: string) {
+    try{
+      const user = await this.userModel.findOne({receiverNickname});
+
+      const friendToUpdateIndex = user.friends.findIndex(friend => friend.friend == userNickname);
+  
+      user.friends[friendToUpdateIndex].newMessage = true;
+      await user.save();
+    } catch (error) {
+      throw error;
+    }
+  }
 }

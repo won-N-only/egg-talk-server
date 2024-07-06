@@ -191,7 +191,8 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
             .emit('newMessageNotification', chatRoomId)
         }
         // 유저 정보에서 "newNotification": bool 부분만 바꿔주면됌
-        await this.commonService.changeNotice(receiverNickname)
+        await this.commonService.changeNotice(receiverNickname);
+        await this.commonService.newMessage(receiverNickname, userNickname);
       }
 
       // 1. recieverId에 대응 하는 socket ID 가 connectClient에 존재하는지 확인
