@@ -199,11 +199,11 @@ export class OpenViduService {
   startSessionTimer(sessionName: string, server: Server) {
     const timers = [
       { time: 0.5, event: 'Introduce' },
-      { time: 2, event: 'keyword' },
-      { time: 3, event: 'cupidTime' },
-      { time: 4, event: 'cam' },
-      { time: 5, event: 'drawingContest' },
-      { time: 40, event: 'finish' },
+      { time: 3, event: 'keyword' },
+      { time: 4, event: 'cupidTime' },
+      { time: 6, event: 'cam' },
+      { time: 7, event: 'drawingContest' },
+      { time: 140, event: 'finish' },
     ]
     // 언젠가 세션 같은 방을 만날 수도 있어서 초기화를 시킴
     // 만약 겹치지 않는다면, 아래 코드는 지워도 무방
