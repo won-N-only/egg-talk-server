@@ -4,7 +4,7 @@ import { Socket, Server } from 'socket.io'
 import { v4 as uuidv4 } from 'uuid'
 
 @Injectable()
-export class OpenViduService {
+export class MeetingService {
   private openvidu: OpenVidu
   private sessions: Record<string, { session: Session; participants: any[] }> =
     {}
@@ -13,9 +13,6 @@ export class OpenViduService {
   private timerFlag: Map<string, boolean> = new Map()
   private sessionTimers: Record<string, NodeJS.Timeout> = {}
   public server: Server
-
-  private maleQueue: { name: string; socket: Socket }[] = []
-  private femaleQueue: { name: string; socket: Socket }[] = []
 
   constructor() {
     const OPENVIDU_URL = process.env.OPENVIDU_URL

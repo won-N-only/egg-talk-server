@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common'
 import { Socket } from 'socket.io'
-import { OpenViduService } from './meeting.service'
+import { MeetingService } from './meeting.service'
 
 @Injectable()
 export class QueueService {
-  constructor(private readonly openviduService: OpenViduService) {}
+  constructor(private readonly meetingService: MeetingService) {}
   private maleQueue: { name: string; socket: Socket }[] = []
   private femaleQueue: { name: string; socket: Socket }[] = []
 
@@ -61,8 +61,8 @@ export class QueueService {
   }
 
   async findOrCreateNewSession(): Promise<string> {
-    const newSessionName = this.openviduService.generateSessionName()
-    await this.openviduService.createSession(newSessionName)
+    const newSessionName = this.meetingService.generateSessionName()
+    await this.meetingService.createSession(newSessionName)
     console.log(`Creating and returning new session: ${newSessionName}`)
     return newSessionName
   }
@@ -82,10 +82,10 @@ export class QueueService {
         const readyMales = this.maleQueue.splice(0, 3)
         const readyFemales = this.femaleQueue.splice(0, 3)
 
-        await this.openviduService.createSession(sessionName)
+        await this.meetingService.createSession(sessionName)
 
         readyMales.forEach(male => {
-          this.openviduService.addParticipant(
+          this.meetingService.addParticipant(
             sessionName,
             male.name,
             male.socket,
@@ -93,17 +93,17 @@ export class QueueService {
         })
 
         readyFemales.forEach(female => {
-          this.openviduService.addParticipant(
+          this.meetingService.addParticipant(
             sessionName,
             female.name,
             female.socket,
           )
         })
-        await this.openviduService.startVideoChatSession(sessionName)
+        await this.meetingService.startVideoChatSession(sessionName)
         return { sessionName, readyMales, readyFemales }
       }
       // 이 부분은 클라 확인차 로그로써 삭제해도 무방 다만 테스트 시 확인이 힘들어짐
-      const participants = this.openviduService.getParticipants(sessionName)
+      const participants = this.meetingService.getParticipants(sessionName)
       console.log(
         'Current waiting participants: ',
         participants.map(p => p.name),
@@ -111,7 +111,7 @@ export class QueueService {
       return { sessionName }
     } catch (error) {
       console.error('Error joining queue:', error)
-      await this.openviduService.deleteSession(sessionName)
+      await this.meetingService.deleteSession(sessionName)
     }
   }
 }
