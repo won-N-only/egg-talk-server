@@ -11,21 +11,28 @@ export class QueueService {
   /* 참여자 대기열 추가 */
   addParticipant(name: string, socket: Socket, gender: string) {
     if (gender === 'MALE') {
-      this.maleQueue.push({ name, socket })
-      console.log(
-        'male Queue : ',
-        this.maleQueue.map(p => p.name),
-      )
+      if (!this.maleQueue.some(p => p.name === name)) {
+        this.maleQueue.push({ name, socket })
+        console.log(
+          'male Queue : ',
+          this.maleQueue.map(p => p.name),
+        )
+      } else {
+        console.log('남자 큐 중복임')
+      }
     } else if (gender === 'FEMALE') {
-      this.femaleQueue.push({ name, socket })
-      console.log(
-        'female Queue : ',
-        this.femaleQueue.map(p => p.name),
-      )
+      if (!this.femaleQueue.some(p => p.name === name)) {
+        this.femaleQueue.push({ name, socket })
+        console.log(
+          'female Queue : ',
+          this.femaleQueue.map(p => p.name),
+        )
+      } else {
+        console.log('여자 큐 중복임')
+      }
     }
   }
 
-  /* 참여자 대기열 삭제 */
   removeParticipant(name: string, gender: string) {
     switch (gender) {
       case 'MALE':
