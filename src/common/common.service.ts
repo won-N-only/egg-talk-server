@@ -121,4 +121,11 @@ export class CommonService {
       throw error
     }
   }
+  async readMessage(receiverNickname: string, userNickname: string) {
+    try{
+      this.commonRepository.changeReadMessage(receiverNickname, userNickname);
+    } catch (error) {
+      throw error
+    }
+  }
 }

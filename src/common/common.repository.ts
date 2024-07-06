@@ -164,4 +164,16 @@ export class CommonRepository {
       throw error;
     }
   }
+  async changeReadMessage(receiverNickname: string, userNickname: string) {
+    try{
+      const user = await this.userModel.findOne({nickname : receiverNickname});
+
+      const friendToUpdateIndex = user.friends.findIndex(friend => friend.friend == userNickname);
+  
+      user.friends[friendToUpdateIndex].newMessage = false;
+      await user.save();
+    } catch (error) {
+      throw error;
+    }
+  }
 }
