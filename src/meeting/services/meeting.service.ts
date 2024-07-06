@@ -217,11 +217,11 @@ export class OpenViduService {
       setTimeout(
         () => {
           let message: string
-          if (time === 2) {
+          if (event === 'keyword') {
             const getRandomNumber = () => Math.floor(Math.random() * 20) + 1
             const number = getRandomNumber()
             message = `${number}`
-          } else if (time === 0.5) {
+          } else if (event === 'Introduce') {
             const TeamArray = this.getParticipants(sessionName).map(
               user => user.name,
             ) // 유저 닉네임 가져옴
