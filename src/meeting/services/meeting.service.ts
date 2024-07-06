@@ -295,6 +295,12 @@ export class OpenViduService {
     }
   }
 
+  removeChooseData(sessionName: string) {
+    if (!this.chooseData[sessionName]){
+      delete this.chooseData[sessionName];
+    }
+  }
+
   getChooseData(sessionName: string) {
     return this.chooseData[sessionName] || []
   }

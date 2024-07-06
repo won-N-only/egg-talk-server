@@ -206,6 +206,7 @@ export class MeetingGateway
           })
           this.cupidFlag.set(sessionName, true)
         }
+        this.openviduService.removeChooseData(sessionName);
       }
     } else {
       console.error('세션에러입니다')
