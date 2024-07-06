@@ -154,7 +154,7 @@ export class CommonRepository {
 
   async changeNewMessage(receiverNickname: string, userNickname: string) {
     try{
-      const user = await this.userModel.findOne({receiverNickname});
+      const user = await this.userModel.findOne({nickname : receiverNickname});
 
       const friendToUpdateIndex = user.friends.findIndex(friend => friend.friend == userNickname);
   
