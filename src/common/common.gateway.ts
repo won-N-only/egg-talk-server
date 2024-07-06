@@ -1,23 +1,35 @@
 import {
-  WebSocketGateway,
-  WebSocketServer,
-  SubscribeMessage,
-  OnGatewayConnection,
-  OnGatewayDisconnect,
   ConnectedSocket,
   MessageBody,
+  OnGatewayConnection,
+  OnGatewayDisconnect,
+  SubscribeMessage,
+  WebSocketGateway,
+  WebSocketServer,
 } from '@nestjs/websockets'
-import { UseGuards } from '@nestjs/common'
+import { Logger, UseGuards } from '@nestjs/common'
 import { JwtAuthWsGuard } from '../guards/jwt-auth.ws.guard'
 import { Server, Socket } from 'socket.io'
-import { Logger } from '@nestjs/common'
-const logger = new Logger('ChatGateway')
 import { CommonService } from './common.service'
-import { AddFriendDto, AcceptFriend } from './dto/request/notification.dto'
+import { AcceptFriend, AddFriendDto } from './dto/request/notification.dto'
 import { UsersService } from '../users/users.service'
 
+const logger = new Logger('ChatGateway')
+
 @UseGuards(JwtAuthWsGuard)
-@WebSocketGateway({ namespace: 'common' })
+@WebSocketGateway({
+  namespace: 'common',
+  cors: {
+    origin: [
+      'http://localhost:3000',
+      'https://egg-signal-app.syeong.link',
+      'https://temp-git-main-hyeong1s-projects.vercel.app',
+    ], 
+    methods: ['GET', 'POST'],
+    allowedHeaders: ['Content-Type'],
+    credentials: true,
+  },
+})
 export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server
 
@@ -50,28 +62,28 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('friendStat')
-  async friendStat(@ConnectedSocket() client : Socket) {
+  async friendStat(@ConnectedSocket() client: Socket) {
     try {
-    const nickname = client['user'].nickname;
-    // const nickname = 'jinyong'
-    const friendIds = await this.commonService.sortFriend(nickname)
-    // const friendStat = new Map<string, boolean>();
-    const friendStat: Array<{ [key: string]: boolean }> = [];
+      const nickname = client['user'].nickname
+      // const nickname = 'jinyong'
+      const friendIds = await this.commonService.sortFriend(nickname)
+      // const friendStat = new Map<string, boolean>();
+      const friendStat: Array<{ [key: string]: boolean }> = []
 
-    if (friendIds.length > 0) {
-      for (const friend of friendIds) {
-        const friendSocket = this.commonService.getSocketByUserId(friend);
-        if (friendSocket) {
-          // 친구가 로그인 되어있다면 { 친구이름 : 참 } 형태로 저장
-          friendStat.push({ [friend]: true }); 
-        } else {
-          // 친구가 로그오프로 되어있다면 { 친구이름 : 거짓 } 형태로 저장
-          friendStat.push({ [friend]: false }); 
+      if (friendIds.length > 0) {
+        for (const friend of friendIds) {
+          const friendSocket = this.commonService.getSocketByUserId(friend)
+          if (friendSocket) {
+            // 친구가 로그인 되어있다면 { 친구이름 : 참 } 형태로 저장
+            friendStat.push({ [friend]: true })
+          } else {
+            // 친구가 로그오프로 되어있다면 { 친구이름 : 거짓 } 형태로 저장
+            friendStat.push({ [friend]: false })
+          }
         }
       }
-    }
-    
-    client.emit('friendStat', friendStat);
+
+      client.emit('friendStat', friendStat)
     } catch (error) {
       logger.error('친구 상태 정보 조회 실패', error)
       client.disconnect()
