@@ -90,6 +90,7 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
+  // 로그인할때 오는 요청메세지
   @SubscribeMessage('serverCertificate')
   async serverCertificate(@ConnectedSocket() client: Socket) {
     try {
