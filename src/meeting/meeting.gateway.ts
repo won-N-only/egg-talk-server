@@ -224,16 +224,16 @@ export class MeetingGateway
   @SubscribeMessage('winnerPrize')
   handleWinnerPrize(
     client: Socket,
-    payload: { winners: string[]; losers: string[] },
+    payload: { userName: string; winners: string[]; losers: string[] },
   ) {
-    const { winners, losers } = payload
-    const sessionName = this.roomid.get(winners[0])
+    const { userName, winners, losers } = payload
+    const sessionName = this.roomid.get(userName)
     const participants = this.openviduService.getParticipants(sessionName)
-    participants.forEach(({ socket }) => {
-      this.server
-        .to(socket.id)
-        .emit('finalResults', { winners: winners, losers: losers })
-    })
+
+    if (userName === winners[0])
+      participants.forEach(({ socket }) => {
+        this.server.to(socket.id).emit('finalResults', { winners, losers })
+      })
   }
 
   @SubscribeMessage('leave')
