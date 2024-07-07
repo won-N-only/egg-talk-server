@@ -365,7 +365,7 @@ export class OpenViduService {
       voteCount[a] > voteCount[b] ? a : b,
     )
 
-    const losers = Object.keys(voteCount).filter(user => user !== winner)
+    const losers = Object.keys(votes).filter(user => user !== winner)
 
     delete this.votes[sessionName]
     return { winner, losers }
