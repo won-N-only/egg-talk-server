@@ -176,13 +176,13 @@ export class MeetingGateway
   ) {
     const { drawing, userName, photo } = payload
     const sessionName = this.roomid.get(userName)
+
     if (!sessionName) {
       console.error(`세션에 없는 유저이름임: ${userName}`)
       return
     }
 
     this.openviduService.savePhoto(sessionName, userName, photo)
-
     this.openviduService.saveDrawing(sessionName, userName, drawing)
 
     const drawings = this.openviduService.getDrawings(sessionName)
@@ -203,6 +203,7 @@ export class MeetingGateway
   ) {
     const { userName, votedUser } = payload
     const sessionName = this.roomid.get(userName)
+
     this.openviduService.saveVote(sessionName, userName, votedUser)
 
     const votes = this.openviduService.getVotes(sessionName)
@@ -210,6 +211,7 @@ export class MeetingGateway
     if (Object.keys(votes).length === 6) {
       const { winner, losers } =
         this.openviduService.calculateWinner(sessionName)
+
       const participants = this.openviduService.getParticipants(sessionName)
       participants.forEach(({ socket }) => {
         this.server.to(socket.id).emit('voteResults', {
