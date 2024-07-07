@@ -265,6 +265,11 @@ export class OpenViduService {
       participants.forEach(({ socket }) => {
         server.to(socket.id).emit(eventType, messageArray)
       })
+    } else if (eventType == 'drawingContest') {
+      const keywordsIndex = Math.random() * 1234
+      participants.forEach(({ socket }) => {
+        server.to(socket.id).emit(eventType, { message, keywordsIndex })
+      })
     } else {
       participants.forEach(({ socket }) => {
         server.to(socket.id).emit(eventType, { message })
