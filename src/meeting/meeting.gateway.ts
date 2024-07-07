@@ -236,6 +236,24 @@ export class MeetingGateway
       })
   }
 
+  @SubscribeMessage('drawingOneToOne')
+  handleDrawingOneToOne(
+    client: Socket,
+    payload: { userName: string; winners: string[]; losers: string[] },
+  ) {
+    const { userName, winners, losers } = payload
+    let partner: string
+
+    winners.includes(userName)
+      ? (partner = winners.filter(u => u !== userName)[0])
+      : (partner = '0')
+
+    client.emit('cupidResult', {
+      lover: partner,
+      loser: losers,
+    })
+  }
+
   @SubscribeMessage('leave')
   handleLeave(client: Socket, payload: { participantName }) {
     const sessionName = this.roomid.get(payload.participantName)
