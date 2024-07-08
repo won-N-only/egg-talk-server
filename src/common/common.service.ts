@@ -36,8 +36,8 @@ export class CommonService {
   }
 
   removeUser(nickname: string, socketId: string): void {
-    this.connectedSockets.delete(nickname)
-    this.connectedUsers.delete(socketId)
+    this.connectedSockets.delete(socketId)
+    this.connectedUsers.delete(nickname)
   }
 
   async getChatHistory(chatRoomId: string): Promise<Chat[]> {

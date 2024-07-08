@@ -8,15 +8,20 @@ import {
 } from '@nestjs/websockets'
 import { UseGuards } from '@nestjs/common'
 import { Server, Socket } from 'socket.io'
-import { OpenViduService } from './services/meeting.service'
+import { MeetingService } from './services/meeting.service'
 import { QueueService } from './services/queue.service'
+import { ConfigService } from '@nestjs/config'
 import { JwtAuthWsGuard } from '../guards/jwt-auth.ws.guard'
 
 @UseGuards(JwtAuthWsGuard)
 @WebSocketGateway({
   namespace: 'meeting',
   cors: {
-    origin: '*', // 모든 출처에서의 요청 허용
+    origin: [
+      'http://localhost:3000',
+      'https://egg-signal-app.syeong.link',
+      'https://temp-git-main-hyeong1s-projects.vercel.app',
+    ],
     methods: ['GET', 'POST'],
     allowedHeaders: ['Content-Type'],
     credentials: true,
@@ -27,26 +32,38 @@ export class MeetingGateway
 {
   @WebSocketServer() server: Server
   private roomid: Map<string, string> = new Map()
+  private isDevelopment: boolean
   constructor(
-    private readonly openviduService: OpenViduService,
+    private readonly meetingService: MeetingService,
     private readonly queueService: QueueService,
-  ) {}
-  private connectedUsers: { [nickname: string]: string } = {} // nickname: socketId 형태로 변경
+    private readonly configService: ConfigService,
+  ) {
+    this.isDevelopment = this.configService.get<string>('NODE_ENV') === 'dev'
+  }
+  private connectedUsers: { [nickname: string]: Socket } = {} // nickname: socketId 형태로 변경
   private connectedSockets: { [socketId: string]: string } = {} // socketId: nickname 형태로 변경
   private cupidFlag: Map<string, boolean> = new Map()
+  private lastCupidFlag: Map<string, boolean> = new Map()
+
+  private acceptanceStatus: Record<string, boolean> = {}
   afterInit(server: Server) {
-    this.openviduService.server = server
+    this.meetingService.server = server
     console.log('WebSocket initialized')
   }
 
   handleConnection(client: Socket) {}
 
   handleDisconnect(client: Socket) {
-    const sessions = this.openviduService.getSessions()
+    const sessions = this.meetingService.getSessions()
     const participantName = this.connectedSockets[client.id]
+    if (!sessions.length) {
+      const gender = client['user'].gender
+      this.queueService.removeParticipant(participantName, gender)
+    }
+
     for (const sessionName in sessions) {
       if (sessions.hasOwnProperty(sessionName)) {
-        this.openviduService.removeParticipant(
+        this.meetingService.removeParticipant(
           sessionName,
           client,
           participantName,
@@ -56,6 +73,11 @@ export class MeetingGateway
     delete this.connectedSockets[client.id]
     delete this.connectedUsers[participantName]
     this.roomid.delete(participantName)
+
+    const nickname = this.connectedSockets[client.id]
+    if (nickname in this.acceptanceStatus) {
+      delete this.acceptanceStatus[nickname]
+    }
   }
 
   @SubscribeMessage('ready')
@@ -64,11 +86,21 @@ export class MeetingGateway
     payload: { participantName: string; gender: string },
   ) {
     try {
-      const { participantName, gender } = payload
+      let participantName
+      let gender
+      if (this.isDevelopment) {
+        participantName = client['user'].nickname
+        gender = client['user'].gender
+      } else {
+        participantName = payload.participantName
+        gender = payload.gender
+      }
+      // const participantName = client['user'].nickname
+      // const gender = client['user'].gender
 
       const existingSessionName = this.roomid.get(participantName)
       if (existingSessionName) {
-        this.openviduService.removeParticipant(
+        this.meetingService.removeParticipant(
           existingSessionName,
           client,
           participantName,
@@ -86,7 +118,7 @@ export class MeetingGateway
           this.roomid.set(female.name, sessionName)
         })
       }
-      this.connectedUsers[participantName] = client.id
+      this.connectedUsers[participantName] = client
       this.connectedSockets[client.id] = participantName
     } catch (error) {
       console.log('Error handling join Queue request:', error)
@@ -98,14 +130,22 @@ export class MeetingGateway
     client: Socket,
     payload: { participantName: string; gender: string },
   ) {
-    const sessions = this.openviduService.getSessions()
-    const { participantName, gender } = payload
+    const sessions = this.meetingService.getSessions()
+    let participantName
+    let gender
+    if (this.isDevelopment) {
+      participantName = client['user'].nickname
+      gender = client['user'].gender
+    } else {
+      participantName = payload.participantName
+      gender = payload.gender
+    }
 
     this.queueService.removeParticipant(participantName, gender)
 
     for (const sessionName in sessions) {
       if (sessions.hasOwnProperty(sessionName)) {
-        this.openviduService.removeParticipant(
+        this.meetingService.removeParticipant(
           sessionName,
           client,
           participantName,
@@ -119,17 +159,19 @@ export class MeetingGateway
 
   @SubscribeMessage('choose')
   handleChoose(client: Socket, payload: { sender: string; receiver: string }) {
+    // 해당 소켓이 존재하는 방을 찾기 위함
     const sessionName = this.roomid.get(payload.sender)
     if (sessionName) {
-      this.openviduService.storeChoose(
+      this.meetingService.storeChoose(
         sessionName,
         payload.sender,
         payload.receiver,
       )
-      const chooseData = this.openviduService.getChooseData(sessionName)
+
+      const chooseData = this.meetingService.getChooseData(sessionName)
       if (chooseData.length === 6) {
-        const participants = this.openviduService.getParticipants(sessionName)
-        const matches = this.openviduService.findMatchingPairs(sessionName)
+        const participants = this.meetingService.getParticipants(sessionName)
+        const matches = this.meetingService.findMatchingPairs(sessionName)
 
         const matchedPairs = matches.map(match => ({
           pair: match.pair,
@@ -163,6 +205,7 @@ export class MeetingGateway
           })
           this.cupidFlag.set(sessionName, true)
         }
+        this.meetingService.removeChooseData(sessionName)
       }
     } else {
       console.error('세션에러입니다')
@@ -182,17 +225,17 @@ export class MeetingGateway
       return
     }
 
-    this.openviduService.savePhoto(sessionName, userName, photo)
-    this.openviduService.saveDrawing(sessionName, userName, drawing)
+    this.meetingService.savePhoto(sessionName, userName, photo)
+    this.meetingService.saveDrawing(sessionName, userName, drawing)
 
-    const drawings = this.openviduService.getDrawings(sessionName)
+    const drawings = this.meetingService.getDrawings(sessionName)
 
     if (Object.keys(drawings).length === 6) {
-      const participants = this.openviduService.getParticipants(sessionName)
+      const participants = this.meetingService.getParticipants(sessionName)
       participants.forEach(({ socket }) => {
         this.server.to(socket.id).emit('drawingSubmit', drawings)
       })
-      this.openviduService.resetDrawings(sessionName)
+      this.meetingService.resetDrawings(sessionName)
     }
   }
 
@@ -204,20 +247,20 @@ export class MeetingGateway
     const { userName, votedUser } = payload
     const sessionName = this.roomid.get(userName)
 
-    this.openviduService.saveVote(sessionName, userName, votedUser)
+    this.meetingService.saveVote(sessionName, userName, votedUser)
 
-    const votes = this.openviduService.getVotes(sessionName)
+    const votes = this.meetingService.getVotes(sessionName)
 
     if (Object.keys(votes).length === 6) {
       const { winner, losers } =
-        this.openviduService.calculateWinner(sessionName)
+        this.meetingService.calculateWinner(sessionName)
 
-      const participants = this.openviduService.getParticipants(sessionName)
+      const participants = this.meetingService.getParticipants(sessionName)
       participants.forEach(({ socket }) => {
         this.server.to(socket.id).emit('voteResults', {
           winner,
           losers,
-          photos: this.openviduService.getPhotos(sessionName, userName),
+          photos: this.meetingService.getPhotos(sessionName, userName),
         })
       })
     }
@@ -230,7 +273,7 @@ export class MeetingGateway
   ) {
     const { userName, winners, losers } = payload
     const sessionName = this.roomid.get(userName)
-    const participants = this.openviduService.getParticipants(sessionName)
+    const participants = this.meetingService.getParticipants(sessionName)
 
     if (userName === winners[0])
       participants.forEach(({ socket }) => {
@@ -256,11 +299,101 @@ export class MeetingGateway
     })
   }
 
+  // 1. 10초 이내에 '1대1화상채팅하기' 버튼을 누르지 않으면 비활성
+  // 2. 성공적으로 '1대1화상채팅하기' 버튼을 눌렀을 경우 클라이언트 -> 서버(Event : chooseCam)
+  @SubscribeMessage('lastChoose')
+  handleChooseCam(
+    client: Socket,
+    payload: { sender: string; receiver: string },
+  ) {
+    // 서버 입장에서 소켓이 존재하는 방을 찾기 위함
+    const { sender, receiver } = payload
+    const sessionName = this.roomid.get(sender)
+    // 기존 정보가 있다면 새롭게 변형해서 저장할 수 있음
+    if (sessionName) {
+      this.meetingService.storeChoose(sessionName, sender, receiver)
+      // 방과 일치하는 매칭결과 정보 가져오기
+      const chooseData = this.meetingService.getChooseData(sessionName)
+      if (chooseData.length === 6) {
+        // 방과 일치하는 참여자 정보 가져오기
+        const participant = this.meetingService.getParticipants(sessionName)
+        // 매칭된 쌍의 정보를 가지고 있음
+        // [
+        // { pair: [ 'Alice', 'Bob' ] },
+        // { pair: [ 'Charlie', 'David' ] },
+        // { pair: [ 'Eve', 'Frank' ] }
+        // ]
+        const matches = this.meetingService.findMatchingPairs(sessionName)
+
+        if (this.lastCupidFlag.get(sessionName) == undefined) {
+          participant.forEach(({ socket, name }) => {
+            const matchedPair = matches.find(elem => elem.pair.includes(name))
+            if (matchedPair) {
+              const partner = matchedPair.pair.find(elem => elem !== name)
+              this.server.to(socket.id).emit('matching', { lover: partner })
+            } else {
+              this.server.to(socket.id).emit('matching', { lover: '0' })
+            }
+
+            this.server.to(socket.id).emit('lastChooseResult', chooseData)
+          })
+          this.lastCupidFlag.set(sessionName, true)
+        }
+      }
+    } else {
+      console.error('세션이 존재하지 않습니다.')
+    }
+  }
+
+  @SubscribeMessage('moveToPrivateRoom')
+  async handleMoveToPrivateRoom(
+    client: Socket,
+    payload: { sessionName: string; myName: string; partnerName: string },
+  ) {
+    const { sessionName, myName, partnerName } = payload
+    const participant = this.meetingService.getParticipants(sessionName)
+    if (this.acceptanceStatus[partnerName] === true) {
+      const newSessionName = `${myName}-${partnerName}`
+      const newSession = await this.meetingService.createSession(newSessionName)
+
+      const partner = await participant.find(
+        participant => participant.name === partnerName,
+      )
+      this.meetingService.addParticipant(newSessionName, myName, client)
+      this.meetingService.addParticipant(
+        newSessionName,
+        partnerName,
+        partner.socket,
+      )
+
+      const enterToken =
+        await this.meetingService.generateTokens(newSessionName)
+
+      const myToken = enterToken.find(elem => elem.participant === myName).token
+      const partnerToken = enterToken.find(
+        elem => elem.participant === partnerName,
+      ).token
+
+      if (myToken && partnerToken) {
+        this.server
+          .to(client.id)
+          .emit('choice', { sessionId: newSessionName, token: myToken })
+        this.server
+          .to(partner.socket.id)
+          .emit('choice', { sessionId: newSessionName, token: partnerToken })
+      } else {
+        console.error('방 생성 실패!')
+      }
+    } else {
+      this.acceptanceStatus[myName] = true
+    }
+  }
+
   @SubscribeMessage('leave')
   handleLeave(client: Socket, payload: { participantName }) {
     const sessionName = this.roomid.get(payload.participantName)
     if (sessionName) {
-      this.openviduService.removeParticipant(
+      this.meetingService.removeParticipant(
         sessionName,
         client,
         payload.participantName,
