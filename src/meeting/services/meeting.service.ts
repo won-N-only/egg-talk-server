@@ -204,7 +204,7 @@ export class MeetingService {
       { time: 4, event: 'cam' },
       { time: 5, event: 'drawingContest' },
       { time: 6, event: 'lastCupidTime' },
-      { time: 40, event: 'finish' },
+      { time: 7, event: 'finish' },
     ]
     // 언젠가 세션 같은 방을 만날 수도 있어서 초기화를 시킴
     // 만약 겹치지 않는다면, 아래 코드는 지워도 무방
@@ -302,7 +302,7 @@ export class MeetingService {
   }
 
   removeChooseData(sessionId: string) {
-    if (!this.chooseData[sessionId]) {
+    if (this.chooseData[sessionId]) {
       delete this.chooseData[sessionId]
     }
   }
