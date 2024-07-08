@@ -214,17 +214,19 @@ export class MeetingGateway
   }
 
   @SubscribeMessage('forwardDrawing')
-  handleFowardDrawing(
+  handleForwardDrawing(
     client: Socket,
-    payload: { userName: string; drawing: any },
+    payload: { userName: string; drawing: string; photo: string },
   ) {
-    const { drawing, userName } = payload
+    const { drawing, userName, photo } = payload
     const sessionName = this.roomid.get(userName)
+
     if (!sessionName) {
       console.error(`세션에 없는 유저이름임: ${userName}`)
       return
     }
 
+    this.meetingService.savePhoto(sessionName, userName, photo)
     this.meetingService.saveDrawing(sessionName, userName, drawing)
 
     const drawings = this.meetingService.getDrawings(sessionName)
@@ -245,15 +247,22 @@ export class MeetingGateway
   ) {
     const { userName, votedUser } = payload
     const sessionName = this.roomid.get(userName)
+
     this.meetingService.saveVote(sessionName, userName, votedUser)
 
     const votes = this.meetingService.getVotes(sessionName)
 
     if (Object.keys(votes).length === 6) {
-      const winner = this.meetingService.calculateWinner(sessionName)
+      const { winner, losers } =
+        this.meetingService.calculateWinner(sessionName)
+
       const participants = this.meetingService.getParticipants(sessionName)
       participants.forEach(({ socket }) => {
-        this.server.to(socket.id).emit('voteResults', { winner })
+        this.server.to(socket.id).emit('voteResults', {
+          winner,
+          losers,
+          photos: this.meetingService.getPhotos(sessionName, userName),
+        })
       })
     }
   }
@@ -261,15 +270,33 @@ export class MeetingGateway
   @SubscribeMessage('winnerPrize')
   handleWinnerPrize(
     client: Socket,
-    payload: { winners: string[]; losers: string[] },
+    payload: { userName: string; winners: string[]; losers: string[] },
   ) {
-    const { winners, losers } = payload
-    const sessionName = this.roomid.get(winners[0])
+    const { userName, winners, losers } = payload
+    const sessionName = this.roomid.get(userName)
     const participants = this.meetingService.getParticipants(sessionName)
-    participants.forEach(({ socket }) => {
-      this.server
-        .to(socket.id)
-        .emit('finalResults', { winners: winners, losers: losers })
+
+    if (userName === winners[0])
+      participants.forEach(({ socket }) => {
+        this.server.to(socket.id).emit('finalResults', { winners, losers })
+      })
+  }
+
+  @SubscribeMessage('drawingOneToOne')
+  handleDrawingOneToOne(
+    client: Socket,
+    payload: { userName: string; winners: string[]; losers: string[] },
+  ) {
+    const { userName, winners, losers } = payload
+    let partner: string
+
+    winners.includes(userName)
+      ? (partner = winners.filter(u => u !== userName)[0])
+      : (partner = '0')
+
+    client.emit('cupidResult', {
+      lover: partner,
+      loser: losers,
     })
   }
 
@@ -328,6 +355,7 @@ export class MeetingGateway
     const participant = this.meetingService.getParticipants(sessionName)
     if (this.acceptanceStatus[partnerName] === true) {
       const newSessionName = `${myName}-${partnerName}`
+
       const newSession = await this.meetingService.createSession(newSessionName)
 
       const partner = await participant.find(
