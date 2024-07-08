@@ -69,6 +69,12 @@ export class MeetingService {
         name: participantName,
         socket,
       })
+      console.log(
+        '참여자가 추가되었습니다. 세션이름: ',
+        sessionName,
+        '참여자 이름 : ',
+        participantName,
+      )
     } else {
       console.error(`Session ${sessionName} does not exist`)
     }
@@ -217,11 +223,13 @@ export class MeetingService {
             const number = getRandomNumber()
             message = `${number}`
           } else if (event === 'introduce') {
+            console.log('현재 세션입니다 : ', this.getSession(sessionName))
             const TeamArray = this.getParticipants(sessionName).map(
               user => user.name,
             ) // 유저 닉네임 가져옴
+            console.log('현재 팀 어레이입니다. : ', TeamArray)
             const RandomTeamArray = this.shuffleArray(TeamArray) // 유저를 랜덤으로 셔플함
-            console.log(RandomTeamArray)
+            console.log('랜덤 팀 어레이입니다 : ', RandomTeamArray)
             message = null // 셔플한 랜덤 유저 Array를 Message에 담음
             console.log(message)
             console.log('성공 !!!!!!!!!!!!!!!!!')
@@ -250,6 +258,7 @@ export class MeetingService {
     messageArray?: string[],
   ) {
     const participants = this.getParticipants(sessionName)
+    console.log('현재 참여자 목록입니다 => ', participants)
     if (eventType == 'keyword') {
       const getRandomParticipant = participants[1].name
       participants.forEach(({ socket }) => {
