@@ -17,6 +17,17 @@ export class CommonService {
   private server: Server
   private connectedUsers = new Map<string, Socket>() // userId: Socket
   private connectedSockets = new Map<string, string>() // socketId: userId
+  generateAnonymousNickname(): string {
+    const adjectives = ['행복한', '즐거운', '신나는', '활기찬', '유쾌한']
+    const nouns = ['고양이', '강아지', '토끼', '곰', '펭귄']
+
+    const randomAdjective =
+      adjectives[Math.floor(Math.random() * adjectives.length)]
+    const randomNoun = nouns[Math.floor(Math.random() * nouns.length)]
+    const randomNumber = Math.floor(Math.random() * 1000) // 0~999 사이의 난수
+
+    return `${randomAdjective} ${randomNoun}#${randomNumber}`
+  }
 
   setServer(server: Server) {
     this.server = server
@@ -36,8 +47,8 @@ export class CommonService {
   }
 
   removeUser(nickname: string, socketId: string): void {
-    this.connectedSockets.delete(nickname)
-    this.connectedUsers.delete(socketId)
+    this.connectedSockets.delete(socketId)
+    this.connectedUsers.delete(nickname)
   }
 
   async getChatHistory(chatRoomId: string): Promise<Chat[]> {
@@ -112,5 +123,20 @@ export class CommonService {
 
   async acceptFriend(data: AcceptFriend): Promise<User> {
     return await this.commonRepository.acceptFriend(data)
+  }
+
+  async newMessage(receiverNickname: string, userNickname: string) {
+    try {
+      this.commonRepository.changeNewMessage(receiverNickname, userNickname)
+    } catch (error) {
+      throw error
+    }
+  }
+  async readMessage(receiverNickname: string, userNickname: string) {
+    try {
+      this.commonRepository.changeReadMessage(receiverNickname, userNickname)
+    } catch (error) {
+      throw error
+    }
   }
 }

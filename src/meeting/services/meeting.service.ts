@@ -4,18 +4,17 @@ import { Socket, Server } from 'socket.io'
 import { v4 as uuidv4 } from 'uuid'
 
 @Injectable()
-export class OpenViduService {
+export class MeetingService {
   private openvidu: OpenVidu
   private sessions: Record<string, { session: Session; participants: any[] }> =
     {}
   private chooseData: Record<string, { sender: string; receiver: string }[]> =
     {}
-  private timerFlag: Map<string, boolean> = new Map()
+  private lastChooseData: Record<string, { sender: string; receiver: string }> =
+    {}
   private sessionTimers: Record<string, NodeJS.Timeout> = {}
-  public server: Server
 
-  private maleQueue: { name: string; socket: Socket }[] = []
-  private femaleQueue: { name: string; socket: Socket }[] = []
+  public server: Server
 
   constructor() {
     const OPENVIDU_URL = process.env.OPENVIDU_URL
@@ -95,7 +94,6 @@ export class OpenViduService {
     delete this.chooseData[sessionName]
     delete this.sessions[sessionName]
     delete this.sessionTimers[sessionName]
-    this.timerFlag.delete(sessionName)
   }
 
   getParticipants(sessionName: string) {
@@ -186,10 +184,6 @@ export class OpenViduService {
           participantName: participant,
         })
       })
-      if (this.timerFlag.get(sessionName) == undefined) {
-        this.startSessionTimer(sessionName, this.server)
-        this.timerFlag.set(sessionName, true)
-      }
 
       await this.resetParticipants(sessionName)
     } catch (error) {
@@ -198,12 +192,13 @@ export class OpenViduService {
   }
   startSessionTimer(sessionName: string, server: Server) {
     const timers = [
-      { time: 0.5, event: 'Introduce' },
-      { time: 3, event: 'keyword' },
-      { time: 4, event: 'cupidTime' },
-      { time: 6, event: 'cam' },
-      { time: 7, event: 'drawingContest' },
-      { time: 140, event: 'finish' },
+      { time: 0.5, event: 'introduce' },
+      { time: 2, event: 'keyword' },
+      { time: 3, event: 'cupidTime' },
+      { time: 4, event: 'cam' },
+      { time: 5, event: 'drawingContest' },
+      { time: 6, event: 'lastCupidTime' },
+      { time: 40, event: 'finish' },
     ]
     // 언젠가 세션 같은 방을 만날 수도 있어서 초기화를 시킴
     // 만약 겹치지 않는다면, 아래 코드는 지워도 무방
@@ -217,11 +212,11 @@ export class OpenViduService {
       setTimeout(
         () => {
           let message: string
-          if (time === 3) {
+          if (event === 'keyword') {
             const getRandomNumber = () => Math.floor(Math.random() * 20) + 1
             const number = getRandomNumber()
             message = `${number}`
-          } else if (time === 0.5) {
+          } else if (event === 'introduce') {
             const TeamArray = this.getParticipants(sessionName).map(
               user => user.name,
             ) // 유저 닉네임 가져옴
@@ -261,9 +256,14 @@ export class OpenViduService {
       participants.forEach(({ socket }) => {
         server.to(socket.id).emit(eventType, { message, getRandomParticipant })
       })
-    } else if (eventType == 'Introduce') {
+    } else if (eventType == 'introduce') {
       participants.forEach(({ socket }) => {
         server.to(socket.id).emit(eventType, messageArray)
+      })
+    } else if (eventType == 'drawingContest') {
+      const keywordsIndex = Math.random() * 1234
+      participants.forEach(({ socket }) => {
+        server.to(socket.id).emit(eventType, { message, keywordsIndex })
       })
     } else {
       participants.forEach(({ socket }) => {
@@ -292,6 +292,12 @@ export class OpenViduService {
     }
   }
 
+  removeChooseData(sessionName: string) {
+    if (!this.chooseData[sessionName]) {
+      delete this.chooseData[sessionName]
+    }
+  }
+
   getChooseData(sessionName: string) {
     return this.chooseData[sessionName] || []
   }
@@ -304,6 +310,7 @@ export class OpenViduService {
         choice => choice.sender === receiver && choice.receiver === sender,
       )
       if (isPair) {
+        // matches = [ { pair : [jinyong, test] }]
         matches.push({ pair: [sender, receiver] })
       }
     })
@@ -326,6 +333,18 @@ export class OpenViduService {
     delete this.drawings[sessionName]
   }
 
+  /**<sessionName, <username, phtos>> */
+  private photos: Record<string, Record<string, string>> = {}
+
+  savePhoto(sessionName: string, userName: string, photo: string) {
+    if (!this.photos[sessionName]) this.photos[sessionName] = {}
+    this.photos[sessionName][userName] = photo
+  }
+
+  getPhotos(sessionName: string, userName: string) {
+    return this.photos[sessionName] || {}
+  }
+
   /**<sessionName, <username, votedUser>> */
   private votes: Record<string, Record<string, string>> = {}
 
@@ -338,7 +357,7 @@ export class OpenViduService {
     return this.votes[sessionName] || {}
   }
 
-  calculateWinner(sessionName: string): string {
+  calculateWinner(sessionName: string): { winner: string; losers: string[] } {
     /**저장했던 그림 삭제 */
     const voteCount: Record<string, number> = {}
 
@@ -353,8 +372,9 @@ export class OpenViduService {
       voteCount[a] > voteCount[b] ? a : b,
     )
 
-    /**저장했던 투표 삭제 */
+    const losers = Object.keys(votes).filter(user => user !== winner)
+
     delete this.votes[sessionName]
-    return winner
+    return { winner, losers }
   }
 }
