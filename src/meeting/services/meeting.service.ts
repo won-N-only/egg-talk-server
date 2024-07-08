@@ -230,7 +230,7 @@ export class MeetingService {
         if (event === 'keyword') {
           const getRandomNumber = () => Math.floor(Math.random() * 20) + 1;
           message = `${getRandomNumber()}`;
-        } else if (event === 'Introduce') {
+        } else if (event === 'introduce') {
           const TeamArray = this.getParticipants(sessionName).map((user) => user.name);
           messageArray = this.shuffleArray(TeamArray);
         } else {
