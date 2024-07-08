@@ -18,14 +18,15 @@ export class CommonService {
   private connectedUsers = new Map<string, Socket>() // userId: Socket
   private connectedSockets = new Map<string, string>() // socketId: userId
   generateAnonymousNickname(): string {
-    const adjectives = ['행복한', '즐거운', '신나는', '활기찬', '유쾌한'];
-    const nouns = ['고양이', '강아지', '토끼', '곰', '펭귄'];
+    const adjectives = ['행복한', '즐거운', '신나는', '활기찬', '유쾌한']
+    const nouns = ['고양이', '강아지', '토끼', '곰', '펭귄']
 
-    const randomAdjective = adjectives[Math.floor(Math.random() * adjectives.length)];
-    const randomNoun = nouns[Math.floor(Math.random() * nouns.length)];
-    const randomNumber = Math.floor(Math.random() * 1000); // 0~999 사이의 난수
+    const randomAdjective =
+      adjectives[Math.floor(Math.random() * adjectives.length)]
+    const randomNoun = nouns[Math.floor(Math.random() * nouns.length)]
+    const randomNumber = Math.floor(Math.random() * 1000) // 0~999 사이의 난수
 
-    return `${randomAdjective} ${randomNoun}#${randomNumber}`;
+    return `${randomAdjective} ${randomNoun}#${randomNumber}`
   }
 
   setServer(server: Server) {
@@ -125,15 +126,15 @@ export class CommonService {
   }
 
   async newMessage(receiverNickname: string, userNickname: string) {
-    try{
-      this.commonRepository.changeNewMessage(receiverNickname, userNickname);
+    try {
+      this.commonRepository.changeNewMessage(receiverNickname, userNickname)
     } catch (error) {
       throw error
     }
   }
   async readMessage(receiverNickname: string, userNickname: string) {
-    try{
-      this.commonRepository.changeReadMessage(receiverNickname, userNickname);
+    try {
+      this.commonRepository.changeReadMessage(receiverNickname, userNickname)
     } catch (error) {
       throw error
     }

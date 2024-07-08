@@ -229,7 +229,7 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
           anonymousNicknames.set(client.id, nickname);
         }
         this.server.emit("homeChat", { message, nickname } );
-        console.log(nickname,"께서 보내신 메세지입니다.", message );
+        // console.log(nickname,"께서 보내신 메세지입니다.", message );
       } catch(error) {
         console.error("HomeChat 수신 오류", error);
       }
