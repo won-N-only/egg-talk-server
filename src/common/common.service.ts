@@ -17,6 +17,16 @@ export class CommonService {
   private server: Server
   private connectedUsers = new Map<string, Socket>() // userId: Socket
   private connectedSockets = new Map<string, string>() // socketId: userId
+  generateAnonymousNickname(): string {
+    const adjectives = ['행복한', '즐거운', '신나는', '활기찬', '유쾌한'];
+    const nouns = ['고양이', '강아지', '토끼', '곰', '펭귄'];
+
+    const randomAdjective = adjectives[Math.floor(Math.random() * adjectives.length)];
+    const randomNoun = nouns[Math.floor(Math.random() * nouns.length)];
+    const randomNumber = Math.floor(Math.random() * 1000); // 0~999 사이의 난수
+
+    return `익명의 ${randomAdjective} ${randomNoun}#${randomNumber}`;
+  }
 
   setServer(server: Server) {
     this.server = server
