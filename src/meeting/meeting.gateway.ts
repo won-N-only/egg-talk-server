@@ -44,7 +44,7 @@ export class MeetingGateway
   private connectedSockets: { [socketId: string]: string } = {} // socketId: nickname 형태로 변경
   private cupidFlag: Map<string, boolean> = new Map()
   private timerFlag: Map<string, boolean> = new Map()
-  private lastCupidFlag: Map<string,boolean> = new Map()
+  private lastCupidFlag: Map<string, boolean> = new Map()
 
   private acceptanceStatus: Record<string, boolean> = {}
   afterInit(server: Server) {
@@ -216,7 +216,7 @@ export class MeetingGateway
   handleStartTimer(client: Socket, payload: { sessionName: string }) {
     const { sessionName } = payload
     if (this.timerFlag.get(sessionName) == undefined) {
-      this.openviduService.startSessionTimer(sessionName, this.server)
+      this.meetingService.startSessionTimer(sessionName, this.server)
       this.timerFlag.set(sessionName, true)
     }
   }
