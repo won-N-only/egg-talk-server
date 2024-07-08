@@ -16,6 +16,8 @@ import { UsersService } from '../users/users.service'
 
 const logger = new Logger('ChatGateway')
 
+const anonymousNicknames = new Map<string, string>()
+
 @UseGuards(JwtAuthWsGuard)
 @WebSocketGateway({
   namespace: 'common',
@@ -24,7 +26,7 @@ const logger = new Logger('ChatGateway')
       'http://localhost:3000',
       'https://egg-signal-app.syeong.link',
       'https://temp-git-main-hyeong1s-projects.vercel.app',
-    ], 
+    ],
     methods: ['GET', 'POST'],
     allowedHeaders: ['Content-Type'],
     credentials: true,
@@ -46,18 +48,23 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
   // 클라이언트 연결 해제 시 처리 로직
   async handleDisconnect(@ConnectedSocket() client: Socket) {
     // 유저가 종료되면 연결된 소켓에 해당 유저 종료했다고 알림
-    const nickname = client['user'].nickname // 올바른 코드
+    const nickname = client['user']?.nickname // 올바른 코드
     const friendIds = await this.commonService.sortFriend(nickname)
-    for (const friend of friendIds) {
-      const friendSocket = this.commonService.getSocketByUserId(
-        friend.toString(),
-      )
-      if (friendSocket) {
-        friendSocket.emit('friendOffline', nickname)
+    console.log(friendIds)
+    if (friendIds) {
+      for (const friend of friendIds) {
+        const friendSocket = this.commonService.getSocketByUserId(
+          friend.toString(),
+        )
+        if (friendSocket) {
+          friendSocket.emit('friendOffline', nickname)
+        }
       }
     }
     // 연결된 클라이언트 삭제
     this.commonService.removeUser(nickname, client.id)
+    // 연결된 익명 닉네임 삭제
+    anonymousNicknames.delete(client.id)
     logger.log(client.id, '연결이 끊겼습니다.')
   }
 
@@ -138,7 +145,7 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     // 4. 채팅 기록 불러오기 (필요하다면)
     const chatHistory = await this.commonService.getChatHistory(chatRoomId)
-    await this.commonService.readMessage(friendName, nickname);
+    await this.commonService.readMessage(friendName, nickname)
     client.emit('chatHistory', chatHistory)
   }
 
@@ -193,8 +200,8 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
             .emit('newMessageNotification', chatRoomId)
         }
         // 유저 정보에서 "newNotification": bool 부분만 바꿔주면됌
-        await this.commonService.changeNotice(receiverNickname);
-        await this.commonService.newMessage(receiverNickname, userNickname);
+        await this.commonService.changeNotice(receiverNickname)
+        await this.commonService.newMessage(receiverNickname, userNickname)
       }
 
       // 1. recieverId에 대응 하는 socket ID 가 connectClient에 존재하는지 확인
@@ -207,6 +214,27 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
     } catch (error) {
       logger.error('메시지 전송 실패:', error)
       client.emit('error', '메시지 전송에 실패했습니다.')
+    }
+  }
+
+  // 누군가 홈화면에서 채팅을 보냈을때
+  @SubscribeMessage('homeChat')
+  async handleHomeChat(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { message: string },
+  ) {
+    try {
+      let nickname = anonymousNicknames.get(client.id)
+      const { message } = payload
+      if (!nickname) {
+        // 닉네임이 없으면 새로 생성
+        nickname = this.commonService.generateAnonymousNickname()
+        anonymousNicknames.set(client.id, nickname)
+      }
+      this.server.emit('homeChat', { message, nickname })
+      // console.log(nickname,"께서 보내신 메세지입니다.", message );
+    } catch (error) {
+      console.error('HomeChat 수신 오류', error)
     }
   }
 
@@ -262,7 +290,7 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.emit('resAcceptFriend', updatedUser)
       const friend = await this.usersService.findOne(friendNickname)
       const friendSocket = this.commonService.getSocketByUserId(friendNickname)
-      friendSocket.emit('friendRequestAccepted', friend)
+      friendSocket?.emit('friendRequestAccepted', friend)
     } catch (error) {
       client.emit('resAcceptFriendError', error.message)
     }
