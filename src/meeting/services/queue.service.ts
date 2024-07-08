@@ -61,10 +61,10 @@ export class QueueService {
   }
 
   async findOrCreateNewSession(): Promise<string> {
-    const newSessionName = this.meetingService.generateSessionName()
-    await this.meetingService.createSession(newSessionName)
-    console.log(`Creating and returning new session: ${newSessionName}`)
-    return newSessionName
+    const newSessionId = this.meetingService.generateSessionId()
+    await this.meetingService.createSession(newSessionId)
+    console.log(`Creating and returning new session: ${newSessionId}`)
+    return newSessionId
   }
 
   /* 남녀 3명씩 끊어서 처리하는 작업 */
@@ -73,20 +73,20 @@ export class QueueService {
     client: Socket,
     gender: string,
   ) {
-    let sessionName = ''
+    let sessionId = ''
     try {
       this.addParticipant(participantName, client, gender)
 
       if (this.maleQueue.length >= 3 && this.femaleQueue.length >= 3) {
-        sessionName = await this.findOrCreateNewSession()
+        sessionId = await this.findOrCreateNewSession()
         const readyMales = this.maleQueue.splice(0, 3)
         const readyFemales = this.femaleQueue.splice(0, 3)
 
-        await this.meetingService.createSession(sessionName)
+        await this.meetingService.createSession(sessionId)
 
         readyMales.forEach(male => {
           this.meetingService.addParticipant(
-            sessionName,
+            sessionId,
             male.name,
             male.socket,
           )
@@ -94,25 +94,25 @@ export class QueueService {
 
         readyFemales.forEach(female => {
           this.meetingService.addParticipant(
-            sessionName,
+            sessionId,
             female.name,
             female.socket,
           )
         })
-        console.log('현재 큐 시작진입합니다 세션 이름은 : ', sessionName)
-        await this.meetingService.startVideoChatSession(sessionName)
-        return { sessionName, readyMales, readyFemales }
+        console.log('현재 큐 시작진입합니다 세션 이름은 : ', sessionId)
+        await this.meetingService.startVideoChatSession(sessionId)
+        return { sessionId, readyMales, readyFemales }
       }
       // 이 부분은 클라 확인차 로그로써 삭제해도 무방 다만 테스트 시 확인이 힘들어짐
-      const participants = this.meetingService.getParticipants(sessionName)
+      const participants = this.meetingService.getParticipants(sessionId)
       console.log(
         'Current waiting participants: ',
         participants.map(p => p.name),
       )
-      return { sessionName }
+      return { sessionId }
     } catch (error) {
       console.error('Error joining queue:', error)
-      await this.meetingService.deleteSession(sessionName)
+      await this.meetingService.deleteSession(sessionId)
     }
   }
 }
