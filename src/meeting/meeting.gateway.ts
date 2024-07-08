@@ -43,7 +43,8 @@ export class MeetingGateway
   private connectedUsers: { [nickname: string]: Socket } = {} // nickname: socketId 형태로 변경
   private connectedSockets: { [socketId: string]: string } = {} // socketId: nickname 형태로 변경
   private cupidFlag: Map<string, boolean> = new Map()
-  private lastCupidFlag: Map<string, boolean> = new Map()
+  private timerFlag: Map<string, boolean> = new Map()
+  private lastCupidFlag: Map<string,boolean> = new Map()
 
   private acceptanceStatus: Record<string, boolean> = {}
   afterInit(server: Server) {
@@ -96,8 +97,6 @@ export class MeetingGateway
         participantName = payload.participantName
         gender = payload.gender
       }
-      // const participantName = client['user'].nickname
-      // const gender = client['user'].gender
 
       const existingSessionName = this.roomid.get(participantName)
       if (existingSessionName) {
@@ -210,6 +209,15 @@ export class MeetingGateway
       }
     } else {
       console.error('세션에러입니다')
+    }
+  }
+
+  @SubscribeMessage('startTimer')
+  handleStartTimer(client: Socket, payload: { sessionName: string }) {
+    const { sessionName } = payload
+    if (this.timerFlag.get(sessionName) == undefined) {
+      this.openviduService.startSessionTimer(sessionName, this.server)
+      this.timerFlag.set(sessionName, true)
     }
   }
 
@@ -405,5 +413,6 @@ export class MeetingGateway
     this.cupidFlag.delete(sessionName)
     delete this.connectedUsers[payload.participantName]
     delete this.connectedSockets[client.id]
+    this.timerFlag.delete(sessionName)
   }
 }

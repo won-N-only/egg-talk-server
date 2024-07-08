@@ -12,8 +12,8 @@ export class MeetingService {
     {}
   private lastChooseData: Record<string, { sender: string; receiver: string }> =
     {}
-  private timerFlag: Map<string, boolean> = new Map()
   private sessionTimers: Record<string, NodeJS.Timeout> = {}
+
   public server: Server
 
   constructor() {
@@ -94,7 +94,6 @@ export class MeetingService {
     delete this.chooseData[sessionName]
     delete this.sessions[sessionName]
     delete this.sessionTimers[sessionName]
-    this.timerFlag.delete(sessionName)
   }
 
   getParticipants(sessionName: string) {
@@ -185,10 +184,6 @@ export class MeetingService {
           participantName: participant,
         })
       })
-      if (this.timerFlag.get(sessionName) == undefined) {
-        this.startSessionTimer(sessionName, this.server)
-        this.timerFlag.set(sessionName, true)
-      }
 
       await this.resetParticipants(sessionName)
     } catch (error) {
