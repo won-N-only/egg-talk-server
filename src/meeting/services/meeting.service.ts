@@ -265,6 +265,11 @@ export class MeetingService {
       participants.forEach(({ socket }) => {
         server.to(socket.id).emit(eventType, messageArray)
       })
+    } else if (eventType == 'drawingContest') {
+      const keywordsIndex = Math.random() * 1234
+      participants.forEach(({ socket }) => {
+        server.to(socket.id).emit(eventType, { message, keywordsIndex })
+      })
     } else {
       participants.forEach(({ socket }) => {
         server.to(socket.id).emit(eventType, { message })
@@ -293,8 +298,8 @@ export class MeetingService {
   }
 
   removeChooseData(sessionName: string) {
-    if (!this.chooseData[sessionName]){
-      delete this.chooseData[sessionName];
+    if (!this.chooseData[sessionName]) {
+      delete this.chooseData[sessionName]
     }
   }
 
@@ -333,6 +338,18 @@ export class MeetingService {
     delete this.drawings[sessionName]
   }
 
+  /**<sessionName, <username, phtos>> */
+  private photos: Record<string, Record<string, string>> = {}
+
+  savePhoto(sessionName: string, userName: string, photo: string) {
+    if (!this.photos[sessionName]) this.photos[sessionName] = {}
+    this.photos[sessionName][userName] = photo
+  }
+
+  getPhotos(sessionName: string, userName: string) {
+    return this.photos[sessionName] || {}
+  }
+
   /**<sessionName, <username, votedUser>> */
   private votes: Record<string, Record<string, string>> = {}
 
@@ -345,7 +362,7 @@ export class MeetingService {
     return this.votes[sessionName] || {}
   }
 
-  calculateWinner(sessionName: string): string {
+  calculateWinner(sessionName: string): { winner: string; losers: string[] } {
     /**저장했던 그림 삭제 */
     const voteCount: Record<string, number> = {}
 
@@ -360,8 +377,9 @@ export class MeetingService {
       voteCount[a] > voteCount[b] ? a : b,
     )
 
-    /**저장했던 투표 삭제 */
+    const losers = Object.keys(votes).filter(user => user !== winner)
+
     delete this.votes[sessionName]
-    return winner
+    return { winner, losers }
   }
 }

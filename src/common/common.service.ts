@@ -113,4 +113,19 @@ export class CommonService {
   async acceptFriend(data: AcceptFriend): Promise<User> {
     return await this.commonRepository.acceptFriend(data)
   }
+
+  async newMessage(receiverNickname: string, userNickname: string) {
+    try{
+      this.commonRepository.changeNewMessage(receiverNickname, userNickname);
+    } catch (error) {
+      throw error
+    }
+  }
+  async readMessage(receiverNickname: string, userNickname: string) {
+    try{
+      this.commonRepository.changeReadMessage(receiverNickname, userNickname);
+    } catch (error) {
+      throw error
+    }
+  }
 }

@@ -43,9 +43,9 @@ export class MeetingGateway
   private connectedUsers: { [nickname: string]: Socket } = {} // nickname: socketId 형태로 변경
   private connectedSockets: { [socketId: string]: string } = {} // socketId: nickname 형태로 변경
   private cupidFlag: Map<string, boolean> = new Map()
-  private lastCupidFlag: Map<string,boolean> = new Map()
+  private lastCupidFlag: Map<string, boolean> = new Map()
 
-  private acceptanceStatus: Record<string, boolean> = {};
+  private acceptanceStatus: Record<string, boolean> = {}
   afterInit(server: Server) {
     this.meetingService.server = server
     console.log('WebSocket initialized')
@@ -74,9 +74,9 @@ export class MeetingGateway
     delete this.connectedUsers[participantName]
     this.roomid.delete(participantName)
 
-    const nickname = this.connectedSockets[client.id];
+    const nickname = this.connectedSockets[client.id]
     if (nickname in this.acceptanceStatus) {
-      delete this.acceptanceStatus[nickname];
+      delete this.acceptanceStatus[nickname]
     }
   }
 
@@ -107,7 +107,6 @@ export class MeetingGateway
         )
         this.roomid.delete(participantName)
       }
-
 
       const { sessionName, readyMales, readyFemales } =
         await this.queueService.handleJoinQueue(participantName, client, gender)
@@ -206,7 +205,7 @@ export class MeetingGateway
           })
           this.cupidFlag.set(sessionName, true)
         }
-        this.openviduService.removeChooseData(sessionName);
+        this.meetingService.removeChooseData(sessionName)
       }
     } else {
       console.error('세션에러입니다')
@@ -214,17 +213,19 @@ export class MeetingGateway
   }
 
   @SubscribeMessage('forwardDrawing')
-  handleFowardDrawing(
+  handleForwardDrawing(
     client: Socket,
-    payload: { userName: string; drawing: any },
+    payload: { userName: string; drawing: string; photo: string },
   ) {
-    const { drawing, userName } = payload
+    const { drawing, userName, photo } = payload
     const sessionName = this.roomid.get(userName)
+
     if (!sessionName) {
       console.error(`세션에 없는 유저이름임: ${userName}`)
       return
     }
 
+    this.meetingService.savePhoto(sessionName, userName, photo)
     this.meetingService.saveDrawing(sessionName, userName, drawing)
 
     const drawings = this.meetingService.getDrawings(sessionName)
@@ -245,15 +246,22 @@ export class MeetingGateway
   ) {
     const { userName, votedUser } = payload
     const sessionName = this.roomid.get(userName)
+
     this.meetingService.saveVote(sessionName, userName, votedUser)
 
     const votes = this.meetingService.getVotes(sessionName)
 
     if (Object.keys(votes).length === 6) {
-      const winner = this.meetingService.calculateWinner(sessionName)
+      const { winner, losers } =
+        this.meetingService.calculateWinner(sessionName)
+
       const participants = this.meetingService.getParticipants(sessionName)
       participants.forEach(({ socket }) => {
-        this.server.to(socket.id).emit('voteResults', { winner })
+        this.server.to(socket.id).emit('voteResults', {
+          winner,
+          losers,
+          photos: this.meetingService.getPhotos(sessionName, userName),
+        })
       })
     }
   }
@@ -261,55 +269,70 @@ export class MeetingGateway
   @SubscribeMessage('winnerPrize')
   handleWinnerPrize(
     client: Socket,
-    payload: { winners: string[]; losers: string[] },
+    payload: { userName: string; winners: string[]; losers: string[] },
   ) {
-    const { winners, losers } = payload
-    const sessionName = this.roomid.get(winners[0])
+    const { userName, winners, losers } = payload
+    const sessionName = this.roomid.get(userName)
     const participants = this.meetingService.getParticipants(sessionName)
-    participants.forEach(({ socket }) => {
-      this.server
-        .to(socket.id)
-        .emit('finalResults', { winners: winners, losers: losers })
-    })
+
+    if (userName === winners[0])
+      participants.forEach(({ socket }) => {
+        this.server.to(socket.id).emit('finalResults', { winners, losers })
+      })
   }
 
+  @SubscribeMessage('drawingOneToOne')
+  handleDrawingOneToOne(
+    client: Socket,
+    payload: { userName: string; winners: string[]; losers: string[] },
+  ) {
+    const { userName, winners, losers } = payload
+    let partner: string
+
+    winners.includes(userName)
+      ? (partner = winners.filter(u => u !== userName)[0])
+      : (partner = '0')
+
+    client.emit('cupidResult', {
+      lover: partner,
+      loser: losers,
+    })
+  }
 
   // 1. 10초 이내에 '1대1화상채팅하기' 버튼을 누르지 않으면 비활성
   // 2. 성공적으로 '1대1화상채팅하기' 버튼을 눌렀을 경우 클라이언트 -> 서버(Event : chooseCam)
   @SubscribeMessage('lastChoose')
-  handleChooseCam(client: Socket, payload: { sender : string; receiver: string })
-  { // 서버 입장에서 소켓이 존재하는 방을 찾기 위함
-    const { sender, receiver }  = payload
+  handleChooseCam(
+    client: Socket,
+    payload: { sender: string; receiver: string },
+  ) {
+    // 서버 입장에서 소켓이 존재하는 방을 찾기 위함
+    const { sender, receiver } = payload
     const sessionName = this.roomid.get(sender)
     // 기존 정보가 있다면 새롭게 변형해서 저장할 수 있음
     if (sessionName) {
-      this.openviduService.storeChoose(
-        sessionName,
-        sender,
-        receiver,
-      )
+      this.meetingService.storeChoose(sessionName, sender, receiver)
       // 방과 일치하는 매칭결과 정보 가져오기
-      const chooseData = this.openviduService.getChooseData(sessionName);
-      if ( chooseData.length === 6) {
+      const chooseData = this.meetingService.getChooseData(sessionName)
+      if (chooseData.length === 6) {
         // 방과 일치하는 참여자 정보 가져오기
-        const participant = this.openviduService.getParticipants(sessionName);
+        const participant = this.meetingService.getParticipants(sessionName)
         // 매칭된 쌍의 정보를 가지고 있음
         // [
         // { pair: [ 'Alice', 'Bob' ] },
         // { pair: [ 'Charlie', 'David' ] },
         // { pair: [ 'Eve', 'Frank' ] }
         // ]
-        const matches = this.openviduService.findMatchingPairs(sessionName);
+        const matches = this.meetingService.findMatchingPairs(sessionName)
 
         if (this.lastCupidFlag.get(sessionName) == undefined) {
-          participant.forEach( ({socket, name }) => {
-
+          participant.forEach(({ socket, name }) => {
             const matchedPair = matches.find(elem => elem.pair.includes(name))
             if (matchedPair) {
-              const partner = matchedPair.pair.find( elem => elem !== name)
-              this.server.to(socket.id).emit('matching', { lover : partner })
+              const partner = matchedPair.pair.find(elem => elem !== name)
+              this.server.to(socket.id).emit('matching', { lover: partner })
             } else {
-              this.server.to(socket.id).emit('matching', { lover : '0'})
+              this.server.to(socket.id).emit('matching', { lover: '0' })
             }
 
             this.server.to(socket.id).emit('lastChooseResult', chooseData)
@@ -323,32 +346,47 @@ export class MeetingGateway
   }
 
   @SubscribeMessage('moveToPrivateRoom')
-  async handleMoveToPrivateRoom(client: Socket, payload : {sessionName:string; myName:string; partnerName:string})
-  { 
-    
-    const { sessionName, myName, partnerName } = payload;
-    const participant = this.openviduService.getParticipants(sessionName);
+  async handleMoveToPrivateRoom(
+    client: Socket,
+    payload: { sessionName: string; myName: string; partnerName: string },
+  ) {
+    const { sessionName, myName, partnerName } = payload
+    const participant = this.meetingService.getParticipants(sessionName)
     if (this.acceptanceStatus[partnerName] === true) {
-      const newSessionName = `${myName}-${partnerName}`;
-      const newSession = await this.openviduService.createSession(newSessionName);
+      const newSessionName = `${myName}-${partnerName}`
+      const newSession =
+        await this.meetingService.createSession(newSessionName)
 
-      const partner = await participant.find(participant => participant.name === partnerName )
-      this.openviduService.addParticipant(newSessionName, myName, client);
-      this.openviduService.addParticipant(newSessionName, partnerName, partner.socket);
+      const partner = await participant.find(
+        participant => participant.name === partnerName,
+      )
+      this.meetingService.addParticipant(newSessionName, myName, client)
+      this.meetingService.addParticipant(
+        newSessionName,
+        partnerName,
+        partner.socket,
+      )
 
-      const enterToken = await this.openviduService.generateTokens(newSessionName);
+      const enterToken =
+        await this.meetingService.generateTokens(newSessionName)
 
-      const myToken = enterToken.find(elem => elem.participant === myName).token;
-      const partnerToken = enterToken.find(elem => elem.participant === partnerName).token;
+      const myToken = enterToken.find(elem => elem.participant === myName).token
+      const partnerToken = enterToken.find(
+        elem => elem.participant === partnerName,
+      ).token
 
       if (myToken && partnerToken) {
-        this.server.to(client.id).emit('choice', { sessionId: newSessionName, token: myToken });
-        this.server.to(partner.socket.id).emit('choice', { sessionId: newSessionName, token: partnerToken });
+        this.server
+          .to(client.id)
+          .emit('choice', { sessionId: newSessionName, token: myToken })
+        this.server
+          .to(partner.socket.id)
+          .emit('choice', { sessionId: newSessionName, token: partnerToken })
       } else {
-        console.error("방 생성 실패!");
+        console.error('방 생성 실패!')
       }
     } else {
-      this.acceptanceStatus[myName] = true;
+      this.acceptanceStatus[myName] = true
     }
   }
 
