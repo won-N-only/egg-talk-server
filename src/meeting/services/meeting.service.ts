@@ -208,6 +208,7 @@ export class MeetingService {
     ]
     // 언젠가 세션 같은 방을 만날 수도 있어서 초기화를 시킴
     // 만약 겹치지 않는다면, 아래 코드는 지워도 무방
+    console.log('세션타이머가 시작되었습니다 세션 이름은?? : ', sessionName)
     if (this.sessionTimers[sessionName]) {
       clearTimeout(this.sessionTimers[sessionName])
     }

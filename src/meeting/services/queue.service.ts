@@ -99,6 +99,7 @@ export class QueueService {
             female.socket,
           )
         })
+        console.log('현재 큐 시작진입합니다 세션 이름은 : ', sessionName)
         await this.meetingService.startVideoChatSession(sessionName)
         return { sessionName, readyMales, readyFemales }
       }
