@@ -354,7 +354,8 @@ export class MeetingGateway
     const participant = this.meetingService.getParticipants(sessionName)
     if (this.acceptanceStatus[partnerName] === true) {
       const newSessionName = `${myName}-${partnerName}`
-      const newSession = await this.meetingService.createSession(newSessionName)
+      const newSession =
+        await this.meetingService.createSession(newSessionName)
 
       const partner = await participant.find(
         participant => participant.name === partnerName,
