@@ -415,4 +415,17 @@ export class MeetingGateway
     delete this.connectedSockets[client.id]
     this.timerFlag.delete(sessionName)
   }
+
+  @SubscribeMessage('emoji')
+  handleEmoji(
+    client: Socket,
+    payload: { nickname: string; emojiIndex: string },
+  ) {
+    const { nickname, emojiIndex } = payload
+    const sessionName = this.roomid.get(nickname)
+    const participants = this.meetingService.getParticipants(sessionName)
+    participants.forEach(({ socket }) => {
+      this.server.to(socket.id).emit('emojiBroadcast', { nickname, emojiIndex })
+    })
+  }
 }
