@@ -199,56 +199,56 @@ export class MeetingService {
   startSessionTimer(sessionId: string, server: Server) {
     const timers = [
       { time: 0.5, event: 'introduce' },
-      { time: 2, event: 'keyword' },
+      { time: 1.5, event: 'keyword' },
       { time: 3, event: 'cupidTime' },
-      { time: 4, event: 'cam' },
-      { time: 5, event: 'drawingContest' },
-      { time: 6, event: 'lastCupidTime' },
-      { time: 7, event: 'finish' },
-    ]
-    // 언젠가 세션 같은 방을 만날 수도 있어서 초기화를 시킴
-    // 만약 겹치지 않는다면, 아래 코드는 지워도 무방
-    console.log('세션타이머가 시작되었습니다 세션 이름은?? : ', sessionId)
+      { time: 5, event: 'cam' },
+      { time: 5.5, event: 'drawingContest' },
+      { time: 7, event: 'lastCupidTime'},
+      { time: 8, event: 'finish' },
+    ];
+  
+    // 세션 타이머 초기화 (필요한 경우)
     if (this.sessionTimers[sessionId]) {
-      clearTimeout(this.sessionTimers[sessionId])
+      clearTimeout(this.sessionTimers[sessionId]);
     }
-
-    timers.forEach(({ time, event }) => {
-      let messageArray: string[] | undefined
-
-      setTimeout(
-        () => {
-          let message: string
-          if (event === 'keyword') {
-            const getRandomNumber = () => Math.floor(Math.random() * 20) + 1
-            const number = getRandomNumber()
-            message = `${number}`
-          } else if (event === 'introduce') {
-            console.log('현재 세션입니다 : ', this.getSession(sessionId))
-            const TeamArray = this.getParticipants(sessionId).map(
-              user => user.name,
-            ) // 유저 닉네임 가져옴
-            console.log('현재 팀 어레이입니다. : ', TeamArray)
-            const RandomTeamArray = this.shuffleArray(TeamArray) // 유저를 랜덤으로 셔플함
-            console.log('랜덤 팀 어레이입니다 : ', RandomTeamArray)
-            message = null // 셔플한 랜덤 유저 Array를 Message에 담음
-            console.log(message)
-            console.log('성공 !!!!!!!!!!!!!!!!!')
-            messageArray = RandomTeamArray
-          } else {
-            message = `${event}`
-          }
-          this.notifySessionParticipants(
-            sessionId,
-            event,
-            message,
-            server,
-            messageArray,
-          )
-        },
-        time * 50 * 1000,
-      )
-    })
+  
+    let elapsedTime = 0; // 경과 시간
+    let currentTimerIndex = 0; // 현재 타이머 인덱스
+  
+    const timerId = setInterval(() => {
+      elapsedTime += 1; // 1초씩 증가
+  
+      // 현재 타이머 인덱스가 유효하고, 경과 시간이 현재 타이머의 시간과 같으면 이벤트 발생
+      if (
+        currentTimerIndex < timers.length &&
+        elapsedTime === timers[currentTimerIndex].time * 60
+      ) {
+        const { event } = timers[currentTimerIndex];
+        let message: string | null;
+        let messageArray: string[] | undefined;
+  
+        if (event === 'keyword') {
+          const getRandomNumber = () => Math.floor(Math.random() * 20) + 1;
+          message = `${getRandomNumber()}`;
+        } else if (event === 'introduce') {
+          const TeamArray = this.getParticipants(sessionId).map((user) => user.name);
+          messageArray = this.shuffleArray(TeamArray);
+        } else {
+          message = `${event}`;
+        }
+  
+        this.notifySessionParticipants(sessionId, event, message, server, messageArray);
+  
+        currentTimerIndex++; // 다음 타이머로 이동
+      }
+  
+      // 모든 타이머가 완료되면 setInterval 종료
+      if (currentTimerIndex >= timers.length) {
+        clearInterval(timerId);
+      }
+    }, 1000); // 1초마다 실행
+  
+    this.sessionTimers[sessionId] = timerId; // 타이머 ID 저장
   }
 
   notifySessionParticipants(
