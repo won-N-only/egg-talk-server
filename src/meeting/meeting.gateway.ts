@@ -219,18 +219,18 @@ export class MeetingGateway
   }
 
   @SubscribeMessage('startTimer')
-  handleStartTimer(client: Socket, payload: { sessionName: string }) {
-    const { sessionName } = payload
+  handleStartTimer(client: Socket, payload: { sessionId: string }) {
+    const { sessionId } = payload
     console.log(
       '현재 타이머가 시작되었나요? => ',
-      this.timerFlag.get(sessionName),
+      this.timerFlag.get(sessionId),
       '혹시 클라에서 온 세션 이름은?? ',
-      sessionName,
+      sessionId,
     )
-    if (this.timerFlag.get(sessionName) == undefined) {
+    if (this.timerFlag.get(sessionId) == undefined) {
       console.log('타이머가 시작되었습니다.')
-      this.meetingService.startSessionTimer(sessionName, this.server)
-      this.timerFlag.set(sessionName, true)
+      this.meetingService.startSessionTimer(sessionId, this.server)
+      this.timerFlag.set(sessionId, true)
     }
   }
 
