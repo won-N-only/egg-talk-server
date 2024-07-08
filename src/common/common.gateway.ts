@@ -119,10 +119,11 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('joinchat')
   async handleJoinRoom(
     client: Socket,
-    payload: { newChatRoomId: string }, // nickName == userId
+    payload: { newChatRoomId: string; friendName: string }, // nickName == userId
   ) {
-    const { newChatRoomId } = payload
+    const { newChatRoomId, friendName } = payload
     const chatRoomId = newChatRoomId
+    const nickname = client['user'].nickname
     // 1. 기존 채팅방 정보 가져오기
 
     const currentRooms = Array.from(client.rooms) // 현재 참여 중인 모든 방
@@ -137,6 +138,7 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     // 4. 채팅 기록 불러오기 (필요하다면)
     const chatHistory = await this.commonService.getChatHistory(chatRoomId)
+    await this.commonService.readMessage(friendName, nickname);
     client.emit('chatHistory', chatHistory)
   }
 
@@ -191,7 +193,8 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
             .emit('newMessageNotification', chatRoomId)
         }
         // 유저 정보에서 "newNotification": bool 부분만 바꿔주면됌
-        await this.commonService.changeNotice(receiverNickname)
+        await this.commonService.changeNotice(receiverNickname);
+        await this.commonService.newMessage(receiverNickname, userNickname);
       }
 
       // 1. recieverId에 대응 하는 socket ID 가 connectClient에 존재하는지 확인
