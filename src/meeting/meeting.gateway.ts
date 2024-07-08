@@ -57,6 +57,10 @@ export class MeetingGateway
   handleDisconnect(client: Socket) {
     const sessions = this.meetingService.getSessions()
     const participantName = this.connectedSockets[client.id]
+    console.log(
+      '미팅 게이트웨이 디스커넥트입니다. 유저 이름은 : ',
+      participantName,
+    )
     const user = client['user']
     if (!sessions.length && user) {
       const gender = client['user'].gender
@@ -110,6 +114,8 @@ export class MeetingGateway
 
       const { sessionName, readyMales, readyFemales } =
         await this.queueService.handleJoinQueue(participantName, client, gender)
+
+      console.log('레디일때의 sessionName은?? ', sessionName)
       if (sessionName && readyFemales && readyMales) {
         readyMales.forEach(male => {
           this.roomid.set(male.name, sessionName)
@@ -218,6 +224,8 @@ export class MeetingGateway
     console.log(
       '현재 타이머가 시작되었나요? => ',
       this.timerFlag.get(sessionName),
+      '혹시 클라에서 온 세션 이름은?? ',
+      sessionName,
     )
     if (this.timerFlag.get(sessionName) == undefined) {
       console.log('타이머가 시작되었습니다.')
