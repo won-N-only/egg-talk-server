@@ -207,6 +207,13 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
+  // 홈화면에서 채팅을 보냈을때
+  @SubscribeMessage('homeChat')
+  handleHomeChat(
+    @ConnectedSocket() client: Socket, @MessageBody() payload : { message : string } ){
+      
+  }
+
   @SubscribeMessage('reqGetNotifications')
   async handleGetNotifications(
     @ConnectedSocket() client: Socket,
@@ -259,7 +266,7 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.emit('resAcceptFriend', updatedUser)
       const friend = await this.usersService.findOne(friendNickname)
       const friendSocket = this.commonService.getSocketByUserId(friendNickname)
-      friendSocket.emit('friendRequestAccepted', friend)
+      friendSocket?.emit('friendRequestAccepted', friend)
     } catch (error) {
       client.emit('resAcceptFriendError', error.message)
     }

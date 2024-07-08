@@ -206,7 +206,7 @@ export class MeetingGateway
           })
           this.cupidFlag.set(sessionName, true)
         }
-        this.openviduService.removeChooseData(sessionName);
+        this.meetingService.removeChooseData(sessionName);
       }
     } else {
       console.error('세션에러입니다')
@@ -283,23 +283,23 @@ export class MeetingGateway
     const sessionName = this.roomid.get(sender)
     // 기존 정보가 있다면 새롭게 변형해서 저장할 수 있음
     if (sessionName) {
-      this.openviduService.storeChoose(
+      this.meetingService.storeChoose(
         sessionName,
         sender,
         receiver,
       )
       // 방과 일치하는 매칭결과 정보 가져오기
-      const chooseData = this.openviduService.getChooseData(sessionName);
+      const chooseData = this.meetingService.getChooseData(sessionName);
       if ( chooseData.length === 6) {
         // 방과 일치하는 참여자 정보 가져오기
-        const participant = this.openviduService.getParticipants(sessionName);
+        const participant = this.meetingService.getParticipants(sessionName);
         // 매칭된 쌍의 정보를 가지고 있음
         // [
         // { pair: [ 'Alice', 'Bob' ] },
         // { pair: [ 'Charlie', 'David' ] },
         // { pair: [ 'Eve', 'Frank' ] }
         // ]
-        const matches = this.openviduService.findMatchingPairs(sessionName);
+        const matches = this.meetingService.findMatchingPairs(sessionName);
 
         if (this.lastCupidFlag.get(sessionName) == undefined) {
           participant.forEach( ({socket, name }) => {
@@ -327,16 +327,16 @@ export class MeetingGateway
   { 
     
     const { sessionName, myName, partnerName } = payload;
-    const participant = this.openviduService.getParticipants(sessionName);
+    const participant = this.meetingService.getParticipants(sessionName);
     if (this.acceptanceStatus[partnerName] === true) {
       const newSessionName = `${myName}-${partnerName}`;
-      const newSession = await this.openviduService.createSession(newSessionName);
+      const newSession = await this.meetingService.createSession(newSessionName);
 
       const partner = await participant.find(participant => participant.name === partnerName )
-      this.openviduService.addParticipant(newSessionName, myName, client);
-      this.openviduService.addParticipant(newSessionName, partnerName, partner.socket);
+      this.meetingService.addParticipant(newSessionName, myName, client);
+      this.meetingService.addParticipant(newSessionName, partnerName, partner.socket);
 
-      const enterToken = await this.openviduService.generateTokens(newSessionName);
+      const enterToken = await this.meetingService.generateTokens(newSessionName);
 
       const myToken = enterToken.find(elem => elem.participant === myName).token;
       const partnerToken = enterToken.find(elem => elem.participant === partnerName).token;
