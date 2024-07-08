@@ -367,4 +367,10 @@ export class MeetingGateway
     delete this.connectedUsers[payload.participantName]
     delete this.connectedSockets[client.id]
   }
+
+  @SubscribeMessage('emoji')
+  handleEmoji(
+    client: Socket,
+    payload: { nickname: string; emojiIndex: string },
+  ) {}
 }
