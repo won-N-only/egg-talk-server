@@ -56,7 +56,8 @@ export class MeetingGateway
   handleDisconnect(client: Socket) {
     const sessions = this.meetingService.getSessions()
     const participantName = this.connectedSockets[client.id]
-    if (!sessions.length) {
+    const user = client['user']
+    if (!sessions.length && user) {
       const gender = client['user'].gender
       this.queueService.removeParticipant(participantName, gender)
     }
