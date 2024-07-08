@@ -25,7 +25,7 @@ export class CommonService {
     const randomNoun = nouns[Math.floor(Math.random() * nouns.length)];
     const randomNumber = Math.floor(Math.random() * 1000); // 0~999 사이의 난수
 
-    return `익명의 ${randomAdjective} ${randomNoun}#${randomNumber}`;
+    return `${randomAdjective} ${randomNoun}#${randomNumber}`;
   }
 
   setServer(server: Server) {

@@ -16,7 +16,7 @@ import { UsersService } from '../users/users.service'
 
 const logger = new Logger('ChatGateway')
 
-
+const anonymousNicknames = new Map<string, string>();
 
 @UseGuards(JwtAuthWsGuard)
 @WebSocketGateway({
@@ -63,6 +63,8 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
     // 연결된 클라이언트 삭제
     this.commonService.removeUser(nickname, client.id)
+    // 연결된 익명 닉네임 삭제
+    anonymousNicknames.delete(client.id);
     logger.log(client.id, '연결이 끊겼습니다.')
   }
 
@@ -217,18 +219,22 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   // 누군가 홈화면에서 채팅을 보냈을때
   @SubscribeMessage('homeChat')
-  handleHomeChat(
+  async handleHomeChat(
     @ConnectedSocket() client: Socket, @MessageBody() payload : { message : string } ){
       try{
+        let nickname = anonymousNicknames.get(client.id);
         const { message } = payload;
-        const nickname = this.commonService.generateAnonymousNickname();
+        if (!nickname) { // 닉네임이 없으면 새로 생성
+          nickname = this.commonService.generateAnonymousNickname();
+          anonymousNicknames.set(client.id, nickname);
+        }
         this.server.emit("homeChat", { message, nickname } );
         console.log(nickname,"께서 보내신 메세지입니다.", message );
       } catch(error) {
         console.error("HomeChat 수신 오류", error);
       }
   }
-  
+
   @SubscribeMessage('reqGetNotifications')
   async handleGetNotifications(
     @ConnectedSocket() client: Socket,
