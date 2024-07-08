@@ -196,9 +196,9 @@ export class MeetingService {
       console.error('Error generating tokens: ', error)
     }
   }
-  startSessionTimer(sessionName: string, server: Server) {
+  startSessionTimer(sessionId: string, server: Server) {
     const timers = [
-      { time: 0.5, event: 'Introduce' },
+      { time: 0.5, event: 'introduce' },
       { time: 1.5, event: 'keyword' },
       { time: 3, event: 'cupidTime' },
       { time: 5, event: 'cam' },
@@ -208,8 +208,8 @@ export class MeetingService {
     ];
   
     // 세션 타이머 초기화 (필요한 경우)
-    if (this.sessionTimers[sessionName]) {
-      clearTimeout(this.sessionTimers[sessionName]);
+    if (this.sessionTimers[sessionId]) {
+      clearTimeout(this.sessionTimers[sessionId]);
     }
   
     let elapsedTime = 0; // 경과 시간
@@ -231,13 +231,13 @@ export class MeetingService {
           const getRandomNumber = () => Math.floor(Math.random() * 20) + 1;
           message = `${getRandomNumber()}`;
         } else if (event === 'introduce') {
-          const TeamArray = this.getParticipants(sessionName).map((user) => user.name);
+          const TeamArray = this.getParticipants(sessionId).map((user) => user.name);
           messageArray = this.shuffleArray(TeamArray);
         } else {
           message = `${event}`;
         }
   
-        this.notifySessionParticipants(sessionName, event, message, server, messageArray);
+        this.notifySessionParticipants(sessionId, event, message, server, messageArray);
   
         currentTimerIndex++; // 다음 타이머로 이동
       }
@@ -248,7 +248,7 @@ export class MeetingService {
       }
     }, 1000); // 1초마다 실행
   
-    this.sessionTimers[sessionName] = timerId; // 타이머 ID 저장
+    this.sessionTimers[sessionId] = timerId; // 타이머 ID 저장
   }
 
   notifySessionParticipants(
