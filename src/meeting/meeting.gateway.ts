@@ -375,9 +375,10 @@ export class MeetingGateway
     const { sessionId, myName, partnerName } = payload
     const participant = this.meetingService.getParticipants(sessionId)
     if (this.acceptanceStatus[partnerName] === true) {
+      console.log("===========handleMoveToPrivateRoom 1==================")
       const newSessionId = `${myName}-${partnerName}`
 
-      const newSession = await this.meetingService.createSession(newSessionId)
+      await this.meetingService.createSession(newSessionId)
 
       const partner = await participant.find(
         participant => participant.name === partnerName,
@@ -388,7 +389,7 @@ export class MeetingGateway
         partnerName,
         partner.socket,
       )
-
+      console.log("===========handleMoveToPrivateRoom 2==================")
       const enterToken =
         await this.meetingService.generateTokens(newSessionId)
 
@@ -396,7 +397,7 @@ export class MeetingGateway
       const partnerToken = enterToken.find(
         elem => elem.participant === partnerName,
       ).token
-
+      console.log("===========handleMoveToPrivateRoom 3==================")
       if (myToken && partnerToken) {
         this.server
           .to(client.id)
@@ -409,6 +410,8 @@ export class MeetingGateway
       }
     } else {
       this.acceptanceStatus[myName] = true
+      console.log("===========handleMoveToPrivateRoom 0==================")
+
     }
   }
 
