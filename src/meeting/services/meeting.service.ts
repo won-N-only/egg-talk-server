@@ -105,13 +105,23 @@ export class MeetingService {
     console.log(`Clearing session data for ${sessionId}`)
     delete this.chooseData[sessionId]
     delete this.sessions[sessionId]
-    delete this.sessionTimers[sessionId]
+    if (this.sessionTimers[sessionId]) {
+      console.log('타이머 초기화 중')
+      clearInterval(this.sessionTimers[sessionId])
+      delete this.sessionTimers[sessionId]
+    }
   }
 
   getParticipants(sessionId: string) {
-    return this.sessions[sessionId]
-      ? this.sessions[sessionId].participants
-      : []
+
+    const sessions = this.sessions[sessionId];
+    if (sessions) {
+      return this.sessions[sessionId].participants
+    }
+    return []
+    // return this.sessions[sessionId]
+    //   ? this.sessions[sessionId].participants
+    //   : []
   }
 
   async generateTokens(sessionId: string) {
