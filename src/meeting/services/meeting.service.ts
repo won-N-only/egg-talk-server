@@ -88,6 +88,7 @@ export class MeetingService {
         p => p.name !== myid,
       )
       if (this.sessions[sessionId].participants.length === 0) {
+        clearInterval(this.sessionTimers[sessionId])
         this.clearSessionData(sessionId)
       }
     } else {
