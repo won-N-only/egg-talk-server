@@ -53,7 +53,7 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
     // console.log(friendIds)
     if (friendIds) {
       for (const friend of friendIds) {
-        const friendSocket = this.commonService.getSocketByUserId(
+        const friendSocket = await this.commonService.getSocketByUserId(
           friend.toString(),
         )
         if (friendSocket) {
@@ -110,7 +110,7 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const friendIds = await this.commonService.sortFriend(nickname)
       // 2. 순서대로 emit을 보내야함 (내 친구가 현재 접속해있다면!)
       for (const friend of friendIds) {
-        const friendSocket = this.commonService.getSocketByUserId(
+        const friendSocket = await this.commonService.getSocketByUserId(
           friend.toString(),
         )
         if (friendSocket) {
@@ -192,8 +192,9 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
       if (receiverSocket) {
         this.server.to(chatRoomId).emit('message', newChat) // 상대방이 (온라인 상태 + 채팅방 참여) 일때 메시지 전송
       } else {
-        const receiverSocketId =
-          this.commonService.getSocketByUserId(receiverNickname)?.id
+        const receiverSocketId = await this.commonService
+          .getSocketByUserId(receiverNickname)
+          .then(sock => sock.id)
         if (receiverSocketId) {
           this.server
             .to(receiverSocketId)
@@ -268,7 +269,7 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() data: AddFriendDto,
   ): Promise<void> {
     try {
-      const friendSocket = this.commonService.getSocketByUserId(
+      const friendSocket = await this.commonService.getSocketByUserId(
         data.friendNickname,
       )
       if (friendSocket) friendSocket.emit('newFriendRequest', data)
@@ -289,7 +290,8 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const updatedUser = await this.commonService.acceptFriend(data)
       client.emit('resAcceptFriend', updatedUser)
       const friend = await this.usersService.findOne(friendNickname)
-      const friendSocket = this.commonService.getSocketByUserId(friendNickname)
+      const friendSocket =
+        await this.commonService.getSocketByUserId(friendNickname)
       friendSocket?.emit('friendRequestAccepted', friend)
     } catch (error) {
       client.emit('resAcceptFriendError', error.message)
