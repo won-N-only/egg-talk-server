@@ -205,12 +205,12 @@ export class MeetingService {
   startSessionTimer(sessionId: string, server: Server) {
     const timers = [
       { time: 0.5, event: 'introduce' },
-      { time: 1.5, event: 'keyword' },
-      { time: 3, event: 'cupidTime' },
-      { time: 5, event: 'cam' },
-      { time: 5.5, event: 'drawingContest' },
-      { time: 7, event: 'lastCupidTime'},
-      { time: 8, event: 'finish' },
+      { time: 2.5, event: 'keyword' },
+      { time: 4, event: 'cupidTime' },
+      { time: 6, event: 'cam' },
+      { time: 6.5, event: 'drawingContest' },
+      { time: 8.5, event: 'lastCupidTime'},
+      { time: 9, event: 'finish' },
     ];
   
     // 세션 타이머 초기화 (필요한 경우)
@@ -265,7 +265,7 @@ export class MeetingService {
     messageArray?: string[],
   ) {
     const participants = this.getParticipants(sessionId)
-    console.log('현재 참여자 목록입니다 => ', participants)
+    // console.log('현재 참여자 목록입니다 => ', participants)
     if (eventType == 'keyword') {
       const getRandomParticipant = participants[1].name
       participants.forEach(({ socket }) => {
