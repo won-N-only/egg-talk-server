@@ -85,11 +85,7 @@ export class QueueService {
         await this.meetingService.createSession(sessionId)
 
         readyMales.forEach(male => {
-          this.meetingService.addParticipant(
-            sessionId,
-            male.name,
-            male.socket,
-          )
+          this.meetingService.addParticipant(sessionId, male.name, male.socket)
         })
 
         readyFemales.forEach(female => {
