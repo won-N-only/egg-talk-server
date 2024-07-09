@@ -122,6 +122,11 @@ export class CommonService {
   }
 
   async acceptFriend(data: AcceptFriend): Promise<User> {
+    const { userNickname, friendNickname } = data
+    const user = await this.usersRepository.findOne(userNickname)
+    if (user.friends.some(f => f.friend == friendNickname))
+      throw new Error(`이미 친구에용.`)
+
     return await this.commonRepository.acceptFriend(data)
   }
 
