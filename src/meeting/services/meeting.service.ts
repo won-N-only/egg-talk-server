@@ -92,7 +92,7 @@ export class MeetingService {
         console.log(
           "'/meetingService' 세션 참가자가 없습니다",
           this.sessions[sessionId].participants.length,
-        )
+        "sessionId 는", sessionId)
         clearInterval(this.sessionTimers[sessionId])
         this.clearSessionData(sessionId)
       }
