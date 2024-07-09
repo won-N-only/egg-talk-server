@@ -50,7 +50,7 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
     // 유저가 종료되면 연결된 소켓에 해당 유저 종료했다고 알림
     const nickname = client['user']?.nickname // 올바른 코드
     const friendIds = await this.commonService.sortFriend(nickname)
-    console.log(friendIds)
+    // console.log(friendIds)
     if (friendIds) {
       for (const friend of friendIds) {
         const friendSocket = this.commonService.getSocketByUserId(
