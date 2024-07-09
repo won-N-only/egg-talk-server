@@ -274,8 +274,7 @@ export class MeetingGateway
     const votes = this.meetingService.getVotes(sessionId)
 
     if (Object.keys(votes).length === 6) {
-      const { winner, losers } =
-        this.meetingService.calculateWinner(sessionId)
+      const { winner, losers } = this.meetingService.calculateWinner(sessionId)
 
       const participants = this.meetingService.getParticipants(sessionId)
       participants.forEach(({ socket }) => {
@@ -375,8 +374,9 @@ export class MeetingGateway
     const { sessionId, myName, partnerName } = payload
     const participant = this.meetingService.getParticipants(sessionId)
     if (this.acceptanceStatus[partnerName] === true) {
-      console.log("===========handleMoveToPrivateRoom 1==================")
-      const newSessionId = `${myName}-${partnerName}`
+      console.log('===========handleMoveToPrivateRoom 1==================')
+      // const newSessionId = `${myName}-${partnerName}`
+      const newSessionId = this.meetingService.generateSessionId()
 
       await this.meetingService.createSession(newSessionId)
 
@@ -389,15 +389,14 @@ export class MeetingGateway
         partnerName,
         partner.socket,
       )
-      console.log("===========handleMoveToPrivateRoom 2==================")
-      const enterToken =
-        await this.meetingService.generateTokens(newSessionId)
+      console.log('===========handleMoveToPrivateRoom 2==================')
+      const enterToken = await this.meetingService.generateTokens(newSessionId)
 
       const myToken = enterToken.find(elem => elem.participant === myName).token
       const partnerToken = enterToken.find(
         elem => elem.participant === partnerName,
       ).token
-      console.log("===========handleMoveToPrivateRoom 3==================")
+      console.log('===========handleMoveToPrivateRoom 3==================')
       if (myToken && partnerToken) {
         this.server
           .to(client.id)
@@ -410,8 +409,7 @@ export class MeetingGateway
       }
     } else {
       this.acceptanceStatus[myName] = true
-      console.log("===========handleMoveToPrivateRoom 0==================")
-
+      console.log('===========handleMoveToPrivateRoom 0==================')
     }
   }
 
