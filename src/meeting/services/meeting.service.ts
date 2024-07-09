@@ -87,7 +87,13 @@ export class MeetingService {
       this.sessions[sessionId].participants = participants.filter(
         p => p.name !== myid,
       )
+      console.log("/meetingService' 세션 참가자 수: ",this.sessions[sessionId].participants.length)
       if (this.sessions[sessionId].participants.length === 0) {
+        console.log(
+          "'/meetingService' 세션 참가자가 없습니다",
+          this.sessions[sessionId].participants.length,
+        )
+        clearInterval(this.sessionTimers[sessionId])
         this.clearSessionData(sessionId)
       }
     } else {
