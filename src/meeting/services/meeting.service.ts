@@ -36,10 +36,11 @@ export class MeetingService {
   async createSession(sessionId: string): Promise<Session> {
     if (!this.sessions[sessionId]) {
       try {
+        console.log("create 세션 전====================")
         const session = await this.openvidu.createSession({
           customSessionId: sessionId,
         })
-
+        console.log("create 세션 후====================")
         this.sessions[sessionId] = { session, participants: [] }
         console.log(`Session created: ${sessionId}, ID: ${session.sessionId}`)
         return session
