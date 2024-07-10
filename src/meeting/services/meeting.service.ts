@@ -36,11 +36,11 @@ export class MeetingService {
   async createSession(sessionId: string): Promise<Session> {
     if (!this.sessions[sessionId]) {
       try {
-        console.log("create 세션 전====================")
+        console.log('create 세션 전====================')
         const session = await this.openvidu.createSession({
           customSessionId: sessionId,
         })
-        console.log("create 세션 후====================")
+        console.log('create 세션 후====================')
         this.sessions[sessionId] = { session, participants: [] }
         console.log(`Session created: ${sessionId}, ID: ${session.sessionId}`)
         return session
@@ -88,12 +88,17 @@ export class MeetingService {
       this.sessions[sessionId].participants = participants.filter(
         p => p.name !== myid,
       )
-      console.log("/meetingService' 세션 참가자 수: ",this.sessions[sessionId].participants.length)
+      console.log(
+        "/meetingService' 세션 참가자 수: ",
+        this.sessions[sessionId].participants.length,
+      )
       if (this.sessions[sessionId].participants.length === 0) {
         console.log(
           "'/meetingService' 세션 참가자가 없습니다",
           this.sessions[sessionId].participants.length,
-        "sessionId 는", sessionId)
+          'sessionId 는',
+          sessionId,
+        )
         clearInterval(this.sessionTimers[sessionId])
         this.clearSessionData(sessionId)
       }
@@ -114,8 +119,7 @@ export class MeetingService {
   }
 
   getParticipants(sessionId: string) {
-
-    const sessions = this.sessions[sessionId];
+    const sessions = this.sessions[sessionId]
     if (sessions) {
       return this.sessions[sessionId].participants
     }
@@ -199,8 +203,7 @@ export class MeetingService {
         return
       }
       tokens.forEach(({ participant, token }, index) => {
-        const participantSocket =
-          this.getParticipants(sessionId)[index].socket
+        const participantSocket = this.getParticipants(sessionId)[index].socket
         participantSocket.emit('startCall', {
           sessionId: session.sessionId,
           token: token,
@@ -215,62 +218,68 @@ export class MeetingService {
   }
   startSessionTimer(sessionId: string, server: Server) {
     const timers = [
-      { time: 1/12, event: 'introduce' },
-      { time: 1/3, event: 'keyword' },
-      { time: 2/3, event: 'cupidTime' },
-      { time: 5/3, event: 'cam' },
-      { time: 11/6, event: 'drawingContest' },
-      { time: 2.9, event: 'lastCupidTime'},
+      { time: 1 / 12, event: 'introduce' },
+      { time: 1 / 3, event: 'keyword' },
+      { time: 2 / 3, event: 'cupidTime' },
+      { time: 5 / 3, event: 'cam' },
+      { time: 11 / 6, event: 'drawingContest' },
+      { time: 2.9, event: 'lastCupidTime' },
       { time: 3.1, event: 'finish' },
-    ];
-  
+    ]
+
     // 세션 타이머 초기화 (필요한 경우)
     if (this.sessionTimers[sessionId]) {
-      clearTimeout(this.sessionTimers[sessionId]);
+      clearTimeout(this.sessionTimers[sessionId])
     }
-  
-    let elapsedTime = 0; // 경과 시간
-    let currentTimerIndex = 0; // 현재 타이머 인덱스
-  
+
+    let elapsedTime = 0 // 경과 시간
+    let currentTimerIndex = 0 // 현재 타이머 인덱스
+
     const timerId = setInterval(() => {
-      elapsedTime += 1; // 1초씩 증가
-  
+      elapsedTime += 1 // 1초씩 증가
+
       // 현재 타이머 인덱스가 유효하고, 경과 시간이 현재 타이머의 시간과 같으면 이벤트 발생
       if (
         currentTimerIndex < timers.length &&
-        elapsedTime === timers[currentTimerIndex].time * 60
+        elapsedTime === Math.floor(timers[currentTimerIndex].time * 60)
       ) {
-        const { event } = timers[currentTimerIndex];
-        let message: string | null;
-        let messageArray: string[] | undefined;
-  
+        const { event } = timers[currentTimerIndex]
+        let message: string | null
+        let messageArray: string[] | undefined
+
         if (event === 'keyword') {
           // const getRandomNumber = () => Math.floor(Math.random() * 20) + 1;
           // message = `${getRandomNumber()}`;
-          console.log("키워드 보냈음!!!!!!!!")
-          message = "0";
+          console.log('키워드 보냈음!!!!!!!!')
+          message = '0'
         } else if (event === 'introduce') {
           // const TeamArray = this.getParticipants(sessionId).map((user) => user.name);
-          const TeamArray = ["시아"]
+          const TeamArray = ['시아']
           // messageArray = this.shuffleArray(TeamArray);
           messageArray = TeamArray
         } else {
-          message = `${event}`;
-          console.log(message, "이벤트 발송합니다!")
+          message = `${event}`
+          console.log(message, '이벤트 발송합니다!')
         }
-  
-        this.notifySessionParticipants(sessionId, event, message, server, messageArray);
-  
-        currentTimerIndex++; // 다음 타이머로 이동
+
+        this.notifySessionParticipants(
+          sessionId,
+          event,
+          message,
+          server,
+          messageArray,
+        )
+
+        currentTimerIndex++ // 다음 타이머로 이동
       }
-  
+
       // 모든 타이머가 완료되면 setInterval 종료
       if (currentTimerIndex >= timers.length) {
-        clearInterval(timerId);
+        clearInterval(timerId)
       }
-    }, 1000); // 1초마다 실행
-  
-    this.sessionTimers[sessionId] = timerId; // 타이머 ID 저장
+    }, 1000) // 1초마다 실행
+
+    this.sessionTimers[sessionId] = timerId // 타이머 ID 저장
   }
 
   notifySessionParticipants(
@@ -283,7 +292,7 @@ export class MeetingService {
     const participants = this.getParticipants(sessionId)
     // console.log('현재 참여자 목록입니다 => ', participants)
     if (eventType == 'keyword') {
-      const getRandomParticipant = "시아"
+      const getRandomParticipant = '시아'
       // const getRandomParticipant = participants[1].name
       participants.forEach(({ socket }) => {
         server.to(socket.id).emit(eventType, { message, getRandomParticipant })
