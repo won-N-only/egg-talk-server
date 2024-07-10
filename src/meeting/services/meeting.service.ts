@@ -218,8 +218,8 @@ export class MeetingService {
       { time: 1/12, event: 'introduce' },
       { time: 1/3, event: 'keyword' },
       { time: 2/3, event: 'cupidTime' },
-      { time: (1+2/3), event: 'cam' },
-      { time: (1+5/6), event: 'drawingContest' },
+      { time: 5/3, event: 'cam' },
+      { time: 11/6, event: 'drawingContest' },
       { time: 2.9, event: 'lastCupidTime'},
       { time: 3.1, event: 'finish' },
     ];
