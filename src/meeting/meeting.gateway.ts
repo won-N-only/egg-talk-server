@@ -49,7 +49,9 @@ export class MeetingGateway
 
   handleDisconnect(client: Socket) {
     const sessions = this.meetingService.getSessions()
-    const participantName = this.connectedSockets[client.id]
+    const participantName = this.meetingService.getParticipantNameBySocketId(
+      client.id,
+    )
     console.log(
       '미팅 게이트웨이 디스커넥트입니다. 유저 이름은 : ',
       participantName,
@@ -69,14 +71,10 @@ export class MeetingGateway
         )
       }
     }
-    delete this.connectedSockets[client.id]
-    delete this.connectedUsers[participantName]
-    this.roomid.delete(participantName)
 
-    const nickname = this.connectedSockets[client.id]
-    if (nickname in this.acceptanceStatus) {
-      delete this.acceptanceStatus[nickname]
-    }
+    this.meetingService.deleteConnectedSocket(client.id)
+    this.meetingService.deleteParticipantNameInRoomId(participantName)
+    this.meetingService.deleteAcceptanceStatus(client.id)
   }
 
   @SubscribeMessage('ready')
@@ -85,8 +83,8 @@ export class MeetingGateway
     payload: { participantName: string; gender: string },
   ) {
     try {
-      let participantName
-      let gender
+      let participantName: string
+      let gender: string
       if (this.isDevelopment) {
         participantName = client['user'].nickname
         gender = client['user'].gender
@@ -95,14 +93,16 @@ export class MeetingGateway
         gender = payload.gender
       }
 
-      const existingSessionId = this.roomid.get(participantName)
+      const existingSessionId =
+        this.meetingService.getSessionIdByParticipantName(participantName)
+
       if (existingSessionId) {
         this.meetingService.removeParticipant(
           existingSessionId,
           client,
           participantName,
         )
-        this.roomid.delete(participantName)
+        this.meetingService.deleteParticipantNameInRoomId(participantName)
       }
 
       const { sessionId, readyMales, readyFemales } =
@@ -111,14 +111,13 @@ export class MeetingGateway
       console.log('레디일때의 sessionId은?? ', sessionId)
       if (sessionId && readyFemales && readyMales) {
         readyMales.forEach(male => {
-          this.roomid.set(male.name, sessionId)
+          this.meetingService.setParticipantNameToRoomid(male.name, sessionId)
         })
         readyFemales.forEach(female => {
-          this.roomid.set(female.name, sessionId)
+          this.meetingService.setParticipantNameToRoomid(female.name, sessionId)
         })
       }
-      this.connectedUsers[participantName] = client
-      this.connectedSockets[client.id] = participantName
+      this.meetingService.setConnectedSocket(participantName, client)
     } catch (error) {
       console.log('Error handling join Queue request:', error)
     }
@@ -130,8 +129,8 @@ export class MeetingGateway
     payload: { participantName: string; gender: string },
   ) {
     const sessions = this.meetingService.getSessions()
-    let participantName
-    let gender
+    let participantName: string
+    let gender: string
     if (this.isDevelopment) {
       participantName = client['user'].nickname
       gender = client['user'].gender
@@ -151,9 +150,8 @@ export class MeetingGateway
         )
       }
     }
-    delete this.connectedSockets[client.id]
-    delete this.connectedUsers[participantName]
-    this.roomid.delete(participantName)
+    this.meetingService.deleteConnectedSocket(participantName)
+    this.meetingService.deleteParticipantNameInRoomId(participantName)
   }
 
   @SubscribeMessage('choose')
