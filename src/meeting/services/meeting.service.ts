@@ -41,6 +41,81 @@ export class MeetingService {
     return uuidv4()
   }
 
+  getParticipantNameBySocketId(socketId: string): string {
+    return this.connectedSockets[socketId]
+  }
+
+  setConnectedSocket(participantName: string, client: Socket) {
+    this.connectedSockets[client.id] = participantName
+  }
+
+  deleteConnectedSocket(socketId: string) {
+    delete this.connectedSockets[socketId]
+  }
+
+  getSessionIdByParticipantName(participantName: string): string {
+    return this.roomid.get(participantName)
+  }
+
+  setParticipantNameToRoomid(participantName: string, sessionId: string) {
+    this.roomid.set(participantName, sessionId)
+  }
+
+  deleteParticipantNameInRoomId(participantName: string) {
+    this.roomid.delete(participantName)
+  }
+
+  getTimerFlagBySessionId(sessionId: string): boolean {
+    return this.timerFlag.get(sessionId)
+  }
+
+  setTimerFlagBySessionId(sessionId: string) {
+    this.timerFlag.set(sessionId, true)
+  }
+
+  deleteTimerFlagBySessionId(sessionId: string) {
+    this.timerFlag.delete(sessionId)
+  }
+
+  getCupidFlagBySessionId(sessionId: string): boolean {
+    return this.cupidFlag.get(sessionId)
+  }
+
+  setCupidFlagBySessionId(sessionId: string) {
+    this.cupidFlag.set(sessionId, true)
+  }
+
+  deleteCupidFlagBySessionId(sessionId: string) {
+    this.cupidFlag.delete(sessionId)
+  }
+
+  getLastCupidFlagBySessionId(sessionId: string): boolean {
+    return this.lastCupidFlag.get(sessionId)
+  }
+
+  setLastCupidFlagBySessionId(sessionId: string) {
+    this.lastCupidFlag.set(sessionId, true)
+  }
+
+  deleteLastCupidFlagBySessionId(sessionId: string) {
+    this.lastCupidFlag.delete(sessionId)
+  }
+
+  getAcceptanceStatus(partnerName: string): boolean {
+    return this.acceptanceStatus[partnerName]
+  }
+
+  setAcceptanceStatus(partnerName: string) {
+    this.acceptanceStatus[partnerName] = true
+  }
+
+  deleteAcceptanceStatus(socketId: string) {
+    const nickname = this.connectedSockets[socketId]
+    if (nickname in this.acceptanceStatus) {
+      delete this.acceptanceStatus[nickname]
+    }
+  }
+
   async createSession(sessionId: string): Promise<Session> {
     if (!this.sessions[sessionId]) {
       try {
