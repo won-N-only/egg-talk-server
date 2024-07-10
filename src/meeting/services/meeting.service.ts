@@ -6,21 +6,29 @@ import { v4 as uuidv4 } from 'uuid'
 @Injectable()
 export class MeetingService {
   private openvidu: OpenVidu
+  public server: Server
   private sessions: Record<string, { session: Session; participants: any[] }> =
     {}
   private chooseData: Record<string, { sender: string; receiver: string }[]> =
     {}
-  private lastChooseData: Record<string, { sender: string; receiver: string }> =
-    {}
   private sessionTimers: Record<string, NodeJS.Timeout> = {}
 
-  public server: Server
+  private roomid: Map<string, string> = new Map()
+  private connectedSockets: { [socketId: string]: string } = {} // socketId: nickname 형태로 변경
+  private cupidFlag: Map<string, boolean> = new Map()
+  private timerFlag: Map<string, boolean> = new Map()
+  private lastCupidFlag: Map<string, boolean> = new Map()
+  private acceptanceStatus: Record<string, boolean> = {}
+  private drawings: Record<string, Record<string, string>> = {}
+  private photos: Record<string, Record<string, string>> = {}
+  private votes: Record<string, Record<string, string>> = {}
 
   constructor() {
     const OPENVIDU_URL = process.env.OPENVIDU_URL
     const OPENVIDU_SECRET = process.env.OPENVIDU_SECRET
     this.openvidu = new OpenVidu(OPENVIDU_URL, OPENVIDU_SECRET)
   }
+
   private shuffleArray<T>(array: T[]): T[] {
     for (let i = array.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1))
@@ -352,9 +360,6 @@ export class MeetingService {
     return matches
   }
 
-  /**<sessionId, <username, drawing>> */
-  private drawings: Record<string, Record<string, string>> = {}
-
   saveDrawing(sessionId: string, userName: string, drawing: string) {
     if (!this.drawings[sessionId]) this.drawings[sessionId] = {}
     this.drawings[sessionId][userName] = drawing
@@ -368,9 +373,6 @@ export class MeetingService {
     delete this.drawings[sessionId]
   }
 
-  /**<sessionId, <username, phtos>> */
-  private photos: Record<string, Record<string, string>> = {}
-
   savePhoto(sessionId: string, userName: string, photo: string) {
     if (!this.photos[sessionId]) this.photos[sessionId] = {}
     this.photos[sessionId][userName] = photo
@@ -379,9 +381,6 @@ export class MeetingService {
   getPhotos(sessionId: string, userName: string) {
     return this.photos[sessionId] || {}
   }
-
-  /**<sessionId, <username, votedUser>> */
-  private votes: Record<string, Record<string, string>> = {}
 
   saveVote(sessionId: string, userName: string, votedUserName: string) {
     if (!this.votes[sessionId]) this.votes[sessionId] = {}

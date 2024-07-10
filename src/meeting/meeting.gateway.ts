@@ -31,7 +31,6 @@ export class MeetingGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
   @WebSocketServer() server: Server
-  private roomid: Map<string, string> = new Map()
   private isDevelopment: boolean
   constructor(
     private readonly meetingService: MeetingService,
@@ -40,13 +39,7 @@ export class MeetingGateway
   ) {
     this.isDevelopment = this.configService.get<string>('NODE_ENV') === 'dev'
   }
-  private connectedUsers: { [nickname: string]: Socket } = {} // nickname: socketId 형태로 변경
-  private connectedSockets: { [socketId: string]: string } = {} // socketId: nickname 형태로 변경
-  private cupidFlag: Map<string, boolean> = new Map()
-  private timerFlag: Map<string, boolean> = new Map()
-  private lastCupidFlag: Map<string, boolean> = new Map()
 
-  private acceptanceStatus: Record<string, boolean> = {}
   afterInit(server: Server) {
     this.meetingService.server = server
     console.log('WebSocket initialized')
