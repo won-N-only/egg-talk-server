@@ -157,7 +157,9 @@ export class MeetingGateway
   @SubscribeMessage('choose')
   handleChoose(client: Socket, payload: { sender: string; receiver: string }) {
     // 해당 소켓이 존재하는 방을 찾기 위함
-    const sessionId = this.roomid.get(payload.sender)
+    const sessionId = this.meetingService.getSessionIdByParticipantName(
+      payload.sender,
+    )
     if (sessionId) {
       this.meetingService.storeChoose(
         sessionId,
@@ -174,7 +176,9 @@ export class MeetingGateway
           pair: match.pair,
           others: matches.filter(p => p !== match),
         }))
-        if (this.cupidFlag.get(sessionId) == undefined) {
+        if (
+          this.meetingService.getCupidFlagBySessionId(sessionId) == undefined
+        ) {
           participants.forEach(({ socket, name }) => {
             // 매칭된 사람이 있는지 체크
             const matchedPair = matches.find(match => match.pair.includes(name))
@@ -200,7 +204,7 @@ export class MeetingGateway
               .to(socket.id)
               .emit('chooseResult', { message: chooseData })
           })
-          this.cupidFlag.set(sessionId, true)
+          this.meetingService.setCupidFlagBySessionId(sessionId)
         }
         this.meetingService.removeChooseData(sessionId)
       }
@@ -214,14 +218,14 @@ export class MeetingGateway
     const { sessionId } = payload
     console.log(
       '현재 타이머가 시작되었나요? => ',
-      this.timerFlag.get(sessionId),
+      this.meetingService.getTimerFlagBySessionId(sessionId),
       '혹시 클라에서 온 세션 이름은?? ',
       sessionId,
     )
-    if (this.timerFlag.get(sessionId) == undefined) {
+    if (this.meetingService.getTimerFlagBySessionId(sessionId) == undefined) {
       console.log('타이머가 시작되었습니다.')
       this.meetingService.startSessionTimer(sessionId, this.server)
-      this.timerFlag.set(sessionId, true)
+      this.meetingService.setTimerFlagBySessionId(sessionId)
     }
   }
 
@@ -231,7 +235,8 @@ export class MeetingGateway
     payload: { userName: string; drawing: string; photo: string },
   ) {
     const { drawing, userName, photo } = payload
-    const sessionId = this.roomid.get(userName)
+    const sessionId =
+      this.meetingService.getSessionIdByParticipantName(userName)
 
     if (!sessionId) {
       console.error(`세션에 없는 유저이름임: ${userName}`)
@@ -258,8 +263,8 @@ export class MeetingGateway
     payload: { userName: string; votedUser: string },
   ) {
     const { userName, votedUser } = payload
-    const sessionId = this.roomid.get(userName)
-
+    const sessionId =
+      this.meetingService.getSessionIdByParticipantName(userName)
     this.meetingService.saveVote(sessionId, userName, votedUser)
 
     const votes = this.meetingService.getVotes(sessionId)
@@ -284,7 +289,8 @@ export class MeetingGateway
     payload: { userName: string; winners: string[]; losers: string[] },
   ) {
     const { userName, winners, losers } = payload
-    const sessionId = this.roomid.get(userName)
+    const sessionId =
+      this.meetingService.getSessionIdByParticipantName(userName)
     const participants = this.meetingService.getParticipants(sessionId)
 
     if (userName === winners[0])
@@ -320,7 +326,7 @@ export class MeetingGateway
   ) {
     // 서버 입장에서 소켓이 존재하는 방을 찾기 위함
     const { sender, receiver } = payload
-    const sessionId = this.roomid.get(sender)
+    const sessionId = this.meetingService.getSessionIdByParticipantName(sender)
     // 기존 정보가 있다면 새롭게 변형해서 저장할 수 있음
     if (sessionId) {
       this.meetingService.storeChoose(sessionId, sender, receiver)
@@ -337,7 +343,10 @@ export class MeetingGateway
         // ]
         const matches = this.meetingService.findMatchingPairs(sessionId)
 
-        if (this.lastCupidFlag.get(sessionId) == undefined) {
+        if (
+          this.meetingService.getLastCupidFlagBySessionId(sessionId) ==
+          undefined
+        ) {
           participant.forEach(({ socket, name }) => {
             const matchedPair = matches.find(elem => elem.pair.includes(name))
             if (matchedPair) {
@@ -349,7 +358,7 @@ export class MeetingGateway
 
             this.server.to(socket.id).emit('lastChooseResult', chooseData)
           })
-          this.lastCupidFlag.set(sessionId, true)
+          this.meetingService.setLastCupidFlagBySessionId(sessionId)
         }
       }
     } else {
