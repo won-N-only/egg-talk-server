@@ -256,6 +256,7 @@ export class MeetingService {
           messageArray = TeamArray
         } else {
           message = `${event}`;
+          console.log(message, "이벤트 발송합니다!")
         }
   
         this.notifySessionParticipants(sessionId, event, message, server, messageArray);
