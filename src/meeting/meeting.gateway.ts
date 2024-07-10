@@ -373,7 +373,7 @@ export class MeetingGateway
   ) {
     const { sessionId, myName, partnerName } = payload
     const participant = this.meetingService.getParticipants(sessionId)
-    if (this.acceptanceStatus[partnerName] === true) {
+    if (this.meetingService.getAcceptanceStatus(partnerName) === true) {
       console.log('===========handleMoveToPrivateRoom 1==================')
       // const newSessionId = `${myName}-${partnerName}`
       const newSessionId = this.meetingService.generateSessionId()
@@ -408,14 +408,16 @@ export class MeetingGateway
         console.error('방 생성 실패!')
       }
     } else {
-      this.acceptanceStatus[myName] = true
+      this.meetingService.setAcceptanceStatus(partnerName)
       console.log('===========handleMoveToPrivateRoom 0==================')
     }
   }
 
   @SubscribeMessage('leave')
-  handleLeave(client: Socket, payload: { participantName }) {
-    const sessionId = this.roomid.get(payload.participantName)
+  handleLeave(client: Socket, payload: { participantName: string }) {
+    const { participantName } = payload
+    const sessionId =
+      this.meetingService.getSessionIdByParticipantName(participantName)
     if (sessionId) {
       this.meetingService.removeParticipant(
         sessionId,
@@ -423,11 +425,11 @@ export class MeetingGateway
         payload.participantName,
       )
     }
-    this.roomid.delete(payload.participantName)
-    this.cupidFlag.delete(sessionId)
-    delete this.connectedUsers[payload.participantName]
-    delete this.connectedSockets[client.id]
-    this.timerFlag.delete(sessionId)
+    this.meetingService.deleteParticipantNameInRoomId(participantName)
+    this.meetingService.deleteConnectedSocket(client.id)
+    this.meetingService.deleteTimerFlagBySessionId(sessionId)
+    this.meetingService.deleteCupidFlagBySessionId(sessionId)
+    this.meetingService.deleteLastCupidFlagBySessionId(sessionId)
   }
 
   @SubscribeMessage('emoji')
@@ -436,7 +438,9 @@ export class MeetingGateway
     payload: { nickname: string; emojiIndex: string },
   ) {
     const { nickname, emojiIndex } = payload
-    const sessionId = this.roomid.get(nickname)
+    const sessionId =
+      this.meetingService.getSessionIdByParticipantName(nickname)
+
     const participants = this.meetingService.getParticipants(sessionId)
     participants.forEach(({ socket }) => {
       this.server.to(socket.id).emit('emojiBroadcast', { nickname, emojiIndex })
