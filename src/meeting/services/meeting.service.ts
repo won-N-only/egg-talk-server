@@ -217,11 +217,11 @@ export class MeetingService {
     const timers = [
       { time: 1/12, event: 'introduce' },
       { time: 1/5, event: 'keyword' },
-      { time: 1/2, event: 'cupidTime' },
-      { time: (1+1/6), event: 'cam' },
-      { time: (1.25), event: 'drawingContest' },
-      { time: (2+1/6), event: 'lastCupidTime'},
-      { time: (2.25), event: 'finish' },
+      { time: 3/4, event: 'cupidTime' },
+      { time: 1.6, event: 'cam' },
+      { time: 1.7, event: 'drawingContest' },
+      { time: 2.7, event: 'lastCupidTime'},
+      { time: 2.9, event: 'finish' },
     ];
   
     // 세션 타이머 초기화 (필요한 경우)
