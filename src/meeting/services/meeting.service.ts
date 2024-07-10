@@ -217,7 +217,7 @@ export class MeetingService {
     const timers = [
       { time: 1/12, event: 'introduce' },
       { time: 1/4, event: 'keyword' },
-      { time: 3/4, event: 'cupidTime' },
+      { time: 2/3, event: 'cupidTime' },
       { time: 1.6, event: 'cam' },
       { time: 1.7, event: 'drawingContest' },
       { time: 2.8, event: 'lastCupidTime'},
