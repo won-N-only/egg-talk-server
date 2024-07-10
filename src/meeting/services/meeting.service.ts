@@ -216,7 +216,7 @@ export class MeetingService {
   startSessionTimer(sessionId: string, server: Server) {
     const timers = [
       { time: 1/12, event: 'introduce' },
-      { time: 3/8, event: 'keyword' },
+      { time: 1/3, event: 'keyword' },
       { time: 2/3, event: 'cupidTime' },
       { time: 1.6, event: 'cam' },
       { time: 1.7, event: 'drawingContest' },
@@ -247,6 +247,7 @@ export class MeetingService {
         if (event === 'keyword') {
           // const getRandomNumber = () => Math.floor(Math.random() * 20) + 1;
           // message = `${getRandomNumber()}`;
+          console.log("키워드 보냈음!!!!!!!!")
           message = "0";
         } else if (event === 'introduce') {
           // const TeamArray = this.getParticipants(sessionId).map((user) => user.name);
