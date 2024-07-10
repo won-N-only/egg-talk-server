@@ -41,6 +41,9 @@ export class CommonService {
     const socketId = await this.cacheManager.get<string>(`user:${nickname}`)
     console.log('getSocketByUserId, socketId: ', socketId)
     if (socketId) {
+      console.log("this.server: ",this.server)
+      console.log("this.server.sockets: ",this.server.sockets)
+      console.log("this.server.sockets.sockets: ",this.server.sockets.sockets)
       const socket =  this.server.sockets.sockets.get(socketId)
       console.log('getSocketByUserId, socket: ', socket)
       return socket
