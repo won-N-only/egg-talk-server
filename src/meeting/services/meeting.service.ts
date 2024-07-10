@@ -215,13 +215,13 @@ export class MeetingService {
   }
   startSessionTimer(sessionId: string, server: Server) {
     const timers = [
-      { time: 0.5, event: 'introduce' },
-      { time: 2.5, event: 'keyword' },
-      { time: 4, event: 'cupidTime' },
-      { time: 6, event: 'cam' },
-      { time: 6.5, event: 'drawingContest' },
-      { time: 8.5, event: 'lastCupidTime'},
-      { time: 9, event: 'finish' },
+      { time: 1/12, event: 'introduce' },
+      { time: 1/5, event: 'keyword' },
+      { time: 1/2, event: 'cupidTime' },
+      { time: (1+1/6), event: 'cam' },
+      { time: (1.25), event: 'drawingContest' },
+      { time: (2+1/6), event: 'lastCupidTime'},
+      { time: (2.25), event: 'finish' },
     ];
   
     // 세션 타이머 초기화 (필요한 경우)
@@ -245,11 +245,14 @@ export class MeetingService {
         let messageArray: string[] | undefined;
   
         if (event === 'keyword') {
-          const getRandomNumber = () => Math.floor(Math.random() * 20) + 1;
-          message = `${getRandomNumber()}`;
+          // const getRandomNumber = () => Math.floor(Math.random() * 20) + 1;
+          // message = `${getRandomNumber()}`;
+          message = "0";
         } else if (event === 'introduce') {
-          const TeamArray = this.getParticipants(sessionId).map((user) => user.name);
-          messageArray = this.shuffleArray(TeamArray);
+          // const TeamArray = this.getParticipants(sessionId).map((user) => user.name);
+          const TeamArray = ["시아"]
+          // messageArray = this.shuffleArray(TeamArray);
+          messageArray = TeamArray
         } else {
           message = `${event}`;
         }
@@ -278,7 +281,8 @@ export class MeetingService {
     const participants = this.getParticipants(sessionId)
     // console.log('현재 참여자 목록입니다 => ', participants)
     if (eventType == 'keyword') {
-      const getRandomParticipant = participants[1].name
+      const getRandomParticipant = "시아"
+      // const getRandomParticipant = participants[1].name
       participants.forEach(({ socket }) => {
         server.to(socket.id).emit(eventType, { message, getRandomParticipant })
       })
