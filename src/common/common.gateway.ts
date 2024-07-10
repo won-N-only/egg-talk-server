@@ -3,6 +3,7 @@ import {
   MessageBody,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  OnGatewayInit,
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
@@ -32,14 +33,18 @@ const anonymousNicknames = new Map<string, string>()
     credentials: true,
   },
 })
-export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class CommonGateway
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
+{
   @WebSocketServer() server: Server
 
   constructor(
     private commonService: CommonService,
     private usersService: UsersService,
-  ) {
-    this.commonService.setServer(this.server)
+  ) {}
+
+  afterInit(server: Server) {
+    this.commonService.setServer(server)
   }
 
   // 클라이언트 연결 시 처리 로직
