@@ -221,10 +221,10 @@ export class MeetingService {
       { time: 1 / 12, event: 'introduce' },
       { time: 1 / 3, event: 'keyword' },
       { time: 2 / 3, event: 'cupidTime' },
-      { time: 5 / 3, event: 'cam' },
-      { time: 11 / 6, event: 'drawingContest' },
-      { time: 2.9, event: 'lastCupidTime' },
-      { time: 3.1, event: 'finish' },
+      { time: 9 / 6, event: 'cam' },
+      { time: 10 / 6, event: 'drawingContest' },
+      { time: 2.8, event: 'lastCupidTime' },
+      { time: 3.0, event: 'finish' },
     ]
 
     // 세션 타이머 초기화 (필요한 경우)
