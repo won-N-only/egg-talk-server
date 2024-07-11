@@ -28,5 +28,6 @@ import * as redisStore from 'cache-manager-ioredis'
     JwtAuthWsGuard,
     ConfigService,
   ],
+  exports: [CacheModule],
 })
 export class MeetingModule {}
