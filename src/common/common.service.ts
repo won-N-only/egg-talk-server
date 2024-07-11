@@ -20,7 +20,7 @@ export class CommonService {
 
   private server: Server
   // private connectedUsers = new Map<string, >() // userId: Socket
-  private connectedSockets = new Map<string, Socket>() // socketId: userId
+  private connectedSockets = new Map<string, Socket>() // socketId: Socket
   generateAnonymousNickname(): string {
     const adjectives = ['행복한', '즐거운', '신나는', '활기찬', '유쾌한']
     const nouns = ['고양이', '강아지', '토끼', '곰', '펭귄']
@@ -45,10 +45,6 @@ export class CommonService {
       return this.connectedSockets.get(socketId)
     }
     return null
-  }
-
-  async getUserIdBySocketId(socketId: string): Promise<string> {
-    return await this.cacheManager.get<string>(`socket:${socketId}`)
   }
 
   async addUser(nickname: string, socket: Socket): Promise<void> {
