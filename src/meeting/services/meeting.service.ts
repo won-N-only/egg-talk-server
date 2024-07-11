@@ -41,6 +41,7 @@ export class MeetingService {
     return uuidv4()
   }
 
+  /**connectedSockets[] */
   getParticipantNameBySocketId(socketId: string): string {
     return this.connectedSockets[socketId]
   }
@@ -53,6 +54,7 @@ export class MeetingService {
     delete this.connectedSockets[socketId]
   }
 
+  /**roomId */
   getSessionIdByParticipantName(participantName: string): string {
     return this.roomid.get(participantName)
   }
@@ -65,6 +67,7 @@ export class MeetingService {
     this.roomid.delete(participantName)
   }
 
+  /**timerFlag */
   getTimerFlagBySessionId(sessionId: string): boolean {
     return this.timerFlag.get(sessionId)
   }
@@ -77,6 +80,7 @@ export class MeetingService {
     this.timerFlag.delete(sessionId)
   }
 
+  /**cupidFlag */
   getCupidFlagBySessionId(sessionId: string): boolean {
     return this.cupidFlag.get(sessionId)
   }
@@ -89,6 +93,7 @@ export class MeetingService {
     this.cupidFlag.delete(sessionId)
   }
 
+  /**lastCupidFlag */
   getLastCupidFlagBySessionId(sessionId: string): boolean {
     return this.lastCupidFlag.get(sessionId)
   }
@@ -101,6 +106,7 @@ export class MeetingService {
     this.lastCupidFlag.delete(sessionId)
   }
 
+  /**acceptanceStatus */
   getAcceptanceStatus(partnerName: string): boolean {
     return this.acceptanceStatus[partnerName]
   }
