@@ -38,7 +38,9 @@ export class CommonService {
   }
 
   async getSocketByUserId(nickname: string): Promise<Socket> {
-    const socketId = await this.cacheManager.get<string>(`user:${nickname}`)
+    const socketId = await this.cacheManager.get<string>(
+      `common:user:${nickname}`,
+    )
     if (socketId) {
       return this.connectedSockets.get(socketId)
     }
@@ -50,12 +52,12 @@ export class CommonService {
   }
 
   async addUser(nickname: string, socket: Socket): Promise<void> {
-    await this.cacheManager.set(`user:${nickname}`, socket.id)
+    await this.cacheManager.set(`common:user:${nickname}`, socket.id)
     this.connectedSockets.set(socket.id, socket)
   }
 
   async removeUser(nickname: string, socketId: string): Promise<void> {
-    await this.cacheManager.del(`user:${nickname}`)
+    await this.cacheManager.del(`common:user:${nickname}`)
     this.connectedSockets.delete(socketId)
   }
 
