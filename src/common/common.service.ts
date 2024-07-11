@@ -1,22 +1,26 @@
-import { Injectable } from '@nestjs/common'
+import { Inject, Injectable } from '@nestjs/common'
 import { AcceptFriend, AddFriendDto } from './dto/request/notification.dto'
 import { UsersRepository } from '../users/users.repository'
 import { Notification } from '../entities/notification.entity'
-import { Types, ObjectId } from 'mongoose'
+import { ObjectId, Types } from 'mongoose'
 import { Chat } from '../entities/chat.entity'
 import { User } from '../entities/user.entity'
 import { Server, Socket } from 'socket.io'
 import { CommonRepository } from './common.repository'
+import { CACHE_MANAGER } from '@nestjs/cache-manager'
+import { Cache } from 'cache-manager'
 
 @Injectable()
 export class CommonService {
   constructor(
     private readonly commonRepository: CommonRepository,
     private readonly usersRepository: UsersRepository,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
+
   private server: Server
-  private connectedUsers = new Map<string, Socket>() // userId: Socket
-  private connectedSockets = new Map<string, string>() // socketId: userId
+  // private connectedUsers = new Map<string, >() // userId: Socket
+  private connectedSockets = new Map<string, Socket>() // socketId: Socket
   generateAnonymousNickname(): string {
     const adjectives = ['행복한', '즐거운', '신나는', '활기찬', '유쾌한']
     const nouns = ['고양이', '강아지', '토끼', '곰', '펭귄']
@@ -33,22 +37,24 @@ export class CommonService {
     this.server = server
   }
 
-  getSocketByUserId(nickname: string): Socket {
-    return this.connectedUsers.get(nickname)
+  async getSocketByUserId(nickname: string): Promise<Socket> {
+    const socketId = await this.cacheManager.get<string>(
+      `common:user:${nickname}`,
+    )
+    if (socketId) {
+      return this.connectedSockets.get(socketId)
+    }
+    return null
   }
 
-  getUserIdBySocketId(socketId: string): string {
-    return this.connectedSockets.get(socketId)
+  async addUser(nickname: string, socket: Socket): Promise<void> {
+    await this.cacheManager.set(`common:user:${nickname}`, socket.id)
+    this.connectedSockets.set(socket.id, socket)
   }
 
-  addUser(nickname: string, socket: Socket): void {
-    this.connectedUsers.set(nickname, socket)
-    this.connectedSockets.set(socket.id, nickname)
-  }
-
-  removeUser(nickname: string, socketId: string): void {
+  async removeUser(nickname: string, socketId: string): Promise<void> {
+    await this.cacheManager.del(`common:user:${nickname}`)
     this.connectedSockets.delete(socketId)
-    this.connectedUsers.delete(nickname)
   }
 
   async getChatHistory(chatRoomId: string): Promise<Chat[]> {
@@ -90,6 +96,7 @@ export class CommonService {
       throw error
     }
   }
+
   async sortFriend(userId: string) {
     // 유저 정보를 조회하여 친구목록 화인
     // 내 친구에게만 알림 보내면됨
@@ -137,6 +144,7 @@ export class CommonService {
       throw error
     }
   }
+
   async readMessage(receiverNickname: string, userNickname: string) {
     try {
       this.commonRepository.changeReadMessage(receiverNickname, userNickname)
