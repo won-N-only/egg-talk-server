@@ -19,8 +19,8 @@ export class CommonService {
   ) {}
 
   private server: Server
-  private connectedUsers = new Map<string, Socket>() // userId: Socket
-  private connectedSockets = new Map<string, string>() // socketId: userId
+  // private connectedUsers = new Map<string, >() // userId: Socket
+  private connectedSockets = new Map<string, Socket>() // socketId: userId
   generateAnonymousNickname(): string {
     const adjectives = ['행복한', '즐거운', '신나는', '활기찬', '유쾌한']
     const nouns = ['고양이', '강아지', '토끼', '곰', '펭귄']
@@ -39,14 +39,8 @@ export class CommonService {
 
   async getSocketByUserId(nickname: string): Promise<Socket> {
     const socketId = await this.cacheManager.get<string>(`user:${nickname}`)
-    console.log('getSocketByUserId, socketId: ', socketId)
     if (socketId) {
-      console.log("this.server: ",this.server)
-      console.log("this.server.sockets: ",this.server.sockets)
-      console.log("this.server.sockets.sockets: ",this.server.sockets.sockets)
-      const socket =  this.server.sockets.sockets.get(socketId)
-      console.log('getSocketByUserId, socket: ', socket)
-      return socket
+      return this.connectedSockets.get(socketId)
     }
     return null
   }
@@ -57,18 +51,12 @@ export class CommonService {
 
   async addUser(nickname: string, socket: Socket): Promise<void> {
     await this.cacheManager.set(`user:${nickname}`, socket.id)
-    await this.cacheManager.set(`socket:${socket.id}`, nickname)
-
-    const socketId = await this.cacheManager.get(`user:${nickname}`)
-    const nickname2 = await this.cacheManager.get(`socket:${socket.id}`)
-
-    console.log('addUser, socketId: ', socketId)
-    console.log('addUser, nickname: ', nickname2)
+    this.connectedSockets.set(socket.id, socket)
   }
 
   async removeUser(nickname: string, socketId: string): Promise<void> {
-    await this.cacheManager.del(`socket:${socketId}`)
     await this.cacheManager.del(`user:${nickname}`)
+    this.connectedSockets.delete(socketId)
   }
 
   async getChatHistory(chatRoomId: string): Promise<Chat[]> {
