@@ -469,21 +469,15 @@ export class MeetingService {
     userName: string,
     drawing: string,
   ): Promise<void> {
-    const drawings = await this.cacheManager.get<Record<string, string>>(
-      `session:${sessionId}:drawings`,
-    )
-    drawings[userName] = drawing
-    await this.cacheManager.set(`session:${sessionId}:drawings`, drawings)
+    await this.redis.hset(`session:${sessionId}:drawings`, userName, drawing)
   }
 
   async getDrawings(sessionId: string): Promise<Record<string, string>> {
-    return await this.cacheManager.get<Record<string, string>>(
-      `session:${sessionId}:drawings`,
-    )
+    return await this.redis.hgetall(`session:${sessionId}:drawings`)
   }
 
   async resetDrawings(sessionId: string): Promise<void> {
-    await this.cacheManager.del(`session:${sessionId}:drawings`)
+    await this.redis.del(`session:${sessionId}:drawings`)
   }
 
   async savePhoto(
@@ -491,21 +485,15 @@ export class MeetingService {
     userName: string,
     photo: string,
   ): Promise<void> {
-    const photos = await this.cacheManager.get<Record<string, string>>(
-      `session:${sessionId}:photos`,
-    )
-    photos[userName] = photo
-    await this.cacheManager.set(`session:${sessionId}:photos`, photos)
+    await this.redis.hset(`session:${sessionId}:photos`, userName, photo)
   }
 
   async getPhotos(sessionId: string): Promise<Record<string, string>> {
-    return await this.cacheManager.get<Record<string, string>>(
-      `session:${sessionId}:photos`,
-    )
+    return await this.redis.hgetall(`session:${sessionId}:photos`)
   }
 
   async resetPhotos(sessionId: string): Promise<void> {
-    await this.cacheManager.del(`session:${sessionId}:photos`)
+    await this.redis.del(`session:${sessionId}:photos`)
   }
 
   async saveVote(
