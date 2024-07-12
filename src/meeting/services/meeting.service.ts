@@ -501,28 +501,22 @@ export class MeetingService {
     userName: string,
     votedUserName: string,
   ): Promise<void> {
-    const votes = await this.cacheManager.get<Record<string, string>>(
-      `session:${sessionId}:votes`,
-    )
-    votes[userName] = votedUserName
-    await this.cacheManager.set(`session:${sessionId}:votes`, votes)
+    await this.redis.hset(`session:${sessionId}:votes`, userName, votedUserName)
   }
 
   async getVotes(sessionId: string): Promise<Record<string, string>> {
-    return await this.cacheManager.get<Record<string, string>>(
-      `session:${sessionId}:votes`,
-    )
+    return await this.redis.hgetall(`session:${sessionId}:votes`)
   }
 
   async deleteVotes(sessionId: string): Promise<void> {
-    await this.cacheManager.del(`session:${sessionId}:votes`)
+    await this.redis.del(`session:${sessionId}:votes`)
   }
 
-  calculateWinner(sessionId: string): { winner: string; losers: string[] } {
-    /**저장했던 그림 삭제 */
+  async calculateWinner(
+    sessionId: string,
+  ): Promise<{ winner: string; losers: string[] }> {
     const voteCount: Record<string, number> = {}
-
-    const votes = this.getVotes(sessionId)
+    const votes = await this.getVotes(sessionId)
     for (const vote in votes) {
       const votedUser = votes[vote]
       if (!voteCount[votedUser]) voteCount[votedUser] = 0
@@ -532,10 +526,9 @@ export class MeetingService {
     const winner = Object.keys(voteCount).reduce((a, b) =>
       voteCount[a] > voteCount[b] ? a : b,
     )
-
     const losers = Object.keys(votes).filter(user => user !== winner)
 
-    this.deleteVotes(sessionId)
+    await this.deleteVotes(sessionId)
     return { winner, losers }
   }
 }
