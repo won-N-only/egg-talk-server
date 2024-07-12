@@ -43,8 +43,8 @@ export class MeetingGateway
   private connectedUsers: { [nickname: string]: Socket } = {} // nickname: socketId 형태로 변경
   private connectedSockets: { [socketId: string]: string } = {} // socketId: nickname 형태로 변경
   private cupidFlag: Map<string, boolean> = new Map()
-  private timerFlag: Map<string, boolean> = new Map()
   private lastCupidFlag: Map<string, boolean> = new Map()
+  private startTimerCount: Map<string, number> = new Map()
 
   private acceptanceStatus: Record<string, boolean> = {}
   afterInit(server: Server) {
@@ -221,16 +221,17 @@ export class MeetingGateway
   @SubscribeMessage('startTimer')
   handleStartTimer(client: Socket, payload: { sessionId: string }) {
     const { sessionId } = payload
-    console.log(
-      '현재 타이머가 시작되었나요? => ',
-      this.timerFlag.get(sessionId),
-      '혹시 클라에서 온 세션 이름은?? ',
-      sessionId,
-    )
-    if (this.timerFlag.get(sessionId) == undefined) {
-      console.log('타이머가 시작되었습니다.')
+
+    // startTimer 호출 횟수 증가
+    const currentCount = this.startTimerCount.get(sessionId) || 0
+    this.startTimerCount.set(sessionId, currentCount + 1)
+
+    // console.log(`startTimer 호출 횟수: ${this.startTimerCount.get(sessionId)}`)
+
+    // 호출 횟수가 6일 때 타이머 시작
+    if (this.startTimerCount.get(sessionId) === 6) {
+      // console.log('타이머가 시작되었습니다.')
       this.meetingService.startSessionTimer(sessionId, this.server)
-      this.timerFlag.set(sessionId, true)
     }
   }
 
@@ -427,7 +428,7 @@ export class MeetingGateway
     this.cupidFlag.delete(sessionId)
     delete this.connectedUsers[payload.participantName]
     delete this.connectedSockets[client.id]
-    this.timerFlag.delete(sessionId)
+    this.startTimerCount.delete(sessionId)
   }
 
   @SubscribeMessage('emoji')
