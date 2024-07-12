@@ -431,17 +431,28 @@ export class MeetingService {
     await this.redis.del(`choose:${sessionId}`)
   }
 
-  async getChooseData(sessionId: string) {
-    return await this.redis.hgetall(`choose:${sessionId}`)
+  // 1:1 선택 결과
+  async getChooseData(sessionId: string): Promise<ChooseResult[]> {
+    const chooseData = await this.redis.hgetall(`choose:${sessionId}`)
+
+    const result: ChooseResult[] = []
+
+    for (const [sender, receiver] of Object.entries(chooseData)) {
+      result.push({ sender, receiver })
+    }
+
+    return result
   }
 
-  async findMatchingPairs(sessionId: string) {
+  async findMatchingPairs(
+    sessionId: string,
+  ): Promise<{ pair: [string, string] }[]> {
     const chooseData = await this.getChooseData(sessionId)
-    const matches = []
-    for (const [sender, receiver] of Object.entries(chooseData)) {
-      const isPair = Object.entries(chooseData).find(
-        ([otherSender, otherReceiver]) =>
-          otherSender === receiver && otherReceiver === sender,
+    const matches: { pair: [string, string] }[] = []
+
+    for (const { sender, receiver } of chooseData) {
+      const isPair = chooseData.find(
+        choice => choice.sender === receiver && choice.receiver === sender,
       )
       if (isPair) {
         matches.push({ pair: [sender, receiver] })
