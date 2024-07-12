@@ -103,43 +103,46 @@ export class MeetingService {
     await this.cacheManager.del(`participant:${participantName}:sessionId`)
   }
 
-  /**timerFlag */
-  getTimerFlagBySessionId(sessionId: string): boolean {
-    return this.timerFlag.get(sessionId)
+  async getTimerFlagBySessionId(sessionId: string): Promise<boolean> {
+    return await this.cacheManager.get<boolean>(
+      `session:${sessionId}:timerFlag`,
+    )
   }
 
-  setTimerFlagBySessionId(sessionId: string) {
-    this.timerFlag.set(sessionId, true)
+  async setTimerFlagBySessionId(sessionId: string): Promise<void> {
+    await this.cacheManager.set(`session:${sessionId}:timerFlag`, true)
   }
 
-  deleteTimerFlagBySessionId(sessionId: string) {
-    this.timerFlag.delete(sessionId)
+  async deleteTimerFlagBySessionId(sessionId: string): Promise<void> {
+    await this.cacheManager.del(`session:${sessionId}:timerFlag`)
   }
 
-  /**cupidFlag */
-  getCupidFlagBySessionId(sessionId: string): boolean {
-    return this.cupidFlag.get(sessionId)
+  async getCupidFlagBySessionId(sessionId: string): Promise<boolean> {
+    return await this.cacheManager.get<boolean>(
+      `session:${sessionId}:cupidFlag`,
+    )
   }
 
-  setCupidFlagBySessionId(sessionId: string) {
-    this.cupidFlag.set(sessionId, true)
+  async setCupidFlagBySessionId(sessionId: string): Promise<void> {
+    await this.cacheManager.set(`session:${sessionId}:cupidFlag`, true)
   }
 
-  deleteCupidFlagBySessionId(sessionId: string) {
-    this.cupidFlag.delete(sessionId)
+  async deleteCupidFlagBySessionId(sessionId: string): Promise<void> {
+    await this.cacheManager.del(`session:${sessionId}:cupidFlag`)
   }
 
-  /**lastCupidFlag */
-  getLastCupidFlagBySessionId(sessionId: string): boolean {
-    return this.lastCupidFlag.get(sessionId)
+  async getLastCupidFlagBySessionId(sessionId: string): Promise<boolean> {
+    return await this.cacheManager.get<boolean>(
+      `session:${sessionId}:lastCupidFlag`,
+    )
   }
 
-  setLastCupidFlagBySessionId(sessionId: string) {
-    this.lastCupidFlag.set(sessionId, true)
+  async setLastCupidFlagBySessionId(sessionId: string): Promise<void> {
+    await this.cacheManager.set(`session:${sessionId}:lastCupidFlag`, true)
   }
 
-  deleteLastCupidFlagBySessionId(sessionId: string) {
-    this.lastCupidFlag.delete(sessionId)
+  async deleteLastCupidFlagBySessionId(sessionId: string): Promise<void> {
+    await this.cacheManager.del(`session:${sessionId}:lastCupidFlag`)
   }
 
   /**acceptanceStatus */
