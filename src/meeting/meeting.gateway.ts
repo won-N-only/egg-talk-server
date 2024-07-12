@@ -169,14 +169,14 @@ export class MeetingGateway
       payload.sender,
     )
     if (sessionId) {
-      await this.meetingService.storeChoose(
+      await this.meetingService.setChooseData(
         sessionId,
         payload.sender,
         payload.receiver,
       )
 
       const chooseData = await this.meetingService.getChooseData(sessionId)
-      if (chooseData.length === 2) {
+      if (Object.keys(chooseData).length === 2) {
         const participants = this.meetingService.getParticipants(sessionId)
         const matches = await this.meetingService.findMatchingPairs(sessionId)
 
@@ -214,7 +214,7 @@ export class MeetingGateway
           })
           await this.meetingService.setCupidFlagBySessionId(sessionId)
         }
-        await this.meetingService.removeChooseData(sessionId)
+        await this.meetingService.deleteChooseData(sessionId)
       }
     } else {
       console.error('세션에러입니다')
@@ -338,9 +338,9 @@ export class MeetingGateway
     const sessionId =
       await this.meetingService.getSessionIdByParticipantName(sender)
     if (sessionId) {
-      await this.meetingService.storeChoose(sessionId, sender, receiver)
+      await this.meetingService.setChooseData(sessionId, sender, receiver)
       const chooseData = await this.meetingService.getChooseData(sessionId)
-      if (chooseData.length === 2) {
+      if (Object.keys(chooseData).length === 2) {
         const participant = this.meetingService.getParticipants(sessionId)
         // 매칭된 쌍의 정보를 가지고 있음
         // [
