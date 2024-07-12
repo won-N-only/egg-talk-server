@@ -4,37 +4,32 @@ import { MeetingService } from './meeting.service'
 
 @Injectable()
 export class QueueService {
-  constructor(private readonly meetingService: MeetingService) {}
+  constructor(
+    private readonly meetingService: MeetingService,
+    private readonly commonRepository: CommonRepository,
+  ) {}
+
   private maleQueue: { name: string; socket: Socket }[] = []
   private femaleQueue: { name: string; socket: Socket }[] = []
 
-  /* 참여자 대기열 추가 */
-  addParticipant(name: string, socket: Socket, gender: string) {
-    if (gender === 'MALE') {
-      const index = this.maleQueue.findIndex(p => p.name === name)
-      if (index !== -1) {
-        // 기존 참가자를 제거
-        this.maleQueue.splice(index, 1)
-      }
-      // 새로운 참가자 추가
-      this.maleQueue.push({ name, socket })
-      console.log(
-        'male Queue : ',
-        this.maleQueue.map(p => p.name),
-      )
-    } else if (gender === 'FEMALE') {
-      const index = this.femaleQueue.findIndex(p => p.name === name)
-      if (index !== -1) {
-        // 기존 참가자를 제거
-        this.femaleQueue.splice(index, 1)
-      }
-      // 새로운 참가자 추가
-      this.femaleQueue.push({ name, socket })
-      console.log(
-        'female Queue : ',
-        this.femaleQueue.map(p => p.name),
-      )
+  async addParticipant(name: string, socket: Socket, gender: string) {
+    const index = (
+      gender === 'MALE' ? this.maleQueue : this.femaleQueue
+    ).findIndex(p => p.name === name)
+    if (index !== -1) {
+      // 기존 참가자를 제거하고 새로운 참가자로 덮어씁니다.
+      ;(gender === 'MALE' ? this.maleQueue : this.femaleQueue).splice(index, 1)
     }
+
+    // 새로운 참가자 추가
+    ;(gender === 'MALE' ? this.maleQueue : this.femaleQueue).push({
+      name,
+      socket,
+    })
+    console.log(
+      `${gender} Queue: `,
+      (gender === 'MALE' ? this.maleQueue : this.femaleQueue).map(p => p.name),
+    )
   }
 
   removeParticipant(name: string, gender: string) {
