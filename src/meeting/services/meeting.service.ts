@@ -14,16 +14,6 @@ export class MeetingService {
     {}
   private sessionTimers: Record<string, NodeJS.Timeout> = {}
 
-  private roomid: Map<string, string> = new Map()
-  private connectedSockets: { [socketId: string]: string } = {} // socketId: nickname 형태로 변경
-  private cupidFlag: Map<string, boolean> = new Map()
-  private timerFlag: Map<string, boolean> = new Map()
-  private lastCupidFlag: Map<string, boolean> = new Map()
-  private acceptanceStatus: Record<string, boolean> = {}
-  private drawings: Record<string, Record<string, string>> = {}
-  private photos: Record<string, Record<string, string>> = {}
-  private votes: Record<string, Record<string, string>> = {}
-
   constructor(@Inject(CACHE_MANAGER) private cacheManager: Cache) {
     const OPENVIDU_URL = process.env.OPENVIDU_URL
     const OPENVIDU_SECRET = process.env.OPENVIDU_SECRET
