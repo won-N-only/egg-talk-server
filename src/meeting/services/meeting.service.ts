@@ -448,18 +448,19 @@ export class MeetingService {
     return await this.redis.hgetall(`choose:${sessionId}`)
   }
 
-  findMatchingPairs(sessionId: string) {
-    const chooseData = this.getChooseData(sessionId)
+  async findMatchingPairs(sessionId: string) {
+    const chooseData = await this.getChooseData(sessionId)
     const matches = []
-    chooseData.forEach(({ sender, receiver }) => {
-      const isPair = chooseData.find(
-        choice => choice.sender === receiver && choice.receiver === sender,
+    for (const [sender, receiver] of Object.entries(chooseData)) {
+      const isPair = Object.entries(chooseData).find(
+        ([otherSender, otherReceiver]) =>
+          otherSender === receiver && otherReceiver === sender,
       )
       if (isPair) {
-        // matches = [ { pair : [jinyong, test] }]
         matches.push({ pair: [sender, receiver] })
       }
-    })
+    }
+
     return matches
   }
 
