@@ -47,11 +47,10 @@ export class MeetingGateway
 
   handleConnection(client: Socket) {}
 
-  handleDisconnect(client: Socket) {
+  async handleDisconnect(client: Socket) {
     const sessions = this.meetingService.getSessions()
-    const participantName = this.meetingService.getParticipantNameBySocketId(
-      client.id,
-    )
+    const participantName =
+      await this.meetingService.getParticipantNameBySocketId(client.id)
     console.log(
       '미팅 게이트웨이 디스커넥트입니다. 유저 이름은 : ',
       participantName,
@@ -73,7 +72,7 @@ export class MeetingGateway
     }
 
     this.meetingService.deleteConnectedSocket(client.id)
-    this.meetingService.deleteParticipantNameInRoomId(participantName)
+    this.meetingService.deleteParticipantNameInSession(participantName)
     this.meetingService.deleteAcceptanceStatus(client.id)
   }
 
@@ -94,7 +93,7 @@ export class MeetingGateway
       }
 
       const existingSessionId =
-        this.meetingService.getSessionIdByParticipantName(participantName)
+        await this.meetingService.getSessionIdByParticipantName(participantName)
 
       if (existingSessionId) {
         this.meetingService.removeParticipant(
@@ -102,7 +101,7 @@ export class MeetingGateway
           client,
           participantName,
         )
-        this.meetingService.deleteParticipantNameInRoomId(participantName)
+        this.meetingService.deleteParticipantNameInSession(participantName)
       }
 
       const { sessionId, readyMales, readyFemales } =
@@ -111,10 +110,13 @@ export class MeetingGateway
       console.log('레디일때의 sessionId은?? ', sessionId)
       if (sessionId && readyFemales && readyMales) {
         readyMales.forEach(male => {
-          this.meetingService.setParticipantNameToRoomid(male.name, sessionId)
+          this.meetingService.setParticipantNameToSession(male.name, sessionId)
         })
         readyFemales.forEach(female => {
-          this.meetingService.setParticipantNameToRoomid(female.name, sessionId)
+          this.meetingService.setParticipantNameToSession(
+            female.name,
+            sessionId,
+          )
         })
       }
       this.meetingService.setConnectedSocket(participantName, client)
@@ -151,13 +153,16 @@ export class MeetingGateway
       }
     }
     this.meetingService.deleteConnectedSocket(participantName)
-    this.meetingService.deleteParticipantNameInRoomId(participantName)
+    this.meetingService.deleteParticipantNameInSession(participantName)
   }
 
   @SubscribeMessage('choose')
-  handleChoose(client: Socket, payload: { sender: string; receiver: string }) {
+  async handleChoose(
+    client: Socket,
+    payload: { sender: string; receiver: string },
+  ) {
     // 해당 소켓이 존재하는 방을 찾기 위함
-    const sessionId = this.meetingService.getSessionIdByParticipantName(
+    const sessionId = await this.meetingService.getSessionIdByParticipantName(
       payload.sender,
     )
     if (sessionId) {
@@ -168,7 +173,7 @@ export class MeetingGateway
       )
 
       const chooseData = this.meetingService.getChooseData(sessionId)
-      if (chooseData.length === 6) {
+      if (chooseData.length === 2) {
         const participants = this.meetingService.getParticipants(sessionId)
         const matches = this.meetingService.findMatchingPairs(sessionId)
 
@@ -230,13 +235,13 @@ export class MeetingGateway
   }
 
   @SubscribeMessage('forwardDrawing')
-  handleForwardDrawing(
+  async handleForwardDrawing(
     client: Socket,
     payload: { userName: string; drawing: string; photo: string },
   ) {
     const { drawing, userName, photo } = payload
     const sessionId =
-      this.meetingService.getSessionIdByParticipantName(userName)
+      await this.meetingService.getSessionIdByParticipantName(userName)
 
     if (!sessionId) {
       console.error(`세션에 없는 유저이름임: ${userName}`)
@@ -248,7 +253,7 @@ export class MeetingGateway
 
     const drawings = this.meetingService.getDrawings(sessionId)
 
-    if (Object.keys(drawings).length === 6) {
+    if (Object.keys(drawings).length === 2) {
       const participants = this.meetingService.getParticipants(sessionId)
       participants.forEach(({ socket }) => {
         this.server.to(socket.id).emit('drawingSubmit', drawings)
@@ -258,18 +263,18 @@ export class MeetingGateway
   }
 
   @SubscribeMessage('submitVote')
-  handleSubmitVote(
+  async handleSubmitVote(
     client: Socket,
     payload: { userName: string; votedUser: string },
   ) {
     const { userName, votedUser } = payload
     const sessionId =
-      this.meetingService.getSessionIdByParticipantName(userName)
+      await this.meetingService.getSessionIdByParticipantName(userName)
     this.meetingService.saveVote(sessionId, userName, votedUser)
 
     const votes = this.meetingService.getVotes(sessionId)
 
-    if (Object.keys(votes).length === 6) {
+    if (Object.keys(votes).length === 2) {
       const { winner, losers } = this.meetingService.calculateWinner(sessionId)
 
       const participants = this.meetingService.getParticipants(sessionId)
@@ -277,20 +282,20 @@ export class MeetingGateway
         this.server.to(socket.id).emit('voteResults', {
           winner,
           losers,
-          photos: this.meetingService.getPhotos(sessionId, userName),
+          photos: this.meetingService.getPhotos(sessionId),
         })
       })
     }
   }
 
   @SubscribeMessage('winnerPrize')
-  handleWinnerPrize(
+  async handleWinnerPrize(
     client: Socket,
     payload: { userName: string; winners: string[]; losers: string[] },
   ) {
     const { userName, winners, losers } = payload
     const sessionId =
-      this.meetingService.getSessionIdByParticipantName(userName)
+      await this.meetingService.getSessionIdByParticipantName(userName)
     const participants = this.meetingService.getParticipants(sessionId)
 
     if (userName === winners[0])
@@ -320,19 +325,20 @@ export class MeetingGateway
   // 1. 10초 이내에 '1대1화상채팅하기' 버튼을 누르지 않으면 비활성
   // 2. 성공적으로 '1대1화상채팅하기' 버튼을 눌렀을 경우 클라이언트 -> 서버(Event : chooseCam)
   @SubscribeMessage('lastChoose')
-  handleChooseCam(
+  async handleChooseCam(
     client: Socket,
     payload: { sender: string; receiver: string },
   ) {
     // 서버 입장에서 소켓이 존재하는 방을 찾기 위함
     const { sender, receiver } = payload
-    const sessionId = this.meetingService.getSessionIdByParticipantName(sender)
+    const sessionId =
+      await this.meetingService.getSessionIdByParticipantName(sender)
     // 기존 정보가 있다면 새롭게 변형해서 저장할 수 있음
     if (sessionId) {
       this.meetingService.storeChoose(sessionId, sender, receiver)
       // 방과 일치하는 매칭결과 정보 가져오기
       const chooseData = this.meetingService.getChooseData(sessionId)
-      if (chooseData.length === 6) {
+      if (chooseData.length === 2) {
         // 방과 일치하는 참여자 정보 가져오기
         const participant = this.meetingService.getParticipants(sessionId)
         // 매칭된 쌍의 정보를 가지고 있음
@@ -373,7 +379,9 @@ export class MeetingGateway
   ) {
     const { sessionId, myName, partnerName } = payload
     const participant = this.meetingService.getParticipants(sessionId)
-    if (this.meetingService.getAcceptanceStatus(partnerName) === true) {
+    const isAccepted =
+      await this.meetingService.getAcceptanceStatus(partnerName)
+    if (isAccepted === true) {
       console.log('===========handleMoveToPrivateRoom 1==================')
       // const newSessionId = `${myName}-${partnerName}`
       const newSessionId = this.meetingService.generateSessionId()
@@ -414,10 +422,10 @@ export class MeetingGateway
   }
 
   @SubscribeMessage('leave')
-  handleLeave(client: Socket, payload: { participantName: string }) {
+  async handleLeave(client: Socket, payload: { participantName: string }) {
     const { participantName } = payload
     const sessionId =
-      this.meetingService.getSessionIdByParticipantName(participantName)
+      await this.meetingService.getSessionIdByParticipantName(participantName)
     if (sessionId) {
       this.meetingService.removeParticipant(
         sessionId,
@@ -425,7 +433,7 @@ export class MeetingGateway
         payload.participantName,
       )
     }
-    this.meetingService.deleteParticipantNameInRoomId(participantName)
+    this.meetingService.deleteParticipantNameInSession(participantName)
     this.meetingService.deleteConnectedSocket(client.id)
     this.meetingService.deleteTimerFlagBySessionId(sessionId)
     this.meetingService.deleteCupidFlagBySessionId(sessionId)
@@ -433,13 +441,13 @@ export class MeetingGateway
   }
 
   @SubscribeMessage('emoji')
-  handleEmoji(
+  async handleEmoji(
     client: Socket,
     payload: { nickname: string; emojiIndex: string },
   ) {
     const { nickname, emojiIndex } = payload
     const sessionId =
-      this.meetingService.getSessionIdByParticipantName(nickname)
+      await this.meetingService.getSessionIdByParticipantName(nickname)
 
     const participants = this.meetingService.getParticipants(sessionId)
     participants.forEach(({ socket }) => {
