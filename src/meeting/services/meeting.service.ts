@@ -443,17 +443,26 @@ export class MeetingService {
     return matches
   }
 
-  saveDrawing(sessionId: string, userName: string, drawing: string) {
-    if (!this.drawings[sessionId]) this.drawings[sessionId] = {}
-    this.drawings[sessionId][userName] = drawing
+  async saveDrawing(
+    sessionId: string,
+    userName: string,
+    drawing: string,
+  ): Promise<void> {
+    const drawings = await this.cacheManager.get<Record<string, string>>(
+      `session:${sessionId}:drawings`,
+    )
+    drawings[userName] = drawing
+    await this.cacheManager.set(`session:${sessionId}:drawings`, drawings)
   }
 
-  getDrawings(sessionId: string): Record<string, string> {
-    return this.drawings[sessionId] || {}
+  async getDrawings(sessionId: string): Promise<Record<string, string>> {
+    return await this.cacheManager.get<Record<string, string>>(
+      `session:${sessionId}:drawings`,
+    )
   }
 
-  resetDrawings(sessionId: string): void {
-    delete this.drawings[sessionId]
+  async resetDrawings(sessionId: string): Promise<void> {
+    await this.cacheManager.del(`session:${sessionId}:drawings`)
   }
 
   savePhoto(sessionId: string, userName: string, photo: string) {
