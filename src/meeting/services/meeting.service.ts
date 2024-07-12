@@ -31,6 +31,8 @@ export class MeetingService {
     this.cacheManager = cacheManager
   }
 
+  private connectedSockets = new Map<string, Socket>() // socketId: Socket
+
   private shuffleArray<T>(array: T[]): T[] {
     for (let i = array.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1))
@@ -43,22 +45,48 @@ export class MeetingService {
     return uuidv4()
   }
 
-  /**connectedSockets[] */
-  getParticipantNameBySocketId(socketId: string): string {
-    return this.connectedSockets[socketId]
+  async getParticipantNameBySocketId(socketId: string): Promise<string> {
+    return await this.cacheManager.get<string>(
+      `socket:${socketId}:participantName`,
+    )
   }
 
-  setConnectedSocket(participantName: string, client: Socket) {
-    this.connectedSockets[client.id] = participantName
+  async getSocketByUserId(nickname: string): Promise<Socket> {
+    const socketId = await this.cacheManager.get<string>(
+      `meeting:user:${nickname}`,
+    )
+    if (socketId) return this.connectedSockets.get(socketId)
+
+    return null
   }
 
-  deleteConnectedSocket(socketId: string) {
-    delete this.connectedSockets[socketId]
+  async setConnectedSocket(
+    participantName: string,
+    client: Socket,
+  ): Promise<void> {
+    this.connectedSockets.set(client.id, client)
+    this.cacheManager.set(
+      `socket:${client.id}:participantName`,
+      participantName,
+    )
+    this.cacheManager.set(`participant:${participantName}:socketId`, client.id)
   }
 
-  /**roomId */
-  getSessionIdByParticipantName(participantName: string): string {
-    return this.roomid.get(participantName)
+  async deleteConnectedSocket(socketId: string): Promise<void> {
+    const participantName = await this.getParticipantNameBySocketId(socketId)
+    if (participantName) {
+      await this.cacheManager.del(`participant:${participantName}:socketId`)
+    }
+    await this.cacheManager.del(`socket:${socketId}:participantName`)
+    this.connectedSockets.delete(socketId)
+  }
+
+  async getSessionIdByParticipantName(
+    participantName: string,
+  ): Promise<string> {
+    return await this.cacheManager.get<string>(
+      `participant:${participantName}:sessionId`,
+    )
   }
 
   setParticipantNameToRoomid(participantName: string, sessionId: string) {
