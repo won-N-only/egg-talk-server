@@ -55,11 +55,14 @@ export class MeetingService {
     client: Socket,
   ): Promise<void> {
     this.connectedSockets.set(client.id, client)
-    this.cacheManager.set(
+    await this.cacheManager.set(
       `socket:${client.id}:participantName`,
       participantName,
     )
-    this.cacheManager.set(`participant:${participantName}:socketId`, client.id)
+    await this.cacheManager.set(
+      `participant:${participantName}:socketId`,
+      client.id,
+    )
   }
 
   async deleteConnectedSocket(socketId: string): Promise<void> {
