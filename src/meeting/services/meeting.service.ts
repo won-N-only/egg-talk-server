@@ -487,13 +487,26 @@ export class MeetingService {
     await this.cacheManager.del(`session:${sessionId}:photos`)
   }
 
-  saveVote(sessionId: string, userName: string, votedUserName: string) {
-    if (!this.votes[sessionId]) this.votes[sessionId] = {}
-    this.votes[sessionId][userName] = votedUserName
+  async saveVote(
+    sessionId: string,
+    userName: string,
+    votedUserName: string,
+  ): Promise<void> {
+    const votes = await this.cacheManager.get<Record<string, string>>(
+      `session:${sessionId}:votes`,
+    )
+    votes[userName] = votedUserName
+    await this.cacheManager.set(`session:${sessionId}:votes`, votes)
   }
 
-  getVotes(sessionId: string): Record<string, string> {
-    return this.votes[sessionId] || {}
+  async getVotes(sessionId: string): Promise<Record<string, string>> {
+    return await this.cacheManager.get<Record<string, string>>(
+      `session:${sessionId}:votes`,
+    )
+  }
+
+  async deleteVotes(sessionId: string): Promise<void> {
+    await this.cacheManager.del(`session:${sessionId}:votes`)
   }
 
   calculateWinner(sessionId: string): { winner: string; losers: string[] } {
@@ -513,7 +526,7 @@ export class MeetingService {
 
     const losers = Object.keys(votes).filter(user => user !== winner)
 
-    delete this.votes[sessionId]
+    this.deleteVotes(sessionId)
     return { winner, losers }
   }
 }
