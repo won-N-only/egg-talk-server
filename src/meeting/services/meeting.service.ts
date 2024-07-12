@@ -5,6 +5,11 @@ import { Socket, Server } from 'socket.io'
 import { v4 as uuidv4 } from 'uuid'
 import Redis from 'ioredis'
 
+type ChooseResult = {
+  sender: string
+  receiver: string
+}
+
 @Injectable()
 export class MeetingService {
   private openvidu: OpenVidu
