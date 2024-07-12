@@ -1,8 +1,9 @@
-import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager'
-import { Inject, Injectable } from '@nestjs/common'
+import { Injectable, Inject } from '@nestjs/common'
+import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager'
 import { OpenVidu, OpenViduRole, Session } from 'openvidu-node-client'
 import { Socket, Server } from 'socket.io'
 import { v4 as uuidv4 } from 'uuid'
+import Redis from 'ioredis'
 
 @Injectable()
 export class MeetingService {
@@ -10,15 +11,18 @@ export class MeetingService {
   public server: Server
   private sessions: Record<string, { session: Session; participants: any[] }> =
     {}
-  private chooseData: Record<string, { sender: string; receiver: string }[]> =
-    {}
   private sessionTimers: Record<string, NodeJS.Timeout> = {}
+  private redis: Redis
 
   constructor(@Inject(CACHE_MANAGER) private cacheManager: Cache) {
     const OPENVIDU_URL = process.env.OPENVIDU_URL
     const OPENVIDU_SECRET = process.env.OPENVIDU_SECRET
     this.openvidu = new OpenVidu(OPENVIDU_URL, OPENVIDU_SECRET)
-    this.cacheManager = cacheManager
+
+    this.redis = new Redis({
+      host: process.env.REDIS_HOST,
+      port: parseInt(process.env.REDIS_PORT, 10),
+    })
   }
 
   private connectedSockets = new Map<string, Socket>() // socketId: Socket
