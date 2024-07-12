@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { Socket } from 'socket.io'
 import { MeetingService } from './meeting.service'
+import { CommonRepository } from '../../common/common.repository'
 
 @Injectable()
 export class QueueService {
@@ -70,8 +71,29 @@ export class QueueService {
   ) {
     let sessionId = ''
     try {
-      this.addParticipant(participantName, client, gender)
+      await this.addParticipant(participantName, client, gender)
 
+      // 큐 필터링 및 매칭 시도
+      const result = await this.filterQueues()
+      if (result) {
+        const { sessionId, readyMales, readyFemales } = result
+        return { sessionId, readyMales, readyFemales }
+      }
+
+      const participants = this.meetingService.getParticipants(sessionId)
+      console.log(
+        'Current waiting participants: ',
+        participants.map(p => p.name),
+      )
+      return { sessionId }
+    } catch (error) {
+      console.error('Error joining queue:', error)
+      await this.meetingService.deleteSession(sessionId)
+    }
+  }
+
+  async filterQueues() {
+    // 매칭 가능성 확인
       if (this.maleQueue.length >= 3 && this.femaleQueue.length >= 3) {
         sessionId = await this.findOrCreateNewSession()
         const readyMales = this.maleQueue.splice(0, 3)
