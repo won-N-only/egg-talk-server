@@ -24,10 +24,11 @@ export class MeetingService {
   private photos: Record<string, Record<string, string>> = {}
   private votes: Record<string, Record<string, string>> = {}
 
-  constructor() {
+  constructor(@Inject(CACHE_MANAGER) private cacheManager: Cache) {
     const OPENVIDU_URL = process.env.OPENVIDU_URL
     const OPENVIDU_SECRET = process.env.OPENVIDU_SECRET
     this.openvidu = new OpenVidu(OPENVIDU_URL, OPENVIDU_SECRET)
+    this.cacheManager = cacheManager
   }
 
   private shuffleArray<T>(array: T[]): T[] {
