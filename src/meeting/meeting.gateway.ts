@@ -55,8 +55,9 @@ export class MeetingGateway
       '미팅 게이트웨이 디스커넥트입니다. 유저 이름은 : ',
       participantName,
     )
+
     const user = client['user']
-    if (!sessions.length && user) {
+    if (!Object.keys(sessions).length && user) {
       const gender = client['user'].gender
       this.queueService.removeParticipant(participantName, gender)
     }
