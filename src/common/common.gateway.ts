@@ -11,12 +11,7 @@ import { Logger, UseGuards } from '@nestjs/common'
 import { JwtAuthWsGuard } from '../guards/jwt-auth.ws.guard'
 import { Server, Socket } from 'socket.io'
 import { CommonService } from './common.service'
-import {
-  AcceptFriend,
-  AddFriendDto,
-  joinChatDto,
-  sendMessageDto,
-} from './dto/request/notification.dto'
+import { AcceptFriend, AddFriendDto, joinChatDto, sendMessageDto } from './dto/request/notification.dto'
 import { UsersService } from '../users/users.service'
 import { plainToClass } from 'class-transformer'
 
@@ -134,7 +129,7 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: joinChatDto, // nickName == userId
   ) {
-    // const joinChatData = plainToClass(joinChatDto, payload) // payload를 joinChatDto 인스턴스로 변환
+   // const joinChatData = plainToClass(joinChatDto, payload) // payload를 joinChatDto 인스턴스로 변환
     const { newChatRoomId, friendName } = payload
     const nickname = client['user'].nickname
     // 1. 기존 채팅방 정보 가져오기
@@ -171,11 +166,10 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async handleSendMessage(
     @ConnectedSocket() client: Socket,
     @MessageBody()
-    sendMessageDto,
+    payload : sendMessageDto,
   ) {
     try {
-      const { chatRoomId, message, userNickname, receiverNickname } =
-        sendMessageDto
+      const { chatRoomId, message, userNickname, receiverNickname } = payload
 
       // 상대방이 채팅방에 참여 중인지 확인
       const receiverSocket = (
