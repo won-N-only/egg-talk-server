@@ -436,30 +436,16 @@ export class MeetingService {
     return this.sessions
   }
 
-  storeChoose(sessionId: string, sender: string, receiver: string) {
-    if (!this.chooseData[sessionId]) {
-      this.chooseData[sessionId] = []
-    }
-
-    // 기존 선택이 있는지 확인하고 업데이트
-    const existingChoiceIndex = this.chooseData[sessionId].findIndex(
-      choice => choice.sender === sender,
-    )
-    if (existingChoiceIndex !== -1) {
-      this.chooseData[sessionId][existingChoiceIndex].receiver = receiver
-    } else {
-      this.chooseData[sessionId].push({ sender, receiver })
-    }
+  async setChooseData(sessionId: string, sender: string, receiver: string) {
+    await this.redis.hset(`choose:${sessionId}`, sender, receiver)
   }
 
-  removeChooseData(sessionId: string) {
-    if (this.chooseData[sessionId]) {
-      delete this.chooseData[sessionId]
-    }
+  async deleteChooseData(sessionId: string) {
+    await this.redis.del(`choose:${sessionId}`)
   }
 
-  getChooseData(sessionId: string) {
-    return this.chooseData[sessionId] || []
+  async getChooseData(sessionId: string) {
+    return await this.redis.hgetall(`choose:${sessionId}`)
   }
 
   findMatchingPairs(sessionId: string) {
