@@ -39,6 +39,7 @@ export class MeetingService {
     return uuidv4()
   }
 
+  // 소켓 관리
   async getParticipantNameBySocketId(socketId: string): Promise<string> {
     return await this.cacheManager.get<string>(
       `socket:${socketId}:participantName`,
@@ -50,7 +51,6 @@ export class MeetingService {
       `meeting:user:${nickname}`,
     )
     if (socketId) return this.connectedSockets.get(socketId)
-
     return null
   }
 
@@ -78,6 +78,7 @@ export class MeetingService {
     this.connectedSockets.delete(socketId)
   }
 
+  // 세션 관리
   async getSessionIdByParticipantName(
     participantName: string,
   ): Promise<string> {
@@ -100,6 +101,7 @@ export class MeetingService {
     await this.cacheManager.del(`participant:${participantName}:sessionId`)
   }
 
+  // 타이머 플래그
   async getTimerFlagBySessionId(sessionId: string): Promise<boolean> {
     return await this.cacheManager.get<boolean>(
       `session:${sessionId}:timerFlag`,
@@ -114,6 +116,7 @@ export class MeetingService {
     await this.cacheManager.del(`session:${sessionId}:timerFlag`)
   }
 
+  // 큐피드 플래그
   async getCupidFlagBySessionId(sessionId: string): Promise<boolean> {
     return await this.cacheManager.get<boolean>(
       `session:${sessionId}:cupidFlag`,
@@ -128,6 +131,7 @@ export class MeetingService {
     await this.cacheManager.del(`session:${sessionId}:cupidFlag`)
   }
 
+  // 최종선택 플래그
   async getLastCupidFlagBySessionId(sessionId: string): Promise<boolean> {
     return await this.cacheManager.get<boolean>(
       `session:${sessionId}:lastCupidFlag`,
@@ -142,6 +146,7 @@ export class MeetingService {
     await this.cacheManager.del(`session:${sessionId}:lastCupidFlag`)
   }
 
+  // 1:1대화 수락 플래그
   async getAcceptanceStatus(partnerName: string): Promise<boolean> {
     return await this.cacheManager.get<boolean>(
       `partner:${partnerName}:acceptanceStatus`,
@@ -154,25 +159,20 @@ export class MeetingService {
 
   async deleteAcceptanceStatus(socketId: string): Promise<void> {
     const participantName = await this.getParticipantNameBySocketId(socketId)
-    if (participantName)
+    if (participantName) {
       await this.cacheManager.del(`partner:${participantName}:acceptanceStatus`)
+    }
   }
 
+  // 오픈비두 세션
   async createSession(sessionId: string): Promise<Session> {
     if (!this.sessions[sessionId]) {
-      try {
-        const session = await this.openvidu.createSession({
-          customSessionId: sessionId,
-        })
-        this.sessions[sessionId] = { session, participants: [] }
-        console.log(`Session created: ${sessionId}, ID: ${session.sessionId}`)
-        return session
-      } catch (error) {
-        console.error('Error creating session:', error)
-        throw error
-      }
+      const session = await this.openvidu.createSession({
+        customSessionId: sessionId,
+      })
+      this.sessions[sessionId] = { session, participants: [] }
+      return session
     } else {
-      console.log(`Session already exists: ${sessionId}`)
       return this.sessions[sessionId].session
     }
   }
@@ -180,14 +180,10 @@ export class MeetingService {
   async deleteSession(sessionId: string): Promise<void> {
     if (this.sessions[sessionId]) {
       delete this.sessions[sessionId]
-      console.log(`Session deleted: ${sessionId}`)
-    } else {
-      console.error(`Session ${sessionId} does not exist`)
     }
   }
 
-  addParticipant(sessionId: string, participantName: string, socket: any) {
-    // gender별로 나눠야할 것 같음
+  addParticipant(sessionId: string, participantName: string, socket: Socket) {
     if (this.sessions[sessionId]) {
       this.sessions[sessionId].participants.push({
         name: participantName,
@@ -204,20 +200,19 @@ export class MeetingService {
     }
   }
 
-  removeParticipant(sessionId: string, socket: any, myid: string) {
+  removeParticipant(sessionId: string, socket: Socket, myid: string) {
     if (this.sessions[sessionId]) {
-      // console.log(this.sessions[sessionId].participants.map(p => p.name))
       const participants = this.getParticipants(sessionId)
       this.sessions[sessionId].participants = participants.filter(
         p => p.name !== myid,
       )
       console.log(
-        "/meetingService' 세션 참가자 수: ",
+        '/meetingService 세션 참가자 수: ',
         this.sessions[sessionId].participants.length,
       )
       if (this.sessions[sessionId].participants.length === 0) {
         console.log(
-          "'/meetingService' 세션 참가자가 없습니다",
+          '"/meetingService 세션 참가자가 없습니다',
           this.sessions[sessionId].participants.length,
           'sessionId 는',
           sessionId,
@@ -232,7 +227,7 @@ export class MeetingService {
 
   clearSessionData(sessionId: string) {
     console.log(`Clearing session data for ${sessionId}`)
-    delete this.chooseData[sessionId]
+    this.deleteChooseData(sessionId)
     delete this.sessions[sessionId]
     if (this.sessionTimers[sessionId]) {
       console.log('타이머 초기화 중')
@@ -243,13 +238,9 @@ export class MeetingService {
 
   getParticipants(sessionId: string) {
     const sessions = this.sessions[sessionId]
-    if (sessions) {
-      return this.sessions[sessionId].participants
-    }
+    if (sessions) return this.sessions[sessionId].participants
+
     return []
-    // return this.sessions[sessionId]
-    //   ? this.sessions[sessionId].participants
-    //   : []
   }
 
   async generateTokens(sessionId: string) {
@@ -339,6 +330,7 @@ export class MeetingService {
       console.error('Error generating tokens: ', error)
     }
   }
+
   startSessionTimer(sessionId: string, server: Server) {
     const timers = [
       { time: 0.5, event: 'introduce' },
@@ -350,18 +342,15 @@ export class MeetingService {
       { time: 9, event: 'finish' },
     ]
 
-    // 세션 타이머 초기화 (필요한 경우)
     if (this.sessionTimers[sessionId]) {
       clearTimeout(this.sessionTimers[sessionId])
     }
 
-    let elapsedTime = 0 // 경과 시간
-    let currentTimerIndex = 0 // 현재 타이머 인덱스
+    let elapsedTime = 0
+    let currentTimerIndex = 0
 
     const timerId = setInterval(() => {
-      elapsedTime += 1 // 1초씩 증가
-
-      // 현재 타이머 인덱스가 유효하고, 경과 시간이 현재 타이머의 시간과 같으면 이벤트 발생
+      elapsedTime += 1
       if (
         currentTimerIndex < timers.length &&
         elapsedTime === timers[currentTimerIndex].time * 60
@@ -390,16 +379,15 @@ export class MeetingService {
           messageArray,
         )
 
-        currentTimerIndex++ // 다음 타이머로 이동
+        currentTimerIndex++
       }
 
-      // 모든 타이머가 완료되면 setInterval 종료
       if (currentTimerIndex >= timers.length) {
         clearInterval(timerId)
       }
-    }, 1000) // 1초마다 실행
+    }, 1000)
 
-    this.sessionTimers[sessionId] = timerId // 타이머 ID 저장
+    this.sessionTimers[sessionId] = timerId
   }
 
   notifySessionParticipants(
@@ -410,7 +398,6 @@ export class MeetingService {
     messageArray?: string[],
   ) {
     const participants = this.getParticipants(sessionId)
-    // console.log('현재 참여자 목록입니다 => ', participants)
     if (eventType == 'keyword') {
       const getRandomParticipant = participants[1].name
       participants.forEach(({ socket }) => {
@@ -464,6 +451,7 @@ export class MeetingService {
     return matches
   }
 
+  // 그림대회 그림 관리
   async saveDrawing(
     sessionId: string,
     userName: string,
@@ -480,6 +468,7 @@ export class MeetingService {
     await this.redis.del(`session:${sessionId}:drawings`)
   }
 
+  // 그림대회 사진 관리
   async savePhoto(
     sessionId: string,
     userName: string,
@@ -496,6 +485,7 @@ export class MeetingService {
     await this.redis.del(`session:${sessionId}:photos`)
   }
 
+  // 그림대회 투표 관리
   async saveVote(
     sessionId: string,
     userName: string,
