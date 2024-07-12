@@ -145,20 +145,20 @@ export class MeetingService {
     await this.cacheManager.del(`session:${sessionId}:lastCupidFlag`)
   }
 
-  /**acceptanceStatus */
-  getAcceptanceStatus(partnerName: string): boolean {
-    return this.acceptanceStatus[partnerName]
+  async getAcceptanceStatus(partnerName: string): Promise<boolean> {
+    return await this.cacheManager.get<boolean>(
+      `partner:${partnerName}:acceptanceStatus`,
+    )
   }
 
-  setAcceptanceStatus(partnerName: string) {
-    this.acceptanceStatus[partnerName] = true
+  async setAcceptanceStatus(partnerName: string): Promise<void> {
+    await this.cacheManager.set(`partner:${partnerName}:acceptanceStatus`, true)
   }
 
-  deleteAcceptanceStatus(socketId: string) {
-    const nickname = this.connectedSockets[socketId]
-    if (nickname in this.acceptanceStatus) {
-      delete this.acceptanceStatus[nickname]
-    }
+  async deleteAcceptanceStatus(socketId: string): Promise<void> {
+    const participantName = await this.getParticipantNameBySocketId(socketId)
+    if (participantName)
+      await this.cacheManager.del(`partner:${participantName}:acceptanceStatus`)
   }
 
   async createSession(sessionId: string): Promise<Session> {
