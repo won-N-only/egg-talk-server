@@ -226,11 +226,11 @@ export class MeetingGateway
     const currentCount = this.startTimerCount.get(sessionId) || 0
     this.startTimerCount.set(sessionId, currentCount + 1)
 
-    console.log(`startTimer 호출 횟수: ${this.startTimerCount.get(sessionId)}`)
+    // console.log(`startTimer 호출 횟수: ${this.startTimerCount.get(sessionId)}`)
 
     // 호출 횟수가 6일 때 타이머 시작
     if (this.startTimerCount.get(sessionId) === 6) {
-      console.log('타이머가 시작되었습니다.')
+      // console.log('타이머가 시작되었습니다.')
       this.meetingService.startSessionTimer(sessionId, this.server)
     }
   }
