@@ -32,6 +32,7 @@ export class MeetingGateway
 {
   @WebSocketServer() server: Server
   private isDevelopment: boolean
+
   constructor(
     private readonly meetingService: MeetingService,
     private readonly queueService: QueueService,
@@ -164,7 +165,6 @@ export class MeetingGateway
     client: Socket,
     payload: { sender: string; receiver: string },
   ) {
-    // 해당 소켓이 존재하는 방을 찾기 위함
     const sessionId = await this.meetingService.getSessionIdByParticipantName(
       payload.sender,
     )
@@ -189,7 +189,6 @@ export class MeetingGateway
           undefined
         ) {
           participants.forEach(({ socket, name }) => {
-            // 매칭된 사람이 있는지 체크
             const matchedPair = matches.find(match => match.pair.includes(name))
             const partner = matchedPair
               ? matchedPair.pair.find(partnerName => partnerName !== name)
@@ -265,7 +264,6 @@ export class MeetingGateway
       participants.forEach(({ socket }) => {
         this.server.to(socket.id).emit('drawingSubmit', drawings)
       })
-      await this.meetingService.resetDrawings(sessionId)
     }
   }
 
@@ -331,23 +329,18 @@ export class MeetingGateway
     })
   }
 
-  // 1. 10초 이내에 '1대1화상채팅하기' 버튼을 누르지 않으면 비활성
-  // 2. 성공적으로 '1대1화상채팅하기' 버튼을 눌렀을 경우 클라이언트 -> 서버(Event : chooseCam)
   @SubscribeMessage('lastChoose')
   async handleChooseCam(
     client: Socket,
     payload: { sender: string; receiver: string },
   ) {
-    // 서버 입장에서 소켓이 존재하는 방을 찾기 위함
     const { sender, receiver } = payload
     const sessionId =
       await this.meetingService.getSessionIdByParticipantName(sender)
-    // 기존 정보가 있다면 새롭게 변형해서 저장할 수 있음
     if (sessionId) {
       await this.meetingService.storeChoose(sessionId, sender, receiver)
       const chooseData = await this.meetingService.getChooseData(sessionId)
       if (chooseData.length === 2) {
-        // 방과 일치하는 참여자 정보 가져오기
         const participant = this.meetingService.getParticipants(sessionId)
         // 매칭된 쌍의 정보를 가지고 있음
         // [
@@ -355,7 +348,7 @@ export class MeetingGateway
         // { pair: [ 'Charlie', 'David' ] },
         // { pair: [ 'Eve', 'Frank' ] }
         // ]
-        const matches =await this.meetingService.findMatchingPairs(sessionId)
+        const matches = await this.meetingService.findMatchingPairs(sessionId)
 
         if (
           (await this.meetingService.getLastCupidFlagBySessionId(sessionId)) ==
@@ -391,7 +384,6 @@ export class MeetingGateway
       await this.meetingService.getAcceptanceStatus(partnerName)
     if (isAccepted === true) {
       console.log('===========handleMoveToPrivateRoom 1==================')
-      // const newSessionId = `${myName}-${partnerName}`
       const newSessionId = this.meetingService.generateSessionId()
 
       await this.meetingService.createSession(newSessionId)
