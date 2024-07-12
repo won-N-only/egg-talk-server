@@ -153,28 +153,34 @@ export class CommonRepository {
   }
 
   async changeNewMessage(receiverNickname: string, userNickname: string) {
-    try{
-      const user = await this.userModel.findOne({nickname : receiverNickname});
+    try {
+      const user = await this.userModel.findOne({ nickname: receiverNickname })
 
-      const friendToUpdateIndex = user.friends.findIndex(friend => friend.friend == userNickname);
-  
-      user.friends[friendToUpdateIndex].newMessage = true;
-      await user.save();
+      const friendToUpdateIndex = user.friends.findIndex(
+        friend => friend.friend == userNickname,
+      )
+
+      user.friends[friendToUpdateIndex].newMessage = true
+      await user.save()
     } catch (error) {
-      throw error;
+      throw error
     }
   }
   async changeReadMessage(receiverNickname: string, userNickname: string) {
-    try{
-      const user = await this.userModel.findOne({nickname : userNickname});
+    try {
+      const user = await this.userModel.findOne({ nickname: userNickname })
 
-      const friendToUpdateIndex = user.friends.findIndex(friend => friend.friend == receiverNickname);
-  
-      user.friends[friendToUpdateIndex].newMessage = false;
-      await user.save();
+      const friendToUpdateIndex = user.friends.findIndex(
+        friend => friend.friend == receiverNickname,
+      )
+
+      user.friends[friendToUpdateIndex].newMessage = false
+      await user.save()
     } catch (error) {
-      throw error;
+      throw error
     }
+  }
+
   async getFriendNicknames(nickname: string): Promise<string[]> {
     // 1. 주어진 닉네임으로 유저를 찾습니다.
     const user = await this.userModel.findOne({ nickname }).lean()
