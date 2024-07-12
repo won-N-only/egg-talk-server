@@ -416,7 +416,7 @@ export class MeetingGateway
         console.error('방 생성 실패!')
       }
     } else {
-      await this.meetingService.setAcceptanceStatus(partnerName)
+      await this.meetingService.setAcceptanceStatus(myName)
       console.log('===========handleMoveToPrivateRoom 0==================')
     }
   }

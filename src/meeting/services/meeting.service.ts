@@ -153,8 +153,8 @@ export class MeetingService {
     )
   }
 
-  async setAcceptanceStatus(partnerName: string): Promise<void> {
-    await this.cacheManager.set(`partner:${partnerName}:acceptanceStatus`, true)
+  async setAcceptanceStatus(myName: string): Promise<void> {
+    await this.cacheManager.set(`partner:${myName}:acceptanceStatus`, true)
   }
 
   async deleteAcceptanceStatus(socketId: string): Promise<void> {
