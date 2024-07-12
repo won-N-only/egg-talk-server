@@ -94,42 +94,71 @@ export class QueueService {
 
   async filterQueues() {
     // 매칭 가능성 확인
-      if (this.maleQueue.length >= 3 && this.femaleQueue.length >= 3) {
-        sessionId = await this.findOrCreateNewSession()
-        const readyMales = this.maleQueue.splice(0, 3)
-        const readyFemales = this.femaleQueue.splice(0, 3)
+    if (this.maleQueue.length >= 3 && this.femaleQueue.length >= 3) {
+      for (let i = 0; i < this.maleQueue.length; i++) {
+        console.log('------------------------', i, '번째')
+        const male = this.maleQueue[i]
+        console.log('male => ', male)
+        const maleFriends = await this.commonRepository.getFriendNicknames(
+          male.name,
+        )
+        console.log('maleFriends => ', maleFriends)
+        const potentialFemales = this.femaleQueue.filter(
+          female => !maleFriends.includes(female.name),
+        )
+        console.log('potentialFemales => ', potentialFemales)
 
-        await this.meetingService.createSession(sessionId)
-
-        readyMales.forEach(male => {
-          this.meetingService.addParticipant(
-            sessionId,
-            male.name,
-            male.socket,
+        if (potentialFemales.length >= 3) {
+          const readyMales = [male]
+          console.log('readyMales => ', readyMales)
+          const readyFemales = potentialFemales.slice(0, 3)
+          console.log('readyFemales => ', readyFemales)
+          const remainingMales = this.maleQueue.filter(
+            m => m.name !== male.name,
           )
-        })
-
-        readyFemales.forEach(female => {
-          this.meetingService.addParticipant(
-            sessionId,
-            female.name,
-            female.socket,
+          console.log('remainingMales => ', remainingMales)
+          const remainingFemales = this.femaleQueue.filter(
+            f => !readyFemales.includes(f),
           )
-        })
-        console.log('현재 큐 시작진입합니다 세션 이름은 : ', sessionId)
-        await this.meetingService.startVideoChatSession(sessionId)
-        return { sessionId, readyMales, readyFemales }
+
+          console.log('remainingFemales => ', remainingFemales)
+          // 남은 남성 큐에서 추가로 2명 선택
+          const additionalMales = remainingMales.slice(0, 2)
+          console.log('additionalMales => ', additionalMales)
+          readyMales.push(...additionalMales)
+          console.log('readyMales => ', readyMales)
+          this.maleQueue = remainingMales.slice(2)
+          console.log('this.maleQueue => ', this.maleQueue)
+          this.femaleQueue = remainingFemales
+          console.log('this.femaleQueue => ', this.femaleQueue)
+
+          const sessionId = await this.findOrCreateNewSession()
+
+          readyMales.forEach(male => {
+            this.meetingService.addParticipant(
+              sessionId,
+              male.name,
+              male.socket,
+            )
+          })
+
+          readyFemales.forEach(female => {
+            this.meetingService.addParticipant(
+              sessionId,
+              female.name,
+              female.socket,
+            )
+          })
+
+          console.log('현재 큐 시작진입합니다 세션 이름은 : ', sessionId)
+          await this.meetingService.startVideoChatSession(sessionId)
+
+          return { sessionId, readyMales, readyFemales }
+        } else {
+          return
+        }
       }
-      // 이 부분은 클라 확인차 로그로써 삭제해도 무방 다만 테스트 시 확인이 힘들어짐
-      const participants = this.meetingService.getParticipants(sessionId)
-      console.log(
-        'Current waiting participants: ',
-        participants.map(p => p.name),
-      )
-      return { sessionId }
-    } catch (error) {
-      console.error('Error joining queue:', error)
-      await this.meetingService.deleteSession(sessionId)
     }
+    return null
   }
 }
