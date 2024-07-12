@@ -71,9 +71,9 @@ export class MeetingGateway
       }
     }
 
-    this.meetingService.deleteConnectedSocket(client.id)
-    this.meetingService.deleteParticipantNameInSession(participantName)
-    this.meetingService.deleteAcceptanceStatus(client.id)
+    await this.meetingService.deleteConnectedSocket(client.id)
+    await this.meetingService.deleteParticipantNameInSession(participantName)
+    await this.meetingService.deleteAcceptanceStatus(client.id)
   }
 
   @SubscribeMessage('ready')
@@ -101,7 +101,9 @@ export class MeetingGateway
           client,
           participantName,
         )
-        this.meetingService.deleteParticipantNameInSession(participantName)
+        await this.meetingService.deleteParticipantNameInSession(
+          participantName,
+        )
       }
 
       const { sessionId, readyMales, readyFemales } =
@@ -119,14 +121,14 @@ export class MeetingGateway
           )
         })
       }
-      this.meetingService.setConnectedSocket(participantName, client)
+      await this.meetingService.setConnectedSocket(participantName, client)
     } catch (error) {
       console.log('Error handling join Queue request:', error)
     }
   }
 
   @SubscribeMessage('cancel')
-  handleCancel(
+  async handleCancel(
     client: Socket,
     payload: { participantName: string; gender: string },
   ) {
@@ -152,8 +154,8 @@ export class MeetingGateway
         )
       }
     }
-    this.meetingService.deleteConnectedSocket(participantName)
-    this.meetingService.deleteParticipantNameInSession(participantName)
+    await this.meetingService.deleteConnectedSocket(client.id)
+    await this.meetingService.deleteParticipantNameInSession(participantName)
   }
 
   @SubscribeMessage('choose')
@@ -166,23 +168,24 @@ export class MeetingGateway
       payload.sender,
     )
     if (sessionId) {
-      this.meetingService.storeChoose(
+      await this.meetingService.storeChoose(
         sessionId,
         payload.sender,
         payload.receiver,
       )
 
-      const chooseData = this.meetingService.getChooseData(sessionId)
+      const chooseData = await this.meetingService.getChooseData(sessionId)
       if (chooseData.length === 2) {
         const participants = this.meetingService.getParticipants(sessionId)
-        const matches = this.meetingService.findMatchingPairs(sessionId)
+        const matches = await this.meetingService.findMatchingPairs(sessionId)
 
         const matchedPairs = matches.map(match => ({
           pair: match.pair,
           others: matches.filter(p => p !== match),
         }))
         if (
-          this.meetingService.getCupidFlagBySessionId(sessionId) == undefined
+          (await this.meetingService.getCupidFlagBySessionId(sessionId)) ==
+          undefined
         ) {
           participants.forEach(({ socket, name }) => {
             // 매칭된 사람이 있는지 체크
@@ -209,9 +212,9 @@ export class MeetingGateway
               .to(socket.id)
               .emit('chooseResult', { message: chooseData })
           })
-          this.meetingService.setCupidFlagBySessionId(sessionId)
+          await this.meetingService.setCupidFlagBySessionId(sessionId)
         }
-        this.meetingService.removeChooseData(sessionId)
+        await this.meetingService.removeChooseData(sessionId)
       }
     } else {
       console.error('세션에러입니다')
@@ -219,18 +222,21 @@ export class MeetingGateway
   }
 
   @SubscribeMessage('startTimer')
-  handleStartTimer(client: Socket, payload: { sessionId: string }) {
+  async handleStartTimer(client: Socket, payload: { sessionId: string }) {
     const { sessionId } = payload
     console.log(
       '현재 타이머가 시작되었나요? => ',
-      this.meetingService.getTimerFlagBySessionId(sessionId),
+      await this.meetingService.getTimerFlagBySessionId(sessionId),
       '혹시 클라에서 온 세션 이름은?? ',
       sessionId,
     )
-    if (this.meetingService.getTimerFlagBySessionId(sessionId) == undefined) {
+    if (
+      (await this.meetingService.getTimerFlagBySessionId(sessionId)) ==
+      undefined
+    ) {
       console.log('타이머가 시작되었습니다.')
       this.meetingService.startSessionTimer(sessionId, this.server)
-      this.meetingService.setTimerFlagBySessionId(sessionId)
+      await this.meetingService.setTimerFlagBySessionId(sessionId)
     }
   }
 
@@ -248,17 +254,17 @@ export class MeetingGateway
       return
     }
 
-    this.meetingService.savePhoto(sessionId, userName, photo)
-    this.meetingService.saveDrawing(sessionId, userName, drawing)
+    await this.meetingService.savePhoto(sessionId, userName, photo)
+    await this.meetingService.saveDrawing(sessionId, userName, drawing)
 
-    const drawings = this.meetingService.getDrawings(sessionId)
+    const drawings = await this.meetingService.getDrawings(sessionId)
 
     if (Object.keys(drawings).length === 2) {
       const participants = this.meetingService.getParticipants(sessionId)
       participants.forEach(({ socket }) => {
         this.server.to(socket.id).emit('drawingSubmit', drawings)
       })
-      this.meetingService.resetDrawings(sessionId)
+      await this.meetingService.resetDrawings(sessionId)
     }
   }
 
@@ -270,19 +276,20 @@ export class MeetingGateway
     const { userName, votedUser } = payload
     const sessionId =
       await this.meetingService.getSessionIdByParticipantName(userName)
-    this.meetingService.saveVote(sessionId, userName, votedUser)
+    await this.meetingService.saveVote(sessionId, userName, votedUser)
 
-    const votes = this.meetingService.getVotes(sessionId)
+    const votes = await this.meetingService.getVotes(sessionId)
 
     if (Object.keys(votes).length === 2) {
-      const { winner, losers } = this.meetingService.calculateWinner(sessionId)
-
+      const { winner, losers } =
+        await this.meetingService.calculateWinner(sessionId)
+      const photos = await this.meetingService.getPhotos(sessionId)
       const participants = this.meetingService.getParticipants(sessionId)
       participants.forEach(({ socket }) => {
         this.server.to(socket.id).emit('voteResults', {
           winner,
           losers,
-          photos: this.meetingService.getPhotos(sessionId),
+          photos: photos,
         })
       })
     }
@@ -302,6 +309,7 @@ export class MeetingGateway
       participants.forEach(({ socket }) => {
         this.server.to(socket.id).emit('finalResults', { winners, losers })
       })
+    await this.meetingService.resetPhotos(sessionId)
   }
 
   @SubscribeMessage('drawingOneToOne')
@@ -335,9 +343,8 @@ export class MeetingGateway
       await this.meetingService.getSessionIdByParticipantName(sender)
     // 기존 정보가 있다면 새롭게 변형해서 저장할 수 있음
     if (sessionId) {
-      this.meetingService.storeChoose(sessionId, sender, receiver)
-      // 방과 일치하는 매칭결과 정보 가져오기
-      const chooseData = this.meetingService.getChooseData(sessionId)
+      await this.meetingService.storeChoose(sessionId, sender, receiver)
+      const chooseData = await this.meetingService.getChooseData(sessionId)
       if (chooseData.length === 2) {
         // 방과 일치하는 참여자 정보 가져오기
         const participant = this.meetingService.getParticipants(sessionId)
@@ -347,10 +354,10 @@ export class MeetingGateway
         // { pair: [ 'Charlie', 'David' ] },
         // { pair: [ 'Eve', 'Frank' ] }
         // ]
-        const matches = this.meetingService.findMatchingPairs(sessionId)
+        const matches =await this.meetingService.findMatchingPairs(sessionId)
 
         if (
-          this.meetingService.getLastCupidFlagBySessionId(sessionId) ==
+          (await this.meetingService.getLastCupidFlagBySessionId(sessionId)) ==
           undefined
         ) {
           participant.forEach(({ socket, name }) => {
@@ -364,7 +371,7 @@ export class MeetingGateway
 
             this.server.to(socket.id).emit('lastChooseResult', chooseData)
           })
-          this.meetingService.setLastCupidFlagBySessionId(sessionId)
+          await this.meetingService.setLastCupidFlagBySessionId(sessionId)
         }
       }
     } else {
@@ -388,7 +395,7 @@ export class MeetingGateway
 
       await this.meetingService.createSession(newSessionId)
 
-      const partner = await participant.find(
+      const partner = participant.find(
         participant => participant.name === partnerName,
       )
       this.meetingService.addParticipant(newSessionId, myName, client)
@@ -416,7 +423,7 @@ export class MeetingGateway
         console.error('방 생성 실패!')
       }
     } else {
-      this.meetingService.setAcceptanceStatus(partnerName)
+      await this.meetingService.setAcceptanceStatus(partnerName)
       console.log('===========handleMoveToPrivateRoom 0==================')
     }
   }
@@ -433,11 +440,11 @@ export class MeetingGateway
         payload.participantName,
       )
     }
-    this.meetingService.deleteParticipantNameInSession(participantName)
-    this.meetingService.deleteConnectedSocket(client.id)
-    this.meetingService.deleteTimerFlagBySessionId(sessionId)
-    this.meetingService.deleteCupidFlagBySessionId(sessionId)
-    this.meetingService.deleteLastCupidFlagBySessionId(sessionId)
+    await this.meetingService.deleteParticipantNameInSession(participantName)
+    await this.meetingService.deleteConnectedSocket(client.id)
+    await this.meetingService.deleteTimerFlagBySessionId(sessionId)
+    await this.meetingService.deleteCupidFlagBySessionId(sessionId)
+    await this.meetingService.deleteLastCupidFlagBySessionId(sessionId)
   }
 
   @SubscribeMessage('emoji')
