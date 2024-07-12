@@ -465,13 +465,26 @@ export class MeetingService {
     await this.cacheManager.del(`session:${sessionId}:drawings`)
   }
 
-  savePhoto(sessionId: string, userName: string, photo: string) {
-    if (!this.photos[sessionId]) this.photos[sessionId] = {}
-    this.photos[sessionId][userName] = photo
+  async savePhoto(
+    sessionId: string,
+    userName: string,
+    photo: string,
+  ): Promise<void> {
+    const photos = await this.cacheManager.get<Record<string, string>>(
+      `session:${sessionId}:photos`,
+    )
+    photos[userName] = photo
+    await this.cacheManager.set(`session:${sessionId}:photos`, photos)
   }
 
-  getPhotos(sessionId: string, userName: string) {
-    return this.photos[sessionId] || {}
+  async getPhotos(sessionId: string): Promise<Record<string, string>> {
+    return await this.cacheManager.get<Record<string, string>>(
+      `session:${sessionId}:photos`,
+    )
+  }
+
+  async resetPhotos(sessionId: string): Promise<void> {
+    await this.cacheManager.del(`session:${sessionId}:photos`)
   }
 
   saveVote(sessionId: string, userName: string, votedUserName: string) {
