@@ -89,12 +89,18 @@ export class MeetingService {
     )
   }
 
-  setParticipantNameToRoomid(participantName: string, sessionId: string) {
-    this.roomid.set(participantName, sessionId)
+  async setParticipantNameToSession(
+    participantName: string,
+    sessionId: string,
+  ): Promise<void> {
+    await this.cacheManager.set(
+      `participant:${participantName}:sessionId`,
+      sessionId,
+    )
   }
 
-  deleteParticipantNameInRoomId(participantName: string) {
-    this.roomid.delete(participantName)
+  async deleteParticipantNameInSession(participantName: string): Promise<void> {
+    await this.cacheManager.del(`participant:${participantName}:sessionId`)
   }
 
   /**timerFlag */
