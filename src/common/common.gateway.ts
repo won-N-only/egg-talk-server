@@ -11,8 +11,9 @@ import { Logger, UseGuards } from '@nestjs/common'
 import { JwtAuthWsGuard } from '../guards/jwt-auth.ws.guard'
 import { Server, Socket } from 'socket.io'
 import { CommonService } from './common.service'
-import { AcceptFriend, AddFriendDto } from './dto/request/notification.dto'
+import { AcceptFriend, AddFriendDto, joinChatDto } from './dto/request/notification.dto'
 import { UsersService } from '../users/users.service'
+import { plainToClass } from 'class-transformer'
 
 const logger = new Logger('ChatGateway')
 
@@ -125,14 +126,13 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('joinchat')
   async handleJoinRoom(
-    client: Socket,
-    payload: { newChatRoomId: string; friendName: string }, // nickName == userId
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: joinChatDto, // nickName == userId
   ) {
+   // const joinChatData = plainToClass(joinChatDto, payload) // payload를 joinChatDto 인스턴스로 변환
     const { newChatRoomId, friendName } = payload
-    const chatRoomId = newChatRoomId
     const nickname = client['user'].nickname
     // 1. 기존 채팅방 정보 가져오기
-
     const currentRooms = Array.from(client.rooms) // 현재 참여 중인 모든 방
     const currentChatRoomId = currentRooms.find(room => room !== client.id) // Socket ID 제외
     // 2. 기존 채팅방 연결 종료 (만약 있다면)
@@ -141,10 +141,10 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     // 3. 새 채팅방 참여
-    client.join(chatRoomId)
+    client.join(newChatRoomId)
 
     // 4. 채팅 기록 불러오기 (필요하다면)
-    const chatHistory = await this.commonService.getChatHistory(chatRoomId)
+    const chatHistory = await this.commonService.getChatHistory(newChatRoomId)
     await this.commonService.readMessage(friendName, nickname)
     client.emit('chatHistory', chatHistory)
   }
