@@ -1,10 +1,18 @@
 import { Injectable } from '@nestjs/common'
 import { Socket } from 'socket.io'
 import { MeetingService } from './meeting.service'
+import { Redis } from 'ioredis'
 
 @Injectable()
 export class QueueService {
-  constructor(private readonly meetingService: MeetingService) {}
+  private redis: Redis
+
+  constructor(private readonly meetingService: MeetingService) {
+    this.redis = new Redis({
+      host: process.env.REDIS_HOST,
+      port: parseInt(process.env.REDIS_PORT, 10),
+    })
+  }
   private maleQueue: { name: string; socketId: string }[] = []
   private femaleQueue: { name: string; socketId: string }[] = []
 
