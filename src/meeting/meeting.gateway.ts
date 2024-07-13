@@ -34,7 +34,7 @@ export class MeetingGateway
 {
   @WebSocketServer() server: Server
   private isDevelopment: boolean
-
+  private userCount = 6
   constructor(
     private readonly meetingService: MeetingService,
     private readonly queueService: QueueService,
@@ -174,7 +174,7 @@ export class MeetingGateway
       )
 
       const chooseData = await this.meetingService.getChooseData(sessionId)
-      if (Object.keys(chooseData).length === 6) {
+      if (Object.keys(chooseData).length === this.userCount) {
         const participants = this.meetingService.getParticipants(sessionId)
         const matches = await this.meetingService.findMatchingPairs(sessionId)
 
@@ -225,7 +225,7 @@ export class MeetingGateway
     const currentCount =
       await this.meetingService.getTimerCountBySessionId(sessionId)
 
-    if (currentCount === 6) {
+    if (currentCount === this.userCount) {
       this.meetingService.startSessionTimer(sessionId, this.server)
       this.meetingService.deleteTimerCountBySessionId(sessionId)
     }
@@ -254,7 +254,7 @@ export class MeetingGateway
 
     const drawings = await this.meetingService.getDrawings(sessionId)
 
-    if (Object.keys(drawings).length === 6) {
+    if (Object.keys(drawings).length === this.userCount) {
       const participants = this.meetingService.getParticipants(sessionId)
       participants.forEach(({ socketId }) => {
         this.server.to(socketId).emit('drawingSubmit', drawings)
@@ -273,7 +273,7 @@ export class MeetingGateway
 
     const votes = await this.meetingService.getVotes(sessionId)
 
-    if (Object.keys(votes).length === 6) {
+    if (Object.keys(votes).length === this.userCount) {
       const { winner, losers } =
         await this.meetingService.calculateWinner(sessionId)
       const photos = await this.meetingService.getPhotos(sessionId)
@@ -339,7 +339,7 @@ export class MeetingGateway
     if (sessionId) {
       await this.meetingService.setChooseData(sessionId, sender, receiver)
       const chooseData = await this.meetingService.getChooseData(sessionId)
-      if (Object.keys(chooseData).length === 6) {
+      if (Object.keys(chooseData).length === this.userCount) {
         const participant = this.meetingService.getParticipants(sessionId)
         // 매칭된 쌍의 정보를 가지고 있음
         // [
