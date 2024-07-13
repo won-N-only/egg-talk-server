@@ -176,7 +176,7 @@ export class MeetingGateway
       )
 
       const chooseData = await this.meetingService.getChooseData(sessionId)
-      if (Object.keys(chooseData).length === 2) {
+      if (Object.keys(chooseData).length === 6) {
         const participants = this.meetingService.getParticipants(sessionId)
         const matches = await this.meetingService.findMatchingPairs(sessionId)
 
@@ -259,7 +259,7 @@ export class MeetingGateway
 
     const drawings = await this.meetingService.getDrawings(sessionId)
 
-    if (Object.keys(drawings).length === 2) {
+    if (Object.keys(drawings).length === 6) {
       const participants = this.meetingService.getParticipants(sessionId)
       participants.forEach(({ socket }) => {
         this.server.to(socket.id).emit('drawingSubmit', drawings)
@@ -279,7 +279,7 @@ export class MeetingGateway
 
     const votes = await this.meetingService.getVotes(sessionId)
 
-    if (Object.keys(votes).length === 2) {
+    if (Object.keys(votes).length === 6) {
       const { winner, losers } =
         await this.meetingService.calculateWinner(sessionId)
       const photos = await this.meetingService.getPhotos(sessionId)
@@ -340,7 +340,7 @@ export class MeetingGateway
     if (sessionId) {
       await this.meetingService.setChooseData(sessionId, sender, receiver)
       const chooseData = await this.meetingService.getChooseData(sessionId)
-      if (Object.keys(chooseData).length === 2) {
+      if (Object.keys(chooseData).length === 6) {
         const participant = this.meetingService.getParticipants(sessionId)
         // 매칭된 쌍의 정보를 가지고 있음
         // [
