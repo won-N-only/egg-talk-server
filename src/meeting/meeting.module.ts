@@ -7,18 +7,9 @@ import { JwtService } from '@nestjs/jwt'
 import { QueueService } from './services/queue.service'
 import { ConfigService } from '@nestjs/config'
 import { CommonModule } from '../common/common.module'
-import { CacheModule } from '@nestjs/cache-manager'
-import * as redisStore from 'cache-manager-ioredis'
 
 @Module({
-  imports: [
-    CommonModule,
-    CacheModule.register({
-      store: redisStore,
-      host: process.env.REDIS_HOST,
-      port: process.env.REDIS_PORT,
-    }),
-  ],
+  imports: [CommonModule],
   providers: [
     MeetingGateway,
     MeetingService,
@@ -28,6 +19,6 @@ import * as redisStore from 'cache-manager-ioredis'
     JwtAuthWsGuard,
     ConfigService,
   ],
-  exports: [CacheModule],
+  exports: [],
 })
 export class MeetingModule {}
