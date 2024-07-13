@@ -340,8 +340,8 @@ export class MeetingService {
         elapsedTime === timers[currentTimerIndex].time * 60
       ) {
         const { event } = timers[currentTimerIndex]
-        let message: string | null
-        let messageArray: string[] | undefined
+        let message: string | null = null
+        let messageArray: string[] | undefined = undefined
 
         if (event === 'keyword') {
           const getRandomNumber = () => Math.floor(Math.random() * 20) + 1
