@@ -218,8 +218,8 @@ export class MeetingService {
   }
   startSessionTimer(sessionId: string, server: Server) {
     const timers = [
-      { time: 1 / 12, event: 'introduce' },
-      { time: 1 / 3, event: 'keyword' },
+      // { time: 1 / 12, event: 'introduce' },
+      { time: 1 / 12, event: 'keyword' },
       { time: 2 / 3, event: 'cupidTime' },
       { time: 94 / 60, event: 'cam' },
       { time: 104 / 60, event: 'drawingContest' },
