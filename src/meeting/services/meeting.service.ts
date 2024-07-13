@@ -197,9 +197,15 @@ export class MeetingService {
     }
   }
 
-  clearSessionData(sessionId: string) {
+  async clearSessionData(sessionId: string) {
     console.log(`Clearing session data for ${sessionId}`)
-    this.deleteChooseData(sessionId)
+    await this.deleteChooseData(sessionId)
+    await this.resetDrawings(sessionId)
+    await this.resetPhotos(sessionId)
+    await this.deleteVotes(sessionId)
+    await this.deleteTimerCountBySessionId(sessionId)
+    await this.deleteCupidFlagBySessionId(sessionId)
+    await this.deleteLastCupidFlagBySessionId(sessionId)
     delete this.sessions[sessionId]
     if (this.sessionTimers[sessionId]) {
       console.log('타이머 초기화 중')
