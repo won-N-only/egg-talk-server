@@ -136,8 +136,17 @@ export class MeetingService {
     }
   }
 
-  private sessions: Record<string, { session: Session; participants: any[] }> =
-    {}
+  private sessions: Record<
+    string,
+    {
+      session: Session
+      participants: {
+        name: string
+        socketId: string
+      }[]
+    }
+  > = {}
+
   private sessionTimers: Record<string, NodeJS.Timeout> = {}
 
   // 오픈비두 세션
