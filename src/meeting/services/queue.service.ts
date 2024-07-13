@@ -1,10 +1,14 @@
 import { Injectable } from '@nestjs/common'
 import { Socket } from 'socket.io'
 import { MeetingService } from './meeting.service'
+import { SessionService } from './session.service'
 
 @Injectable()
 export class QueueService {
-  constructor(private readonly meetingService: MeetingService) {}
+  constructor(
+    private readonly meetingService: MeetingService,
+    private readonly sessionService: SessionService,
+  ) {}
   private maleQueue: { name: string; socket: Socket }[] = []
   private femaleQueue: { name: string; socket: Socket }[] = []
 
@@ -62,7 +66,7 @@ export class QueueService {
 
   async findOrCreateNewSession(): Promise<string> {
     const newSessionId = this.meetingService.generateSessionId()
-    await this.meetingService.createSession(newSessionId)
+    await this.sessionService.createSession(newSessionId)
     console.log(`Creating and returning new session: ${newSessionId}`)
     return newSessionId
   }
@@ -82,7 +86,7 @@ export class QueueService {
         const readyMales = this.maleQueue.splice(0, 3)
         const readyFemales = this.femaleQueue.splice(0, 3)
 
-        await this.meetingService.createSession(sessionId)
+        await this.sessionService.createSession(sessionId)
 
         readyMales.forEach(male => {
           this.meetingService.addParticipant(sessionId, male.name, male.socket)
@@ -108,7 +112,7 @@ export class QueueService {
       return { sessionId }
     } catch (error) {
       console.error('Error joining queue:', error)
-      await this.meetingService.deleteSession(sessionId)
+      await this.sessionService.deleteSession(sessionId)
     }
   }
 }
