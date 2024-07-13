@@ -11,6 +11,7 @@ import { Server, Socket } from 'socket.io'
 import { MeetingService } from './services/meeting.service'
 import { QueueService } from './services/queue.service'
 import { ConfigService } from '@nestjs/config'
+import { TimerService } from './services/timer.service'
 import { SessionService } from './services/session.service'
 import { JwtAuthWsGuard } from '../guards/jwt-auth.ws.guard'
 
@@ -39,6 +40,7 @@ export class MeetingGateway
     private readonly queueService: QueueService,
     private readonly configService: ConfigService,
     private readonly sessionService: SessionService,
+    private readonly timerService: TimerService,
   ) {
     this.isDevelopment = this.configService.get<string>('NODE_ENV') === 'dev'
   }
@@ -228,17 +230,16 @@ export class MeetingGateway
     const { sessionId } = payload
     console.log(
       '현재 타이머가 시작되었나요? => ',
-      await this.meetingService.getTimerFlagBySessionId(sessionId),
+      await this.timerService.getTimerFlagBySessionId(sessionId),
       '혹시 클라에서 온 세션 이름은?? ',
       sessionId,
     )
     if (
-      (await this.meetingService.getTimerFlagBySessionId(sessionId)) ==
-      undefined
+      (await this.timerService.getTimerFlagBySessionId(sessionId)) == undefined
     ) {
       console.log('타이머가 시작되었습니다.')
       this.meetingService.startSessionTimer(sessionId, this.server)
-      await this.meetingService.setTimerFlagBySessionId(sessionId)
+      await this.timerService.setTimerFlagBySessionId(sessionId)
     }
   }
 
@@ -437,7 +438,7 @@ export class MeetingGateway
     }
     await this.meetingService.deleteParticipantNameInSession(participantName)
     await this.meetingService.deleteConnectedSocket(client.id)
-    await this.meetingService.deleteTimerFlagBySessionId(sessionId)
+    await this.timerService.deleteTimerFlagBySessionId(sessionId)
     await this.meetingService.deleteCupidFlagBySessionId(sessionId)
     await this.meetingService.deleteLastCupidFlagBySessionId(sessionId)
   }

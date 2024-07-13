@@ -4,6 +4,8 @@ import { OpenViduRole } from 'openvidu-node-client'
 import { Socket, Server } from 'socket.io'
 import Redis from 'ioredis'
 import { SessionService } from './session.service'
+import { TimerService } from './timer.service'
+import { DrawingContestService } from './drawingContest.service'
 
 type ChooseResult = {
   sender: string
@@ -13,12 +15,13 @@ type ChooseResult = {
 @Injectable()
 export class MeetingService {
   public server: Server
-  private sessionTimers: Record<string, NodeJS.Timeout> = {}
   private redis: Redis
 
   constructor(
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
     private readonly sessionService: SessionService,
+    private readonly timerService: TimerService,
+    private readonly drawingPhotoService: DrawingContestService,
   ) {
     this.redis = new Redis({
       host: process.env.REDIS_HOST,
@@ -102,21 +105,6 @@ export class MeetingService {
     await this.cacheManager.del(`participant:${participantName}:sessionId`)
   }
 
-  // 타이머 플래그
-  async getTimerFlagBySessionId(sessionId: string): Promise<boolean> {
-    return await this.cacheManager.get<boolean>(
-      `session:${sessionId}:timerFlag`,
-    )
-  }
-
-  async setTimerFlagBySessionId(sessionId: string): Promise<void> {
-    await this.cacheManager.set(`session:${sessionId}:timerFlag`, true)
-  }
-
-  async deleteTimerFlagBySessionId(sessionId: string): Promise<void> {
-    await this.cacheManager.del(`session:${sessionId}:timerFlag`)
-  }
-
   // 큐피드 플래그
   async getCupidFlagBySessionId(sessionId: string): Promise<boolean> {
     return await this.cacheManager.get<boolean>(
@@ -169,10 +157,10 @@ export class MeetingService {
     this.sessionService.addParticipant(sessionId, participantName, socket)
   }
 
-  removeParticipant(sessionId: string, socket: Socket, myid: string) {
-    this.sessionService.removeParticipant(sessionId, socket, myid)
+  removeParticipant(sessionId: string, socket: Socket, myId: string) {
+    this.sessionService.removeParticipant(sessionId, socket, myId)
     if (this.sessionService.getParticipants(sessionId).length === 0) {
-      clearInterval(this.sessionTimers[sessionId])
+      this.timerService.clearSessionTimer(sessionId)
       this.clearSessionData(sessionId)
     }
   }
@@ -181,11 +169,6 @@ export class MeetingService {
     console.log(`Clearing session data for ${sessionId}`)
     this.deleteChooseData(sessionId)
     this.sessionService.clearSessionData(sessionId)
-    if (this.sessionTimers[sessionId]) {
-      console.log('타이머 초기화 중')
-      clearInterval(this.sessionTimers[sessionId])
-      delete this.sessionTimers[sessionId]
-    }
   }
 
   getParticipants(sessionId: string) {
@@ -274,62 +257,7 @@ export class MeetingService {
   }
 
   startSessionTimer(sessionId: string, server: Server) {
-    const timers = [
-      { time: 0.5, event: 'introduce' },
-      { time: 2.5, event: 'keyword' },
-      { time: 4, event: 'cupidTime' },
-      { time: 6, event: 'cam' },
-      { time: 6.5, event: 'drawingContest' },
-      { time: 8.5, event: 'lastCupidTime' },
-      { time: 9, event: 'finish' },
-    ]
-
-    if (this.sessionTimers[sessionId]) {
-      clearTimeout(this.sessionTimers[sessionId])
-    }
-
-    let elapsedTime = 0
-    let currentTimerIndex = 0
-
-    const timerId = setInterval(() => {
-      elapsedTime += 1
-      if (
-        currentTimerIndex < timers.length &&
-        elapsedTime === timers[currentTimerIndex].time * 60
-      ) {
-        const { event } = timers[currentTimerIndex]
-        let message: string | null
-        let messageArray: string[] | undefined
-
-        if (event === 'keyword') {
-          const getRandomNumber = () => Math.floor(Math.random() * 20) + 1
-          message = `${getRandomNumber()}`
-        } else if (event === 'introduce') {
-          const TeamArray = this.getParticipants(sessionId).map(
-            user => user.name,
-          )
-          messageArray = this.shuffleArray(TeamArray)
-        } else {
-          message = `${event}`
-        }
-
-        this.notifySessionParticipants(
-          sessionId,
-          event,
-          message,
-          server,
-          messageArray,
-        )
-
-        currentTimerIndex++
-      }
-
-      if (currentTimerIndex >= timers.length) {
-        clearInterval(timerId)
-      }
-    }, 1000)
-
-    this.sessionTimers[sessionId] = timerId
+    this.timerService.startSessionTimer(sessionId, server)
   }
 
   notifySessionParticipants(
@@ -339,26 +267,13 @@ export class MeetingService {
     server: Server,
     messageArray?: string[],
   ) {
-    const participants = this.getParticipants(sessionId)
-    if (eventType == 'keyword') {
-      const getRandomParticipant = participants[1].name
-      participants.forEach(({ socket }) => {
-        server.to(socket.id).emit(eventType, { message, getRandomParticipant })
-      })
-    } else if (eventType == 'introduce') {
-      participants.forEach(({ socket }) => {
-        server.to(socket.id).emit(eventType, messageArray)
-      })
-    } else if (eventType == 'drawingContest') {
-      const keywordsIndex = Math.random() * 1234
-      participants.forEach(({ socket }) => {
-        server.to(socket.id).emit(eventType, { message, keywordsIndex })
-      })
-    } else {
-      participants.forEach(({ socket }) => {
-        server.to(socket.id).emit(eventType, { message })
-      })
-    }
+    this.timerService.notifySessionParticipants(
+      sessionId,
+      eventType,
+      message,
+      server,
+      messageArray,
+    )
   }
 
   async setChooseData(sessionId: string, sender: string, receiver: string) {
@@ -400,74 +315,57 @@ export class MeetingService {
     return matches
   }
 
-  // 그림대회 그림 관리
   async saveDrawing(
     sessionId: string,
     userName: string,
     drawing: string,
   ): Promise<void> {
-    await this.redis.hset(`session:${sessionId}:drawings`, userName, drawing)
+    await this.drawingPhotoService.saveDrawing(sessionId, userName, drawing)
   }
 
   async getDrawings(sessionId: string): Promise<Record<string, string>> {
-    return await this.redis.hgetall(`session:${sessionId}:drawings`)
+    return await this.drawingPhotoService.getDrawings(sessionId)
   }
 
   async resetDrawings(sessionId: string): Promise<void> {
-    await this.redis.del(`session:${sessionId}:drawings`)
+    await this.drawingPhotoService.resetDrawings(sessionId)
   }
 
-  // 그림대회 사진 관리
   async savePhoto(
     sessionId: string,
     userName: string,
     photo: string,
   ): Promise<void> {
-    await this.redis.hset(`session:${sessionId}:photos`, userName, photo)
+    await this.drawingPhotoService.savePhoto(sessionId, userName, photo)
   }
 
   async getPhotos(sessionId: string): Promise<Record<string, string>> {
-    return await this.redis.hgetall(`session:${sessionId}:photos`)
+    return await this.drawingPhotoService.getPhotos(sessionId)
   }
 
   async resetPhotos(sessionId: string): Promise<void> {
-    await this.redis.del(`session:${sessionId}:photos`)
+    await this.drawingPhotoService.resetPhotos(sessionId)
   }
 
-  // 그림대회 투표 관리
   async saveVote(
     sessionId: string,
     userName: string,
     votedUserName: string,
   ): Promise<void> {
-    await this.redis.hset(`session:${sessionId}:votes`, userName, votedUserName)
+    await this.drawingPhotoService.saveVote(sessionId, userName, votedUserName)
   }
 
   async getVotes(sessionId: string): Promise<Record<string, string>> {
-    return await this.redis.hgetall(`session:${sessionId}:votes`)
+    return await this.drawingPhotoService.getVotes(sessionId)
   }
 
   async deleteVotes(sessionId: string): Promise<void> {
-    await this.redis.del(`session:${sessionId}:votes`)
+    await this.drawingPhotoService.deleteVotes(sessionId)
   }
 
   async calculateWinner(
     sessionId: string,
   ): Promise<{ winner: string; losers: string[] }> {
-    const voteCount: Record<string, number> = {}
-    const votes = await this.getVotes(sessionId)
-    for (const vote in votes) {
-      const votedUser = votes[vote]
-      if (!voteCount[votedUser]) voteCount[votedUser] = 0
-      voteCount[votedUser]++
-    }
-
-    const winner = Object.keys(voteCount).reduce((a, b) =>
-      voteCount[a] > voteCount[b] ? a : b,
-    )
-    const losers = Object.keys(votes).filter(user => user !== winner)
-
-    await this.deleteVotes(sessionId)
-    return { winner, losers }
+    return await this.drawingPhotoService.calculateWinner(sessionId)
   }
 }
