@@ -5,6 +5,8 @@ import {
   OnGatewayConnection,
   OnGatewayDisconnect,
   WebSocketServer,
+  MessageBody,
+  ConnectedSocket,
 } from '@nestjs/websockets'
 import { UseGuards } from '@nestjs/common'
 import { Server, Socket } from 'socket.io'
@@ -48,7 +50,7 @@ export class MeetingGateway
 
   handleConnection(client: Socket) {}
 
-  async handleDisconnect(client: Socket) {
+  async handleDisconnect(@ConnectedSocket() client: Socket) {
     const sessions = this.meetingService.getSessions()
     const participantName =
       await this.meetingService.getParticipantNameBySocketId(client.id)
@@ -80,7 +82,9 @@ export class MeetingGateway
 
   @SubscribeMessage('ready')
   async handleReady(
+    @ConnectedSocket()
     client: Socket,
+    @MessageBody()
     payload: { participantName: string; gender: string },
   ) {
     try {
@@ -131,7 +135,9 @@ export class MeetingGateway
 
   @SubscribeMessage('cancel')
   async handleCancel(
+    @ConnectedSocket()
     client: Socket,
+    @MessageBody()
     payload: { participantName: string; gender: string },
   ) {
     const sessions = this.meetingService.getSessions()
@@ -162,8 +168,11 @@ export class MeetingGateway
 
   @SubscribeMessage('choose')
   async handleChoose(
-    client: Socket,
-    payload: { sender: string; receiver: string },
+    @MessageBody()
+    payload: {
+      sender: string
+      receiver: string
+    },
   ) {
     const sessionId = await this.meetingService.getSessionIdByParticipantName(
       payload.sender,
@@ -220,7 +229,7 @@ export class MeetingGateway
   }
 
   @SubscribeMessage('startTimer')
-  async handleStartTimer(client: Socket, payload: { sessionId: string }) {
+  async handleStartTimer(@MessageBody() payload: { sessionId: string }) {
     const { sessionId } = payload
     console.log(
       '현재 타이머가 시작되었나요? => ',
@@ -240,8 +249,12 @@ export class MeetingGateway
 
   @SubscribeMessage('forwardDrawing')
   async handleForwardDrawing(
-    client: Socket,
-    payload: { userName: string; drawing: string; photo: string },
+    @MessageBody()
+    payload: {
+      userName: string
+      drawing: string
+      photo: string
+    },
   ) {
     const { drawing, userName, photo } = payload
     const sessionId =
@@ -267,8 +280,7 @@ export class MeetingGateway
 
   @SubscribeMessage('submitVote')
   async handleSubmitVote(
-    client: Socket,
-    payload: { userName: string; votedUser: string },
+    @MessageBody() payload: { userName: string; votedUser: string },
   ) {
     const { userName, votedUser } = payload
     const sessionId =
@@ -294,8 +306,12 @@ export class MeetingGateway
 
   @SubscribeMessage('winnerPrize')
   async handleWinnerPrize(
-    client: Socket,
-    payload: { userName: string; winners: string[]; losers: string[] },
+    @MessageBody()
+    payload: {
+      userName: string
+      winners: string[]
+      losers: string[]
+    },
   ) {
     const { userName, winners, losers } = payload
     const sessionId =
@@ -311,7 +327,9 @@ export class MeetingGateway
 
   @SubscribeMessage('drawingOneToOne')
   handleDrawingOneToOne(
+    @ConnectedSocket()
     client: Socket,
+    @MessageBody()
     payload: { userName: string; winners: string[]; losers: string[] },
   ) {
     const { userName, winners, losers } = payload
@@ -329,8 +347,7 @@ export class MeetingGateway
 
   @SubscribeMessage('lastChoose')
   async handleChooseCam(
-    client: Socket,
-    payload: { sender: string; receiver: string },
+    @MessageBody() payload: { sender: string; receiver: string },
   ) {
     const { sender, receiver } = payload
     const sessionId =
@@ -371,7 +388,9 @@ export class MeetingGateway
 
   @SubscribeMessage('moveToPrivateRoom')
   async handleMoveToPrivateRoom(
+    @ConnectedSocket()
     client: Socket,
+    @MessageBody()
     payload: { sessionId: string; myName: string; partnerName: string },
   ) {
     const { sessionId, myName, partnerName } = payload
@@ -418,7 +437,10 @@ export class MeetingGateway
   }
 
   @SubscribeMessage('leave')
-  async handleLeave(client: Socket, payload: { participantName: string }) {
+  async handleLeave(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { participantName: string },
+  ) {
     const { participantName } = payload
     const sessionId =
       await this.meetingService.getSessionIdByParticipantName(participantName)
@@ -438,8 +460,11 @@ export class MeetingGateway
 
   @SubscribeMessage('emoji')
   async handleEmoji(
-    client: Socket,
-    payload: { nickname: string; emojiIndex: string },
+    @MessageBody()
+    payload: {
+      nickname: string
+      emojiIndex: string
+    },
   ) {
     const { nickname, emojiIndex } = payload
     const sessionId =
