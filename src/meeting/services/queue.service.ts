@@ -96,41 +96,29 @@ export class QueueService {
     // 매칭 가능성 확인
     if (this.maleQueue.length >= 3 && this.femaleQueue.length >= 3) {
       for (let i = 0; i < this.maleQueue.length; i++) {
-        console.log('------------------------', i, '번째')
         const male = this.maleQueue[i]
-        console.log('male => ', male)
         const maleFriends = await this.commonRepository.getFriendNicknames(
           male.name,
         )
-        console.log('maleFriends => ', maleFriends)
         const potentialFemales = this.femaleQueue.filter(
           female => !maleFriends.includes(female.name),
         )
-        console.log('potentialFemales => ', potentialFemales)
 
         if (potentialFemales.length >= 3) {
           const readyMales = [male]
-          console.log('readyMales => ', readyMales)
           const readyFemales = potentialFemales.slice(0, 3)
-          console.log('readyFemales => ', readyFemales)
           const remainingMales = this.maleQueue.filter(
             m => m.name !== male.name,
           )
-          console.log('remainingMales => ', remainingMales)
           const remainingFemales = this.femaleQueue.filter(
             f => !readyFemales.includes(f),
           )
 
-          console.log('remainingFemales => ', remainingFemales)
           // 남은 남성 큐에서 추가로 2명 선택
           const additionalMales = remainingMales.slice(0, 2)
-          console.log('additionalMales => ', additionalMales)
           readyMales.push(...additionalMales)
-          console.log('readyMales => ', readyMales)
           this.maleQueue = remainingMales.slice(2)
-          console.log('this.maleQueue => ', this.maleQueue)
           this.femaleQueue = remainingFemales
-          console.log('this.femaleQueue => ', this.femaleQueue)
 
           const sessionId = await this.findOrCreateNewSession()
 
