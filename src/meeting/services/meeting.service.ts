@@ -44,12 +44,6 @@ export class MeetingService {
     return await this.redis.get(`socket:${socketId}:participantName`)
   }
 
-  async getSocketByUserId(nickname: string): Promise<Socket | null> {
-    const socketId = await this.redis.get(`meeting:user:${nickname}`)
-    if (socketId) return this.connectedSockets.get(socketId)
-    return null
-  }
-
   async setConnectedSocket(
     participantName: string,
     clientId: string,
@@ -59,7 +53,6 @@ export class MeetingService {
 
   async deleteConnectedSocket(socketId: string): Promise<void> {
     await this.redis.del(`socket:${socketId}:participantName`)
-    this.connectedSockets.delete(socketId)
   }
 
   // 세션 관리
@@ -152,16 +145,11 @@ export class MeetingService {
     return this.sessions
   }
 
-  async createSession(sessionId: string): Promise<Session> {
-    if (!this.sessions[sessionId]) {
-      const session = await this.openvidu.createSession({
-        customSessionId: sessionId,
-      })
-      this.sessions[sessionId] = { session, participants: [] }
-      return session
-    } else {
-      return this.sessions[sessionId].session
-    }
+  async createSession(sessionId: string): Promise<void> {
+    const session = await this.openvidu.createSession({
+      customSessionId: sessionId,
+    })
+    this.sessions[sessionId] = { session, participants: [] }
   }
 
   async deleteSession(sessionId: string): Promise<void> {
@@ -258,34 +246,10 @@ export class MeetingService {
     }
   }
 
-  async resetParticipants(sessionId: string) {
-    if (this.sessions[sessionId]) {
-      const newSessionId = this.generateSessionId()
-      const newSession = await this.createSession(newSessionId)
-      this.sessions[newSessionId] = { session: newSession, participants: [] }
-      console.log(
-        `Session ${sessionId} reset and new session ${newSessionId} created with ID ${newSession.sessionId}`,
-      )
-    } else {
-      console.error(`Session ${sessionId} does not exist`)
-    }
-  }
-
-  getSession(sessionId: string) {
-    return this.sessions[sessionId]?.session
-  }
-
   async startVideoChatSession(sessionId: string) {
     try {
       const tokens = await this.generateTokens(sessionId)
-      const session = this.getSession(sessionId)
 
-      if (!session) {
-        console.error(
-          `No session found for ${sessionId} during startVideoChatSession`,
-        )
-        return
-      }
       tokens.forEach(({ participant, token }, index) => {
         const participantSocketId =
           this.getParticipants(sessionId)[index].socketId
@@ -295,8 +259,6 @@ export class MeetingService {
           participantName: participant,
         })
       })
-
-      await this.resetParticipants(sessionId)
     } catch (error) {
       console.error('Error generating tokens: ', error)
     }
