@@ -73,18 +73,22 @@ export class MeetingService {
     await this.redis.del(`participant:${participantName}:sessionId`)
   }
 
-  // 타이머 플래그
-  async getTimerFlagBySessionId(sessionId: string): Promise<boolean | null> {
-    const flag = await this.redis.get(`session:${sessionId}:timerFlag`)
-    return flag === 'true'
+  // 타이머 카운트
+  async getTimerCountBySessionId(sessionId: string): Promise<number | null> {
+    const timerCount = await this.redis.get(`session:${sessionId}:timerCount`)
+    return parseInt(timerCount, 10)
   }
 
-  async setTimerFlagBySessionId(sessionId: string): Promise<void> {
-    await this.redis.set(`session:${sessionId}:timerFlag`, 'true')
+  async incrTimerCountBySessionId(sessionId: string): Promise<void> {
+    await this.redis.incr(`session:${sessionId}:timerCount`)
   }
 
-  async deleteTimerFlagBySessionId(sessionId: string): Promise<void> {
-    await this.redis.del(`session:${sessionId}:timerFlag`)
+  async decrTimerCountBySessionId(sessionId: string): Promise<void> {
+    await this.redis.decr(`session:${sessionId}:timerCount`)
+  }
+
+  async deleteTimerCountBySessionId(sessionId: string): Promise<void> {
+    await this.redis.del(`session:${sessionId}:timerCount`)
   }
 
   // 큐피드 플래그
