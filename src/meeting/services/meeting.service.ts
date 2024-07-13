@@ -130,20 +130,21 @@ export class MeetingService {
   }
 
   // 1:1대화 수락 플래그
-  async getAcceptanceStatus(partnerName: string): Promise<boolean> {
-    return await this.cacheManager.get<boolean>(
+  async getAcceptanceStatus(partnerName: string): Promise<boolean | null> {
+    const status = await this.redis.get(
       `partner:${partnerName}:acceptanceStatus`,
     )
+    return status === 'true'
   }
 
   async setAcceptanceStatus(myName: string): Promise<void> {
-    await this.cacheManager.set(`partner:${myName}:acceptanceStatus`, true)
+    await this.redis.set(`partner:${myName}:acceptanceStatus`, 'true')
   }
 
   async deleteAcceptanceStatus(socketId: string): Promise<void> {
     const participantName = await this.getParticipantNameBySocketId(socketId)
     if (participantName) {
-      await this.cacheManager.del(`partner:${participantName}:acceptanceStatus`)
+      await this.redis.del(`partner:${participantName}:acceptanceStatus`)
     }
   }
 
