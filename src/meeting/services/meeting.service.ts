@@ -44,16 +44,12 @@ export class MeetingService {
   }
 
   // 소켓 관리
-  async getParticipantNameBySocketId(socketId: string): Promise<string> {
-    return await this.cacheManager.get<string>(
-      `socket:${socketId}:participantName`,
-    )
+  async getParticipantNameBySocketId(socketId: string): Promise<string | null> {
+    return await this.redis.get(`socket:${socketId}:participantName`)
   }
 
-  async getSocketByUserId(nickname: string): Promise<Socket> {
-    const socketId = await this.cacheManager.get<string>(
-      `meeting:user:${nickname}`,
-    )
+  async getSocketByUserId(nickname: string): Promise<Socket | null> {
+    const socketId = await this.redis.get(`meeting:user:${nickname}`)
     if (socketId) return this.connectedSockets.get(socketId)
     return null
   }
@@ -63,22 +59,11 @@ export class MeetingService {
     client: Socket,
   ): Promise<void> {
     this.connectedSockets.set(client.id, client)
-    await this.cacheManager.set(
-      `socket:${client.id}:participantName`,
-      participantName,
-    )
-    await this.cacheManager.set(
-      `participant:${participantName}:socketId`,
-      client.id,
-    )
+    await this.redis.set(`socket:${client.id}:participantName`, participantName)
   }
 
   async deleteConnectedSocket(socketId: string): Promise<void> {
-    const participantName = await this.getParticipantNameBySocketId(socketId)
-    if (participantName) {
-      await this.cacheManager.del(`participant:${participantName}:socketId`)
-    }
-    await this.cacheManager.del(`socket:${socketId}:participantName`)
+    await this.redis.del(`socket:${socketId}:participantName`)
     this.connectedSockets.delete(socketId)
   }
 
