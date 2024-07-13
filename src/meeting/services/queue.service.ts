@@ -38,26 +38,15 @@ export class QueueService {
     )
   }
 
-  removeParticipant(name: string, gender: string) {
-    switch (gender) {
-      case 'MALE':
-        this.maleQueue = this.maleQueue.filter(p => p.name !== name)
-        console.log(
-          'Update Male Queue : ',
-          this.maleQueue.map(p => p.name),
-        )
+  async removeParticipant(name: string, gender: string) {
+    const genderQueue = gender === 'MALE' ? 'maleQueue' : 'femaleQueue'
+    const queue = await this.redis.lrange(genderQueue, 0, -1)
+    for (const item of queue) {
+      const parsedItem = JSON.parse(item)
+      if (parsedItem.name === name) {
+        await this.redis.lrem(genderQueue, 0, item)
         break
-
-      case 'FEMALE':
-        this.femaleQueue = this.femaleQueue.filter(p => p.name !== name)
-        console.log(
-          'Update Female Queue : ',
-          this.femaleQueue.map(p => p.name),
-        )
-        break
-      default:
-        console.error('성별 오류입니다.')
-        break
+      }
     }
   }
 
@@ -76,32 +65,34 @@ export class QueueService {
   ) {
     let sessionId = ''
     try {
-      this.addParticipant(participantName, client, gender)
+      await this.addParticipant(participantName, client, gender)
 
-      if (this.maleQueue.length >= 3 && this.femaleQueue.length >= 3) {
+      const maleQueue = await this.redis.lrange('maleQueue', 0, -1)
+      const femaleQueue = await this.redis.lrange('femaleQueue', 0, -1)
+
+      if (maleQueue.length >= 3 && femaleQueue.length >= 3) {
         sessionId = await this.findOrCreateNewSession()
-        const readyMales = this.maleQueue.splice(0, 3)
-        const readyFemales = this.femaleQueue.splice(0, 3)
+        const readyMales = maleQueue.splice(0, 3).map(item => JSON.parse(item))
+        const readyFemales = femaleQueue
+          .splice(0, 3)
+          .map(item => JSON.parse(item))
+        const readyUsers = [...readyMales, ...readyFemales]
 
-        readyMales.forEach(male => {
+        for (const user of readyUsers) {
           this.meetingService.addParticipant(
             sessionId,
-            male.name,
-            male.socketId,
+            user.name,
+            user.socketId,
           )
-        })
+        }
+        await this.redis.ltrim('maleQueue', 3, -1)
+        await this.redis.ltrim('femaleQueue', 3, -1)
 
-        readyFemales.forEach(female => {
-          this.meetingService.addParticipant(
-            sessionId,
-            female.name,
-            female.socketId,
-          )
-        })
         console.log('현재 큐 시작진입합니다 세션 이름은 : ', sessionId)
         await this.meetingService.startVideoChatSession(sessionId)
-        return { sessionId, readyMales, readyFemales }
+        return { sessionId, readyUsers }
       }
+
       // 이 부분은 클라 확인차 로그로써 삭제해도 무방 다만 테스트 시 확인이 힘들어짐
       const participants = this.meetingService.getParticipants(sessionId)
       console.log(
