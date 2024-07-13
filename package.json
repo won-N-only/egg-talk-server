@@ -40,6 +40,7 @@
     "dotenv": "^16.4.5",
     "exceljs": "^4.4.0",
     "globals": "^15.6.0",
+    "ioredis": "^5.4.1",
     "mongodb": "^6.8.0",
     "mongoose": "^8.4.3",
     "openvidu-node-client": "^2.30.0",
