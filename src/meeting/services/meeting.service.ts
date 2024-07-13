@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import { OpenVidu, OpenViduRole, Session } from 'openvidu-node-client'
-import { Socket, Server } from 'socket.io'
+import { Server } from 'socket.io'
 import { v4 as uuidv4 } from 'uuid'
 import Redis from 'ioredis'
 
@@ -27,8 +27,6 @@ export class MeetingService {
     })
   }
 
-  private connectedSockets = new Map<string, Socket>() // socketId: Socket
-
   private shuffleArray<T>(array: T[]): T[] {
     for (let i = array.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1))
@@ -54,10 +52,9 @@ export class MeetingService {
 
   async setConnectedSocket(
     participantName: string,
-    client: Socket,
+    clientId: string,
   ): Promise<void> {
-    this.connectedSockets.set(client.id, client)
-    await this.redis.set(`socket:${client.id}:participantName`, participantName)
+    await this.redis.set(`socket:${clientId}:participantName`, participantName)
   }
 
   async deleteConnectedSocket(socketId: string): Promise<void> {
@@ -173,34 +170,24 @@ export class MeetingService {
     }
   }
 
-  addParticipant(sessionId: string, participantName: string, socket: Socket) {
+  addParticipant(sessionId: string, participantName: string, socketId: string) {
     if (this.sessions[sessionId]) {
       this.sessions[sessionId].participants.push({
         name: participantName,
-        socket,
+        socketId,
       })
     } else {
       console.error(`Session ${sessionId} does not exist`)
     }
   }
 
-  removeParticipant(sessionId: string, socket: Socket, myid: string) {
+  removeParticipant(sessionId: string, myId: string) {
     if (this.sessions[sessionId]) {
       const participants = this.getParticipants(sessionId)
       this.sessions[sessionId].participants = participants.filter(
-        p => p.name !== myid,
-      )
-      console.log(
-        '/meetingService 세션 참가자 수: ',
-        this.sessions[sessionId].participants.length,
+        p => p.name !== myId,
       )
       if (this.sessions[sessionId].participants.length === 0) {
-        console.log(
-          '"/meetingService 세션 참가자가 없습니다',
-          this.sessions[sessionId].participants.length,
-          'sessionId 는',
-          sessionId,
-        )
         clearInterval(this.sessionTimers[sessionId])
         this.clearSessionData(sessionId)
       }
@@ -300,9 +287,10 @@ export class MeetingService {
         return
       }
       tokens.forEach(({ participant, token }, index) => {
-        const participantSocket = this.getParticipants(sessionId)[index].socket
-        participantSocket.emit('startCall', {
-          sessionId: session.sessionId,
+        const participantSocketId =
+          this.getParticipants(sessionId)[index].socketId
+        this.server.to(participantSocketId).emit('startCall', {
+          sessionId: sessionId,
           token: token,
           participantName: participant,
         })
@@ -383,21 +371,21 @@ export class MeetingService {
     const participants = this.getParticipants(sessionId)
     if (eventType == 'keyword') {
       const getRandomParticipant = participants[1].name
-      participants.forEach(({ socket }) => {
-        server.to(socket.id).emit(eventType, { message, getRandomParticipant })
+      participants.forEach(({ socketId }) => {
+        server.to(socketId).emit(eventType, { message, getRandomParticipant })
       })
     } else if (eventType == 'introduce') {
-      participants.forEach(({ socket }) => {
-        server.to(socket.id).emit(eventType, messageArray)
+      participants.forEach(({ socketId }) => {
+        server.to(socketId).emit(eventType, messageArray)
       })
     } else if (eventType == 'drawingContest') {
       const keywordsIndex = Math.random() * 1234
-      participants.forEach(({ socket }) => {
-        server.to(socket.id).emit(eventType, { message, keywordsIndex })
+      participants.forEach(({ socketId }) => {
+        server.to(socketId).emit(eventType, { message, keywordsIndex })
       })
     } else {
-      participants.forEach(({ socket }) => {
-        server.to(socket.id).emit(eventType, { message })
+      participants.forEach(({ socketId }) => {
+        server.to(socketId).emit(eventType, { message })
       })
     }
   }
