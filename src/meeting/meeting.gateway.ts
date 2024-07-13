@@ -259,6 +259,7 @@ export class MeetingGateway
       participants.forEach(({ socketId }) => {
         this.server.to(socketId).emit('drawingSubmit', drawings)
       })
+      await this.meetingService.resetDrawings(sessionId)
     }
   }
 
