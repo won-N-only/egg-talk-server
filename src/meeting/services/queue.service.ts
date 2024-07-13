@@ -67,8 +67,8 @@ export class QueueService {
     try {
       await this.addParticipant(participantName, client, gender)
 
-      const maleQueue = await this.redis.lrange('maleQueue', 0, -1)
-      const femaleQueue = await this.redis.lrange('femaleQueue', 0, -1)
+      const maleQueue = await this.redis.lrange('maleQueue', 0, 3)
+      const femaleQueue = await this.redis.lrange('femaleQueue', 0, 3)
 
       if (maleQueue.length >= 3 && femaleQueue.length >= 3) {
         sessionId = await this.findOrCreateNewSession()
