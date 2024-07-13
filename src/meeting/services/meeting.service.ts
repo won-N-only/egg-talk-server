@@ -13,9 +13,7 @@ type ChooseResult = {
 export class MeetingService {
   private openvidu: OpenVidu
   public server: Server
-  private sessions: Record<string, { session: Session; participants: any[] }> =
-    {}
-  private sessionTimers: Record<string, NodeJS.Timeout> = {}
+
   private redis: Redis
 
   constructor() {
@@ -148,7 +146,15 @@ export class MeetingService {
     }
   }
 
+  private sessions: Record<string, { session: Session; participants: any[] }> =
+    {}
+  private sessionTimers: Record<string, NodeJS.Timeout> = {}
+
   // 오픈비두 세션
+  getSessions() {
+    return this.sessions
+  }
+
   async createSession(sessionId: string): Promise<Session> {
     if (!this.sessions[sessionId]) {
       const session = await this.openvidu.createSession({
@@ -173,12 +179,6 @@ export class MeetingService {
         name: participantName,
         socket,
       })
-      console.log(
-        '참여자가 추가되었습니다. 세션이름: ',
-        sessionId,
-        '참여자 이름 : ',
-        participantName,
-      )
     } else {
       console.error(`Session ${sessionId} does not exist`)
     }
@@ -292,7 +292,6 @@ export class MeetingService {
     try {
       const tokens = await this.generateTokens(sessionId)
       const session = this.getSession(sessionId)
-      const participants = this.getParticipants(sessionId)
 
       if (!session) {
         console.error(
@@ -403,18 +402,6 @@ export class MeetingService {
     }
   }
 
-  getSessions() {
-    return this.sessions
-  }
-
-  async setChooseData(sessionId: string, sender: string, receiver: string) {
-    await this.redis.hset(`choose:${sessionId}`, sender, receiver)
-  }
-
-  async deleteChooseData(sessionId: string) {
-    await this.redis.del(`choose:${sessionId}`)
-  }
-
   // 1:1 선택 결과
   async getChooseData(sessionId: string): Promise<ChooseResult[]> {
     const chooseData = await this.redis.hgetall(`choose:${sessionId}`)
@@ -426,6 +413,14 @@ export class MeetingService {
     }
 
     return result
+  }
+
+  async setChooseData(sessionId: string, sender: string, receiver: string) {
+    await this.redis.hset(`choose:${sessionId}`, sender, receiver)
+  }
+
+  async deleteChooseData(sessionId: string) {
+    await this.redis.del(`choose:${sessionId}`)
   }
 
   async findMatchingPairs(
