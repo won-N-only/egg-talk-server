@@ -10,6 +10,7 @@ import { CommonRepository } from './common.repository'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Cache } from 'cache-manager'
 import Redis from 'ioredis'
+import { Cron, CronExpression} from '@nestjs/schedule'
 
 @Injectable()
 export class CommonService {
