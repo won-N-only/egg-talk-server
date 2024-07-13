@@ -123,7 +123,7 @@ export class MeetingGateway
           )
         })
       }
-      await this.meetingService.setConnectedSocket(participantName, client)
+      await this.meetingService.setConnectedSocket(participantName, client.id)
     } catch (error) {
       console.log('Error handling join Queue request:', error)
     }
@@ -184,11 +184,9 @@ export class MeetingGateway
           pair: match.pair,
           others: matches.filter(p => p !== match),
         }))
-        if (
-          (await this.meetingService.getCupidFlagBySessionId(sessionId)) ==
-          undefined
-        ) {
-          participants.forEach(({ socket, name }) => {
+
+        if (!(await this.meetingService.getCupidFlagBySessionId(sessionId))) {
+          participants.forEach(({ socketId, name }) => {
             const matchedPair = matches.find(match => match.pair.includes(name))
             const partner = matchedPair
               ? matchedPair.pair.find(partnerName => partnerName !== name)
@@ -203,13 +201,13 @@ export class MeetingGateway
               )
               .map(participant => participant.name)
 
-            this.server.to(socket.id).emit('cupidResult', {
+            this.server.to(socketId).emit('cupidResult', {
               lover: partner,
               loser: losers,
             })
 
             this.server
-              .to(socket.id)
+              .to(socketId)
               .emit('chooseResult', { message: chooseData })
           })
           await this.meetingService.setCupidFlagBySessionId(sessionId)
@@ -261,8 +259,8 @@ export class MeetingGateway
 
     if (Object.keys(drawings).length === 6) {
       const participants = this.meetingService.getParticipants(sessionId)
-      participants.forEach(({ socket }) => {
-        this.server.to(socket.id).emit('drawingSubmit', drawings)
+      participants.forEach(({ socketId }) => {
+        this.server.to(socketId).emit('drawingSubmit', drawings)
       })
     }
   }
@@ -284,8 +282,8 @@ export class MeetingGateway
         await this.meetingService.calculateWinner(sessionId)
       const photos = await this.meetingService.getPhotos(sessionId)
       const participants = this.meetingService.getParticipants(sessionId)
-      participants.forEach(({ socket }) => {
-        this.server.to(socket.id).emit('voteResults', {
+      participants.forEach(({ socketId }) => {
+        this.server.to(socketId).emit('voteResults', {
           winner,
           losers,
           photos: photos,
@@ -305,8 +303,8 @@ export class MeetingGateway
     const participants = this.meetingService.getParticipants(sessionId)
 
     if (userName === winners[0])
-      participants.forEach(({ socket }) => {
-        this.server.to(socket.id).emit('finalResults', { winners, losers })
+      participants.forEach(({ socketId }) => {
+        this.server.to(socketId).emit('finalResults', { winners, losers })
       })
     await this.meetingService.resetPhotos(sessionId)
   }
@@ -354,16 +352,14 @@ export class MeetingGateway
           (await this.meetingService.getLastCupidFlagBySessionId(sessionId)) ==
           undefined
         ) {
-          participant.forEach(({ socket, name }) => {
+          participant.forEach(({ socketId, name }) => {
             const matchedPair = matches.find(elem => elem.pair.includes(name))
-            if (matchedPair) {
-              const partner = matchedPair.pair.find(elem => elem !== name)
-              this.server.to(socket.id).emit('matching', { lover: partner })
-            } else {
-              this.server.to(socket.id).emit('matching', { lover: '0' })
-            }
+            const partner = matchedPair
+              ? matchedPair.pair.find(elem => elem !== name)
+              : '0'
 
-            this.server.to(socket.id).emit('lastChooseResult', chooseData)
+            this.server.to(socketId).emit('matching', { lover: partner })
+            this.server.to(socketId).emit('lastChooseResult', chooseData)
           })
           await this.meetingService.setLastCupidFlagBySessionId(sessionId)
         }
@@ -391,11 +387,11 @@ export class MeetingGateway
       const partner = participant.find(
         participant => participant.name === partnerName,
       )
-      this.meetingService.addParticipant(newSessionId, myName, client)
+      this.meetingService.addParticipant(newSessionId, myName, client.id)
       this.meetingService.addParticipant(
         newSessionId,
         partnerName,
-        partner.socket,
+        partner.socketId,
       )
       console.log('===========handleMoveToPrivateRoom 2==================')
       const enterToken = await this.meetingService.generateTokens(newSessionId)
@@ -410,7 +406,7 @@ export class MeetingGateway
           .to(client.id)
           .emit('choice', { sessionId: newSessionId, token: myToken })
         this.server
-          .to(partner.socket.id)
+          .to(partner.socketId)
           .emit('choice', { sessionId: newSessionId, token: partnerToken })
       } else {
         console.error('방 생성 실패!')
@@ -450,8 +446,8 @@ export class MeetingGateway
       await this.meetingService.getSessionIdByParticipantName(nickname)
 
     const participants = this.meetingService.getParticipants(sessionId)
-    participants.forEach(({ socket }) => {
-      this.server.to(socket.id).emit('emojiBroadcast', { nickname, emojiIndex })
+    participants.forEach(({ socketId }) => {
+      this.server.to(socketId).emit('emojiBroadcast', { nickname, emojiIndex })
     })
   }
 }
