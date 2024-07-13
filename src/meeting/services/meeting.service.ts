@@ -70,24 +70,19 @@ export class MeetingService {
   // 세션 관리
   async getSessionIdByParticipantName(
     participantName: string,
-  ): Promise<string> {
-    return await this.cacheManager.get<string>(
-      `participant:${participantName}:sessionId`,
-    )
+  ): Promise<string | null> {
+    return await this.redis.get(`participant:${participantName}:sessionId`)
   }
 
-  async setParticipantNameToSession(
+  async setSessionIdToParticipant(
     participantName: string,
     sessionId: string,
   ): Promise<void> {
-    await this.cacheManager.set(
-      `participant:${participantName}:sessionId`,
-      sessionId,
-    )
+    await this.redis.set(`participant:${participantName}:sessionId`, sessionId)
   }
 
   async deleteParticipantNameInSession(participantName: string): Promise<void> {
-    await this.cacheManager.del(`participant:${participantName}:sessionId`)
+    await this.redis.del(`participant:${participantName}:sessionId`)
   }
 
   // 타이머 플래그
