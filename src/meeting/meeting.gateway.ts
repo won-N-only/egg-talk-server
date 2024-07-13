@@ -11,6 +11,7 @@ import { Server, Socket } from 'socket.io'
 import { MeetingService } from './services/meeting.service'
 import { QueueService } from './services/queue.service'
 import { ConfigService } from '@nestjs/config'
+import { SessionService } from './services/session.service'
 import { JwtAuthWsGuard } from '../guards/jwt-auth.ws.guard'
 
 @UseGuards(JwtAuthWsGuard)
@@ -37,6 +38,7 @@ export class MeetingGateway
     private readonly meetingService: MeetingService,
     private readonly queueService: QueueService,
     private readonly configService: ConfigService,
+    private readonly sessionService: SessionService,
   ) {
     this.isDevelopment = this.configService.get<string>('NODE_ENV') === 'dev'
   }
@@ -49,7 +51,7 @@ export class MeetingGateway
   handleConnection(client: Socket) {}
 
   async handleDisconnect(client: Socket) {
-    const sessions = this.meetingService.getSessions()
+    const sessions = this.sessionService.getSessions()
     const participantName =
       await this.meetingService.getParticipantNameBySocketId(client.id)
     console.log(
@@ -134,7 +136,7 @@ export class MeetingGateway
     client: Socket,
     payload: { participantName: string; gender: string },
   ) {
-    const sessions = this.meetingService.getSessions()
+    const sessions = this.sessionService.getSessions()
     let participantName: string
     let gender: string
     if (this.isDevelopment) {
@@ -386,7 +388,7 @@ export class MeetingGateway
       console.log('===========handleMoveToPrivateRoom 1==================')
       const newSessionId = this.meetingService.generateSessionId()
 
-      await this.meetingService.createSession(newSessionId)
+      await this.sessionService.createSession(newSessionId)
 
       const partner = participant.find(
         participant => participant.name === partnerName,
