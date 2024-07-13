@@ -67,11 +67,7 @@ export class MeetingGateway
 
     for (const sessionId in sessions) {
       if (sessions.hasOwnProperty(sessionId)) {
-        this.meetingService.removeParticipant(
-          sessionId,
-          client,
-          participantName,
-        )
+        this.meetingService.removeParticipant(sessionId, participantName)
       }
     }
 
@@ -104,7 +100,6 @@ export class MeetingGateway
       if (existingSessionId) {
         this.meetingService.removeParticipant(
           existingSessionId,
-          client,
           participantName,
         )
         await this.meetingService.deleteParticipantNameInSession(
@@ -155,11 +150,7 @@ export class MeetingGateway
 
     for (const sessionId in sessions) {
       if (sessions.hasOwnProperty(sessionId)) {
-        this.meetingService.removeParticipant(
-          sessionId,
-          client,
-          participantName,
-        )
+        this.meetingService.removeParticipant(sessionId, participantName)
       }
     }
     await this.meetingService.deleteConnectedSocket(client.id)
@@ -445,11 +436,7 @@ export class MeetingGateway
     const sessionId =
       await this.meetingService.getSessionIdByParticipantName(participantName)
     if (sessionId) {
-      this.meetingService.removeParticipant(
-        sessionId,
-        client,
-        payload.participantName,
-      )
+      this.meetingService.removeParticipant(sessionId, participantName)
     }
     await this.meetingService.deleteParticipantNameInSession(participantName)
     await this.meetingService.deleteConnectedSocket(client.id)
