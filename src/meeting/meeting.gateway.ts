@@ -114,10 +114,10 @@ export class MeetingGateway
       console.log('레디일때의 sessionId은?? ', sessionId)
       if (sessionId && readyFemales && readyMales) {
         readyMales.forEach(male => {
-          this.meetingService.setParticipantNameToSession(male.name, sessionId)
+          this.meetingService.setSessionIdToParticipant(male.name, sessionId)
         })
         readyFemales.forEach(female => {
-          this.meetingService.setParticipantNameToSession(
+          this.meetingService.setSessionIdToParticipant(
             female.name,
             sessionId,
           )
