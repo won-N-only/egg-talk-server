@@ -59,11 +59,11 @@ export class SessionService {
     }
   }
 
-  removeParticipant(sessionId: string, socket: any, myid: string) {
+  removeParticipant(sessionId: string, socket: any, myId: string) {
     if (this.sessions[sessionId]) {
       this.sessions[sessionId].participants = this.sessions[
         sessionId
-      ].participants.filter(p => p.name !== myid)
+      ].participants.filter(p => p.name !== myId)
     } else {
       console.error(`Session ${sessionId} does not exist`)
     }

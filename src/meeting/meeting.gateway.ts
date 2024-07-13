@@ -13,6 +13,7 @@ import { QueueService } from './services/queue.service'
 import { ConfigService } from '@nestjs/config'
 import { TimerService } from './services/timer.service'
 import { SessionService } from './services/session.service'
+import { DrawingContestService } from './services/drawingContest.service'
 import { JwtAuthWsGuard } from '../guards/jwt-auth.ws.guard'
 
 @UseGuards(JwtAuthWsGuard)
@@ -41,6 +42,7 @@ export class MeetingGateway
     private readonly configService: ConfigService,
     private readonly sessionService: SessionService,
     private readonly timerService: TimerService,
+    private readonly drawingPhotoService: DrawingContestService,
   ) {
     this.isDevelopment = this.configService.get<string>('NODE_ENV') === 'dev'
   }
@@ -181,7 +183,7 @@ export class MeetingGateway
 
       const chooseData = await this.meetingService.getChooseData(sessionId)
       if (Object.keys(chooseData).length === 6) {
-        const participants = this.meetingService.getParticipants(sessionId)
+        const participants = this.sessionService.getParticipants(sessionId)
         const matches = await this.meetingService.findMatchingPairs(sessionId)
 
         const matchedPairs = matches.map(match => ({
@@ -238,7 +240,7 @@ export class MeetingGateway
       (await this.timerService.getTimerFlagBySessionId(sessionId)) == undefined
     ) {
       console.log('타이머가 시작되었습니다.')
-      this.meetingService.startSessionTimer(sessionId, this.server)
+      this.timerService.startSessionTimer(sessionId, this.server)
       await this.timerService.setTimerFlagBySessionId(sessionId)
     }
   }
@@ -257,13 +259,13 @@ export class MeetingGateway
       return
     }
 
-    await this.meetingService.savePhoto(sessionId, userName, photo)
-    await this.meetingService.saveDrawing(sessionId, userName, drawing)
+    await this.drawingPhotoService.savePhoto(sessionId, userName, photo)
+    await this.drawingPhotoService.saveDrawing(sessionId, userName, drawing)
 
-    const drawings = await this.meetingService.getDrawings(sessionId)
+    const drawings = await this.drawingPhotoService.getDrawings(sessionId)
 
     if (Object.keys(drawings).length === 6) {
-      const participants = this.meetingService.getParticipants(sessionId)
+      const participants = this.sessionService.getParticipants(sessionId)
       participants.forEach(({ socket }) => {
         this.server.to(socket.id).emit('drawingSubmit', drawings)
       })
@@ -278,15 +280,15 @@ export class MeetingGateway
     const { userName, votedUser } = payload
     const sessionId =
       await this.meetingService.getSessionIdByParticipantName(userName)
-    await this.meetingService.saveVote(sessionId, userName, votedUser)
+    await this.drawingPhotoService.saveVote(sessionId, userName, votedUser)
 
-    const votes = await this.meetingService.getVotes(sessionId)
+    const votes = await this.drawingPhotoService.getVotes(sessionId)
 
     if (Object.keys(votes).length === 6) {
       const { winner, losers } =
-        await this.meetingService.calculateWinner(sessionId)
-      const photos = await this.meetingService.getPhotos(sessionId)
-      const participants = this.meetingService.getParticipants(sessionId)
+        await this.drawingPhotoService.calculateWinner(sessionId)
+      const photos = await this.drawingPhotoService.getPhotos(sessionId)
+      const participants = this.sessionService.getParticipants(sessionId)
       participants.forEach(({ socket }) => {
         this.server.to(socket.id).emit('voteResults', {
           winner,
@@ -305,13 +307,13 @@ export class MeetingGateway
     const { userName, winners, losers } = payload
     const sessionId =
       await this.meetingService.getSessionIdByParticipantName(userName)
-    const participants = this.meetingService.getParticipants(sessionId)
+    const participants = this.sessionService.getParticipants(sessionId)
 
     if (userName === winners[0])
       participants.forEach(({ socket }) => {
         this.server.to(socket.id).emit('finalResults', { winners, losers })
       })
-    await this.meetingService.resetPhotos(sessionId)
+    await this.drawingPhotoService.resetPhotos(sessionId)
   }
 
   @SubscribeMessage('drawingOneToOne')
@@ -344,13 +346,7 @@ export class MeetingGateway
       await this.meetingService.setChooseData(sessionId, sender, receiver)
       const chooseData = await this.meetingService.getChooseData(sessionId)
       if (Object.keys(chooseData).length === 6) {
-        const participant = this.meetingService.getParticipants(sessionId)
-        // 매칭된 쌍의 정보를 가지고 있음
-        // [
-        // { pair: [ 'Alice', 'Bob' ] },
-        // { pair: [ 'Charlie', 'David' ] },
-        // { pair: [ 'Eve', 'Frank' ] }
-        // ]
+        const participant = this.sessionService.getParticipants(sessionId)
         const matches = await this.meetingService.findMatchingPairs(sessionId)
 
         if (
@@ -382,7 +378,7 @@ export class MeetingGateway
     payload: { sessionId: string; myName: string; partnerName: string },
   ) {
     const { sessionId, myName, partnerName } = payload
-    const participant = this.meetingService.getParticipants(sessionId)
+    const participant = this.sessionService.getParticipants(sessionId)
     const isAccepted =
       await this.meetingService.getAcceptanceStatus(partnerName)
     if (isAccepted === true) {
@@ -452,7 +448,7 @@ export class MeetingGateway
     const sessionId =
       await this.meetingService.getSessionIdByParticipantName(nickname)
 
-    const participants = this.meetingService.getParticipants(sessionId)
+    const participants = this.sessionService.getParticipants(sessionId)
     participants.forEach(({ socket }) => {
       this.server.to(socket.id).emit('emojiBroadcast', { nickname, emojiIndex })
     })

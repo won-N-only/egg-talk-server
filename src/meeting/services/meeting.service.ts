@@ -31,14 +31,6 @@ export class MeetingService {
 
   private connectedSockets = new Map<string, Socket>() // socketId: Socket
 
-  private shuffleArray<T>(array: T[]): T[] {
-    for (let i = array.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1))
-      ;[array[i], array[j]] = [array[j], array[i]]
-    }
-    return array
-  }
-
   generateSessionId() {
     return this.sessionService.generateSessionId()
   }
@@ -217,19 +209,6 @@ export class MeetingService {
     }
   }
 
-  async resetParticipants(sessionId: string) {
-    if (this.sessionService.getSession(sessionId)) {
-      const newSessionId = this.generateSessionId()
-      const newSession = await this.sessionService.createSession(newSessionId)
-      this.sessionService.clearSessionData(newSessionId)
-      console.log(
-        `Session ${sessionId} reset and new session ${newSessionId} created with ID ${newSession.sessionId}`,
-      )
-    } else {
-      console.error(`Session ${sessionId} does not exist`)
-    }
-  }
-
   async startVideoChatSession(sessionId: string) {
     try {
       const tokens = await this.generateTokens(sessionId)
@@ -256,26 +235,20 @@ export class MeetingService {
     }
   }
 
-  startSessionTimer(sessionId: string, server: Server) {
-    this.timerService.startSessionTimer(sessionId, server)
+  async resetParticipants(sessionId: string) {
+    if (this.sessionService.getSession(sessionId)) {
+      const newSessionId = this.generateSessionId()
+      const newSession = await this.sessionService.createSession(newSessionId)
+      this.sessionService.clearSessionData(newSessionId)
+      console.log(
+        `Session ${sessionId} reset and new session ${newSessionId} created with ID ${newSession.sessionId}`,
+      )
+    } else {
+      console.error(`Session ${sessionId} does not exist`)
+    }
   }
 
-  notifySessionParticipants(
-    sessionId: string,
-    eventType: string,
-    message: string,
-    server: Server,
-    messageArray?: string[],
-  ) {
-    this.timerService.notifySessionParticipants(
-      sessionId,
-      eventType,
-      message,
-      server,
-      messageArray,
-    )
-  }
-
+  // 1:1 선택 결과
   async setChooseData(sessionId: string, sender: string, receiver: string) {
     await this.redis.hset(`choose:${sessionId}`, sender, receiver)
   }
@@ -284,7 +257,6 @@ export class MeetingService {
     await this.redis.del(`choose:${sessionId}`)
   }
 
-  // 1:1 선택 결과
   async getChooseData(sessionId: string): Promise<ChooseResult[]> {
     const chooseData = await this.redis.hgetall(`choose:${sessionId}`)
 
@@ -313,59 +285,5 @@ export class MeetingService {
     }
 
     return matches
-  }
-
-  async saveDrawing(
-    sessionId: string,
-    userName: string,
-    drawing: string,
-  ): Promise<void> {
-    await this.drawingPhotoService.saveDrawing(sessionId, userName, drawing)
-  }
-
-  async getDrawings(sessionId: string): Promise<Record<string, string>> {
-    return await this.drawingPhotoService.getDrawings(sessionId)
-  }
-
-  async resetDrawings(sessionId: string): Promise<void> {
-    await this.drawingPhotoService.resetDrawings(sessionId)
-  }
-
-  async savePhoto(
-    sessionId: string,
-    userName: string,
-    photo: string,
-  ): Promise<void> {
-    await this.drawingPhotoService.savePhoto(sessionId, userName, photo)
-  }
-
-  async getPhotos(sessionId: string): Promise<Record<string, string>> {
-    return await this.drawingPhotoService.getPhotos(sessionId)
-  }
-
-  async resetPhotos(sessionId: string): Promise<void> {
-    await this.drawingPhotoService.resetPhotos(sessionId)
-  }
-
-  async saveVote(
-    sessionId: string,
-    userName: string,
-    votedUserName: string,
-  ): Promise<void> {
-    await this.drawingPhotoService.saveVote(sessionId, userName, votedUserName)
-  }
-
-  async getVotes(sessionId: string): Promise<Record<string, string>> {
-    return await this.drawingPhotoService.getVotes(sessionId)
-  }
-
-  async deleteVotes(sessionId: string): Promise<void> {
-    await this.drawingPhotoService.deleteVotes(sessionId)
-  }
-
-  async calculateWinner(
-    sessionId: string,
-  ): Promise<{ winner: string; losers: string[] }> {
-    return await this.drawingPhotoService.calculateWinner(sessionId)
   }
 }
