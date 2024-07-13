@@ -6,7 +6,7 @@ import { Redis } from 'ioredis'
 @Injectable()
 export class QueueService {
   private redis: Redis
-
+  private userQueueCount = 3
   constructor(private readonly meetingService: MeetingService) {
     this.redis = new Redis({
       host: process.env.REDIS_HOST,
@@ -67,14 +67,27 @@ export class QueueService {
     try {
       await this.addParticipant(participantName, client, gender)
 
-      const maleQueue = await this.redis.lrange('maleQueue', 0, 3)
-      const femaleQueue = await this.redis.lrange('femaleQueue', 0, 3)
+      const maleQueue = await this.redis.lrange(
+        'maleQueue',
+        0,
+        this.userQueueCount,
+      )
+      const femaleQueue = await this.redis.lrange(
+        'femaleQueue',
+        0,
+        this.userQueueCount,
+      )
 
-      if (maleQueue.length >= 3 && femaleQueue.length >= 3) {
+      if (
+        maleQueue.length >= this.userQueueCount &&
+        femaleQueue.length >= this.userQueueCount
+      ) {
         sessionId = await this.findOrCreateNewSession()
-        const readyMales = maleQueue.splice(0, 3).map(item => JSON.parse(item))
+        const readyMales = maleQueue
+          .splice(0, this.userQueueCount)
+          .map(item => JSON.parse(item))
         const readyFemales = femaleQueue
-          .splice(0, 3)
+          .splice(0, this.userQueueCount)
           .map(item => JSON.parse(item))
 
         const readyUsers = [...readyMales, ...readyFemales]
@@ -86,8 +99,8 @@ export class QueueService {
           )
         }
 
-        await this.redis.ltrim('maleQueue', 3, -1)
-        await this.redis.ltrim('femaleQueue', 3, -1)
+        await this.redis.ltrim('maleQueue', this.userQueueCount, -1)
+        await this.redis.ltrim('femaleQueue', this.userQueueCount, -1)
 
         console.log('현재 큐 시작진입합니다 세션 이름은 : ', sessionId)
         await this.meetingService.startVideoChatSession(sessionId)
