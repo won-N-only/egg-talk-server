@@ -31,7 +31,7 @@ export class MeetingGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
   @WebSocketServer() server: Server
-  private roomid: Map<string, string> = new Map()
+  private roomId: Map<string, string> = new Map()
   private isDevelopment: boolean
   constructor(
     private readonly meetingService: MeetingService,
@@ -78,7 +78,7 @@ export class MeetingGateway
     }
     delete this.connectedSockets[client.id]
     delete this.connectedUsers[participantName]
-    this.roomid.delete(participantName)
+    this.roomId.delete(participantName)
 
     const nickname = this.connectedSockets[client.id]
     if (nickname in this.acceptanceStatus) {
@@ -102,14 +102,14 @@ export class MeetingGateway
         gender = payload.gender
       }
 
-      const existingSessionId = this.roomid.get(participantName)
+      const existingSessionId = this.roomId.get(participantName)
       if (existingSessionId) {
         this.meetingService.removeParticipant(
           existingSessionId,
           client,
           participantName,
         )
-        this.roomid.delete(participantName)
+        this.roomId.delete(participantName)
       }
 
       const { sessionId, readyMales, readyFemales } =
@@ -118,10 +118,10 @@ export class MeetingGateway
       console.log('레디일때의 sessionId은?? ', sessionId)
       if (sessionId && readyFemales && readyMales) {
         readyMales.forEach(male => {
-          this.roomid.set(male.name, sessionId)
+          this.roomId.set(male.name, sessionId)
         })
         readyFemales.forEach(female => {
-          this.roomid.set(female.name, sessionId)
+          this.roomId.set(female.name, sessionId)
         })
       }
       this.connectedUsers[participantName] = client
@@ -160,13 +160,13 @@ export class MeetingGateway
     }
     delete this.connectedSockets[client.id]
     delete this.connectedUsers[participantName]
-    this.roomid.delete(participantName)
+    this.roomId.delete(participantName)
   }
 
   @SubscribeMessage('choose')
   handleChoose(client: Socket, payload: { sender: string; receiver: string }) {
     // 해당 소켓이 존재하는 방을 찾기 위함
-    const sessionId = this.roomid.get(payload.sender)
+    const sessionId = this.roomId.get(payload.sender)
     if (sessionId) {
       this.meetingService.storeChoose(
         sessionId,
@@ -241,7 +241,7 @@ export class MeetingGateway
     payload: { userName: string; drawing: string; photo: string },
   ) {
     const { drawing, userName, photo } = payload
-    const sessionId = this.roomid.get(userName)
+    const sessionId = this.roomId.get(userName)
 
     if (!sessionId) {
       console.error(`세션에 없는 유저이름임: ${userName}`)
@@ -268,7 +268,7 @@ export class MeetingGateway
     payload: { userName: string; votedUser: string },
   ) {
     const { userName, votedUser } = payload
-    const sessionId = this.roomid.get(userName)
+    const sessionId = this.roomId.get(userName)
 
     this.meetingService.saveVote(sessionId, userName, votedUser)
 
@@ -294,7 +294,7 @@ export class MeetingGateway
     payload: { userName: string; winners: string[]; losers: string[] },
   ) {
     const { userName, winners, losers } = payload
-    const sessionId = this.roomid.get(userName)
+    const sessionId = this.roomId.get(userName)
     const participants = this.meetingService.getParticipants(sessionId)
 
     if (userName === winners[0])
@@ -330,7 +330,7 @@ export class MeetingGateway
   ) {
     // 서버 입장에서 소켓이 존재하는 방을 찾기 위함
     const { sender, receiver } = payload
-    const sessionId = this.roomid.get(sender)
+    const sessionId = this.roomId.get(sender)
     // 기존 정보가 있다면 새롭게 변형해서 저장할 수 있음
     if (sessionId) {
       this.meetingService.storeChoose(sessionId, sender, receiver)
@@ -416,7 +416,7 @@ export class MeetingGateway
 
   @SubscribeMessage('leave')
   handleLeave(client: Socket, payload: { participantName }) {
-    const sessionId = this.roomid.get(payload.participantName)
+    const sessionId = this.roomId.get(payload.participantName)
     if (sessionId) {
       this.meetingService.removeParticipant(
         sessionId,
@@ -424,7 +424,7 @@ export class MeetingGateway
         payload.participantName,
       )
     }
-    this.roomid.delete(payload.participantName)
+    this.roomId.delete(payload.participantName)
     this.cupidFlag.delete(sessionId)
     delete this.connectedUsers[payload.participantName]
     delete this.connectedSockets[client.id]
@@ -437,7 +437,7 @@ export class MeetingGateway
     payload: { nickname: string; emojiIndex: string },
   ) {
     const { nickname, emojiIndex } = payload
-    const sessionId = this.roomid.get(nickname)
+    const sessionId = this.roomId.get(nickname)
     const participants = this.meetingService.getParticipants(sessionId)
     participants.forEach(({ socket }) => {
       this.server.to(socket.id).emit('emojiBroadcast', { nickname, emojiIndex })

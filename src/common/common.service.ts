@@ -69,7 +69,7 @@ export class CommonService {
   ): Promise<Chat> {
     try {
       //DTO
-      const newChat = await this.commonRepository.saveMessagetoChatRoom(
+      const newChat = await this.commonRepository.saveMessageToChatRoom(
         senderNickName,
         message,
         chatRoomId,

@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid'
 
 @Injectable()
 export class MeetingService {
-  private openvidu: OpenVidu
+  private openVidu: OpenVidu
   private sessions: Record<string, { session: Session; participants: any[] }> =
     {}
   private chooseData: Record<string, { sender: string; receiver: string }[]> =
@@ -19,7 +19,7 @@ export class MeetingService {
   constructor() {
     const OPENVIDU_URL = process.env.OPENVIDU_URL
     const OPENVIDU_SECRET = process.env.OPENVIDU_SECRET
-    this.openvidu = new OpenVidu(OPENVIDU_URL, OPENVIDU_SECRET)
+    this.openVidu = new OpenVidu(OPENVIDU_URL, OPENVIDU_SECRET)
   }
   private shuffleArray<T>(array: T[]): T[] {
     for (let i = array.length - 1; i > 0; i--) {
@@ -37,7 +37,7 @@ export class MeetingService {
     if (!this.sessions[sessionId]) {
       try {
         console.log('create 세션 전====================')
-        const session = await this.openvidu.createSession({
+        const session = await this.openVidu.createSession({
           customSessionId: sessionId,
         })
         console.log('create 세션 후====================')
@@ -81,12 +81,12 @@ export class MeetingService {
     }
   }
 
-  removeParticipant(sessionId: string, socket: any, myid: string) {
+  removeParticipant(sessionId: string, socket: any, myId: string) {
     if (this.sessions[sessionId]) {
       // console.log(this.sessions[sessionId].participants.map(p => p.name))
       const participants = this.getParticipants(sessionId)
       this.sessions[sessionId].participants = participants.filter(
-        p => p.name !== myid,
+        p => p.name !== myId,
       )
       console.log(
         "/meetingService' 세션 참가자 수: ",
@@ -351,7 +351,7 @@ export class MeetingService {
         choice => choice.sender === receiver && choice.receiver === sender,
       )
       if (isPair) {
-        // matches = [ { pair : [jinyong, test] }]
+        // matches = [ { pair : [jinYong, test] }]
         matches.push({ pair: [sender, receiver] })
       }
     })
@@ -374,7 +374,7 @@ export class MeetingService {
     delete this.drawings[sessionId]
   }
 
-  /**<sessionId, <username, phtos>> */
+  /**<sessionId, <username, photos>> */
   private photos: Record<string, Record<string, string>> = {}
 
   savePhoto(sessionId: string, userName: string, photo: string) {
