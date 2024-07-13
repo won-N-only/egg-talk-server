@@ -1,9 +1,9 @@
 import { Injectable, Inject } from '@nestjs/common'
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager'
-import { OpenVidu, OpenViduRole, Session } from 'openvidu-node-client'
+import { OpenViduRole } from 'openvidu-node-client'
 import { Socket, Server } from 'socket.io'
-import { v4 as uuidv4 } from 'uuid'
 import Redis from 'ioredis'
+import { SessionService } from './session.service'
 
 type ChooseResult = {
   sender: string
@@ -12,18 +12,14 @@ type ChooseResult = {
 
 @Injectable()
 export class MeetingService {
-  private openvidu: OpenVidu
   public server: Server
-  private sessions: Record<string, { session: Session; participants: any[] }> =
-    {}
   private sessionTimers: Record<string, NodeJS.Timeout> = {}
   private redis: Redis
 
-  constructor(@Inject(CACHE_MANAGER) private cacheManager: Cache) {
-    const OPENVIDU_URL = process.env.OPENVIDU_URL
-    const OPENVIDU_SECRET = process.env.OPENVIDU_SECRET
-    this.openvidu = new OpenVidu(OPENVIDU_URL, OPENVIDU_SECRET)
-
+  constructor(
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    private readonly sessionService: SessionService,
+  ) {
     this.redis = new Redis({
       host: process.env.REDIS_HOST,
       port: parseInt(process.env.REDIS_PORT, 10),
@@ -41,7 +37,7 @@ export class MeetingService {
   }
 
   generateSessionId() {
-    return uuidv4()
+    return this.sessionService.generateSessionId()
   }
 
   // 소켓 관리
@@ -169,71 +165,22 @@ export class MeetingService {
     }
   }
 
-  // 오픈비두 세션
-  async createSession(sessionId: string): Promise<Session> {
-    if (!this.sessions[sessionId]) {
-      const session = await this.openvidu.createSession({
-        customSessionId: sessionId,
-      })
-      this.sessions[sessionId] = { session, participants: [] }
-      return session
-    } else {
-      return this.sessions[sessionId].session
-    }
-  }
-
-  async deleteSession(sessionId: string): Promise<void> {
-    if (this.sessions[sessionId]) {
-      delete this.sessions[sessionId]
-    }
-  }
-
   addParticipant(sessionId: string, participantName: string, socket: Socket) {
-    if (this.sessions[sessionId]) {
-      this.sessions[sessionId].participants.push({
-        name: participantName,
-        socket,
-      })
-      console.log(
-        '참여자가 추가되었습니다. 세션이름: ',
-        sessionId,
-        '참여자 이름 : ',
-        participantName,
-      )
-    } else {
-      console.error(`Session ${sessionId} does not exist`)
-    }
+    this.sessionService.addParticipant(sessionId, participantName, socket)
   }
 
   removeParticipant(sessionId: string, socket: Socket, myid: string) {
-    if (this.sessions[sessionId]) {
-      const participants = this.getParticipants(sessionId)
-      this.sessions[sessionId].participants = participants.filter(
-        p => p.name !== myid,
-      )
-      console.log(
-        '/meetingService 세션 참가자 수: ',
-        this.sessions[sessionId].participants.length,
-      )
-      if (this.sessions[sessionId].participants.length === 0) {
-        console.log(
-          '"/meetingService 세션 참가자가 없습니다',
-          this.sessions[sessionId].participants.length,
-          'sessionId 는',
-          sessionId,
-        )
-        clearInterval(this.sessionTimers[sessionId])
-        this.clearSessionData(sessionId)
-      }
-    } else {
-      console.error(`Session ${sessionId} does not exist`)
+    this.sessionService.removeParticipant(sessionId, socket, myid)
+    if (this.sessionService.getParticipants(sessionId).length === 0) {
+      clearInterval(this.sessionTimers[sessionId])
+      this.clearSessionData(sessionId)
     }
   }
 
   clearSessionData(sessionId: string) {
     console.log(`Clearing session data for ${sessionId}`)
     this.deleteChooseData(sessionId)
-    delete this.sessions[sessionId]
+    this.sessionService.clearSessionData(sessionId)
     if (this.sessionTimers[sessionId]) {
       console.log('타이머 초기화 중')
       clearInterval(this.sessionTimers[sessionId])
@@ -242,20 +189,17 @@ export class MeetingService {
   }
 
   getParticipants(sessionId: string) {
-    const sessions = this.sessions[sessionId]
-    if (sessions) return this.sessions[sessionId].participants
-
-    return []
+    return this.sessionService.getParticipants(sessionId)
   }
 
   async generateTokens(sessionId: string) {
-    const session = this.sessions[sessionId]?.session
+    const session = this.sessionService.getSession(sessionId)
     if (!session) {
       console.error(`No session found for ${sessionId}`)
       return []
     }
 
-    const tokenPromises = this.sessions[sessionId].participants.map(
+    const tokenPromises = this.getParticipants(sessionId).map(
       async ({ name }) => {
         const tokenOptions = {
           role: OpenViduRole.PUBLISHER,
@@ -280,12 +224,10 @@ export class MeetingService {
 
     try {
       const tokens = await Promise.all(tokenPromises)
-      return this.sessions[sessionId].participants.map(
-        (participant, index) => ({
-          participant: participant.name,
-          token: tokens[index],
-        }),
-      )
+      return this.getParticipants(sessionId).map((participant, index) => ({
+        participant: participant.name,
+        token: tokens[index],
+      }))
     } catch (error) {
       console.error('Error generating tokens:', error)
       return []
@@ -293,10 +235,10 @@ export class MeetingService {
   }
 
   async resetParticipants(sessionId: string) {
-    if (this.sessions[sessionId]) {
+    if (this.sessionService.getSession(sessionId)) {
       const newSessionId = this.generateSessionId()
-      const newSession = await this.createSession(newSessionId)
-      this.sessions[newSessionId] = { session: newSession, participants: [] }
+      const newSession = await this.sessionService.createSession(newSessionId)
+      this.sessionService.clearSessionData(newSessionId)
       console.log(
         `Session ${sessionId} reset and new session ${newSessionId} created with ID ${newSession.sessionId}`,
       )
@@ -305,15 +247,10 @@ export class MeetingService {
     }
   }
 
-  getSession(sessionId: string) {
-    return this.sessions[sessionId]?.session
-  }
-
   async startVideoChatSession(sessionId: string) {
     try {
       const tokens = await this.generateTokens(sessionId)
-      const session = this.getSession(sessionId)
-      const participants = this.getParticipants(sessionId)
+      const session = this.sessionService.getSession(sessionId)
 
       if (!session) {
         console.error(
@@ -422,10 +359,6 @@ export class MeetingService {
         server.to(socket.id).emit(eventType, { message })
       })
     }
-  }
-
-  getSessions() {
-    return this.sessions
   }
 
   async setChooseData(sessionId: string, sender: string, receiver: string) {
