@@ -9,14 +9,18 @@ import { Server, Socket } from 'socket.io'
 import { CommonRepository } from './common.repository'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Cache } from 'cache-manager'
+import Redis from 'ioredis'
 
 @Injectable()
 export class CommonService {
+  private redisClient: Redis
   constructor(
     private readonly commonRepository: CommonRepository,
     private readonly usersRepository: UsersRepository,
-    @Inject(CACHE_MANAGER) private cacheManager: Cache,
-  ) {}
+    
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,){
+      this.redisClient = (this.cacheManager as any).store.getClient();
+    }
 
   private server: Server
   // private connectedUsers = new Map<string, >() // userId: Socket
@@ -57,36 +61,62 @@ export class CommonService {
     this.connectedSockets.delete(socketId)
   }
 
-  async getChatHistory(chatRoomId: string): Promise<Chat[]> {
-    // 1. ChatRoom ObjectId로 변환
-    const chatRoomIdObj = new Types.ObjectId(chatRoomId)
+  // async getChatHistory(chatRoomId: string): Promise<Chat[]> {
+  //   // 1. ChatRoom ObjectId로 변환
+  //   const chatRoomIdObj = new Types.ObjectId(chatRoomId)
 
-    const chatRoom =
-      await this.commonRepository.getChatRoomMessage(chatRoomIdObj)
-    console.log('chatroom populate result: ', chatRoom.chats)
-    return chatRoom.chats as unknown as Chat[]
+  //   const chatRoom =
+  //     await this.commonRepository.getChatRoomMessage(chatRoomIdObj)
+  //   console.log('chatroom populate result: ', chatRoom.chats)
+  //   return chatRoom.chats as unknown as Chat[]
+  // }
+
+  // Redis 버전
+  async getChatHistory(chatRoomdId: string): Promise<Chat[]> {
+    // Redis List에서 메시지 가져오기
+    const chatHistory = await this.redisClient.lrange(`chatHistory:${chatRoomdId}`, 0, -1)
+    return chatHistory.map(message => JSON.parse(message) as Chat)
   }
 
+  // async sendMessage(
+  //   senderNickName: string,
+  //   chatRoomId: string,
+  //   message: string,
+  //   isReceiverOnline: boolean,
+  // ): Promise<Chat> {
+  //   try {
+  //     //DTO
+  //     const newChat = await this.commonRepository.saveMessagetoChatRoom(
+  //       senderNickName,
+  //       message,
+  //       chatRoomId,
+  //       isReceiverOnline,
+  //     )
+  //     return newChat
+  //   } catch (error) {
+  //     console.error('메시지 저장 실패:', error)
+  //     throw error
+  //   }
+  // }
+
+  // Redis 버전
   async sendMessage(
     senderNickName: string,
     chatRoomId: string,
     message: string,
     isReceiverOnline: boolean,
   ): Promise<Chat> {
-    try {
-      //DTO
-      const newChat = await this.commonRepository.saveMessagetoChatRoom(
-        senderNickName,
-        message,
-        chatRoomId,
-        isReceiverOnline,
-      )
+      const newChat = new Chat();
+      newChat.sender = senderNickName
+      newChat.message = message;
+      newChat.chatRoomId = new Types.ObjectId(chatRoomId);
+      
+      // Redis List에 메세지 추가
+      await this.redisClient.rpush(`chatHistory:${chatRoomId}`, JSON.stringify(newChat))
+
+      // 5분마다 채팅 기록을 DB에 저장하는 스케줄러 함수 호출
       return newChat
-    } catch (error) {
-      console.error('메시지 저장 실패:', error)
-      throw error
     }
-  }
 
   async changeNotice(userId: string) {
     try {
