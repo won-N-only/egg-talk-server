@@ -100,33 +100,33 @@ export class MeetingService {
   }
 
   // 큐피드 플래그
-  async getCupidFlagBySessionId(sessionId: string): Promise<boolean> {
-    return await this.cacheManager.get<boolean>(
-      `session:${sessionId}:cupidFlag`,
-    )
+  async getCupidFlagBySessionId(sessionId: string): Promise<boolean | null> {
+    const flag = await this.redis.get(`session:${sessionId}:cupidFlag`)
+    return flag === 'true'
   }
 
   async setCupidFlagBySessionId(sessionId: string): Promise<void> {
-    await this.cacheManager.set(`session:${sessionId}:cupidFlag`, true)
+    await this.redis.set(`session:${sessionId}:cupidFlag`, 'true')
   }
 
   async deleteCupidFlagBySessionId(sessionId: string): Promise<void> {
-    await this.cacheManager.del(`session:${sessionId}:cupidFlag`)
+    await this.redis.del(`session:${sessionId}:cupidFlag`)
   }
 
   // 최종선택 플래그
-  async getLastCupidFlagBySessionId(sessionId: string): Promise<boolean> {
-    return await this.cacheManager.get<boolean>(
-      `session:${sessionId}:lastCupidFlag`,
-    )
+  async getLastCupidFlagBySessionId(
+    sessionId: string,
+  ): Promise<boolean | null> {
+    const flag = await this.redis.get(`session:${sessionId}:lastCupidFlag`)
+    return flag === 'true'
   }
 
   async setLastCupidFlagBySessionId(sessionId: string): Promise<void> {
-    await this.cacheManager.set(`session:${sessionId}:lastCupidFlag`, true)
+    await this.redis.set(`session:${sessionId}:lastCupidFlag`, 'true')
   }
 
   async deleteLastCupidFlagBySessionId(sessionId: string): Promise<void> {
-    await this.cacheManager.del(`session:${sessionId}:lastCupidFlag`)
+    await this.redis.del(`session:${sessionId}:lastCupidFlag`)
   }
 
   // 1:1대화 수락 플래그
