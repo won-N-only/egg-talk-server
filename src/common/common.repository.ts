@@ -176,4 +176,17 @@ export class CommonRepository {
       throw error;
     }
   }
+
+  // 5분마다 채팅 기록을 DB에 저장하는 스케줄러 함수
+  async saveChatHistoryToDatabase(chatRoomId: string, messages: Chat[]){
+    try{
+      // 1. chatRoomId를 ObjectId로 변환
+      const chatRoomIdObj = new Types.ObjectId(chatRoomId);
+
+      // 2. 메시지 배열을 ChatDocument 배열로 변환
+
+    } catch (error){
+
+    }
+  }
 }
