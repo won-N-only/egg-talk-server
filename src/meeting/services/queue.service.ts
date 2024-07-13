@@ -5,8 +5,8 @@ import { MeetingService } from './meeting.service'
 @Injectable()
 export class QueueService {
   constructor(private readonly meetingService: MeetingService) {}
-  private maleQueue: { name: string; socket: Socket }[] = []
-  private femaleQueue: { name: string; socket: Socket }[] = []
+  private maleQueue: { name: string; socketId: string }[] = []
+  private femaleQueue: { name: string; socketId: string }[] = []
 
   /* 참여자 대기열 추가 */
   addParticipant(name: string, socket: Socket, gender: string) {
@@ -17,7 +17,7 @@ export class QueueService {
         this.maleQueue.splice(index, 1)
       }
       // 새로운 참가자 추가
-      this.maleQueue.push({ name, socket })
+      this.maleQueue.push({ name, socketId: socket.id })
       console.log(
         'male Queue : ',
         this.maleQueue.map(p => p.name),
@@ -29,7 +29,7 @@ export class QueueService {
         this.femaleQueue.splice(index, 1)
       }
       // 새로운 참가자 추가
-      this.femaleQueue.push({ name, socket })
+      this.femaleQueue.push({ name, socketId: socket.id })
       console.log(
         'female Queue : ',
         this.femaleQueue.map(p => p.name),
@@ -82,17 +82,19 @@ export class QueueService {
         const readyMales = this.maleQueue.splice(0, 3)
         const readyFemales = this.femaleQueue.splice(0, 3)
 
-        await this.meetingService.createSession(sessionId)
-
         readyMales.forEach(male => {
-          this.meetingService.addParticipant(sessionId, male.name, male.socket)
+          this.meetingService.addParticipant(
+            sessionId,
+            male.name,
+            male.socketId,
+          )
         })
 
         readyFemales.forEach(female => {
           this.meetingService.addParticipant(
             sessionId,
             female.name,
-            female.socket,
+            female.socketId,
           )
         })
         console.log('현재 큐 시작진입합니다 세션 이름은 : ', sessionId)
