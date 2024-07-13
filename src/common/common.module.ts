@@ -33,5 +33,6 @@ import {
     UsersRepository,
     UsersService,
   ],
+  exports: [CommonRepository],
 })
 export class CommonModule {}

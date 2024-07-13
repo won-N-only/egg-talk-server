@@ -153,27 +153,49 @@ export class CommonRepository {
   }
 
   async changeNewMessage(receiverNickname: string, userNickname: string) {
-    try{
-      const user = await this.userModel.findOne({nickname : receiverNickname});
+    try {
+      const user = await this.userModel.findOne({ nickname: receiverNickname })
 
-      const friendToUpdateIndex = user.friends.findIndex(friend => friend.friend == userNickname);
-  
-      user.friends[friendToUpdateIndex].newMessage = true;
-      await user.save();
+      const friendToUpdateIndex = user.friends.findIndex(
+        friend => friend.friend == userNickname,
+      )
+
+      user.friends[friendToUpdateIndex].newMessage = true
+      await user.save()
     } catch (error) {
-      throw error;
+      throw error
     }
   }
   async changeReadMessage(receiverNickname: string, userNickname: string) {
-    try{
-      const user = await this.userModel.findOne({nickname : userNickname});
+    try {
+      const user = await this.userModel.findOne({ nickname: userNickname })
 
-      const friendToUpdateIndex = user.friends.findIndex(friend => friend.friend == receiverNickname);
-  
-      user.friends[friendToUpdateIndex].newMessage = false;
-      await user.save();
+      const friendToUpdateIndex = user.friends.findIndex(
+        friend => friend.friend == receiverNickname,
+      )
+
+      user.friends[friendToUpdateIndex].newMessage = false
+      await user.save()
     } catch (error) {
-      throw error;
+      throw error
     }
+  }
+
+  async getFriendNicknames(nickname: string): Promise<string[]> {
+    // 1. 주어진 닉네임으로 유저를 찾습니다.
+    const user = await this.userModel.findOne({ nickname }).lean()
+
+    // 2. 유저가 없거나, 친구 목록이 없으면 빈 배열을 반환합니다.
+    if (!user || !user.friends) {
+      return []
+    }
+
+    // 3. 유저의 친구 목록에서 친구 ObjectId를 추출합니다.
+    const friendIds = user.friends.map((friend: Friend) => friend.friend)
+
+    console.log('친구들은 어떻게 되어있나??', friendIds)
+
+    // 4. 찾은 친구 객체들에서 닉네임만 추출하여 배열로 반환합니다.
+    return friendIds.map(friend => friend)
   }
 }
