@@ -11,9 +11,9 @@ import { Logger, UseGuards } from '@nestjs/common'
 import { JwtAuthWsGuard } from '../guards/jwt-auth.ws.guard'
 import { Server, Socket } from 'socket.io'
 import { CommonService } from './common.service'
-import { AcceptFriend, AddFriendDto, joinChatDto, sendMessageDto } from './dto/request/notification.dto'
+import { AcceptFriend, AddFriendDto } from './dto/request/notification.dto'
 import { UsersService } from '../users/users.service'
-import { plainToClass } from 'class-transformer'
+import { joinChatDto, sendMessageDto } from './dto/request/chat.dto'
 
 const logger = new Logger('ChatGateway')
 
@@ -129,7 +129,6 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: joinChatDto, // nickName == userId
   ) {
-   // const joinChatData = plainToClass(joinChatDto, payload) // payload를 joinChatDto 인스턴스로 변환
     const { newChatRoomId, friendName } = payload
     const nickname = client['user'].nickname
     // 1. 기존 채팅방 정보 가져오기
