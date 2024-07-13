@@ -13,36 +13,29 @@ export class QueueService {
       port: parseInt(process.env.REDIS_PORT, 10),
     })
   }
-  private maleQueue: { name: string; socketId: string }[] = []
-  private femaleQueue: { name: string; socketId: string }[] = []
 
   /* 참여자 대기열 추가 */
-  addParticipant(name: string, socket: Socket, gender: string) {
-    if (gender === 'MALE') {
-      const index = this.maleQueue.findIndex(p => p.name === name)
-      if (index !== -1) {
-        // 기존 참가자를 제거
-        this.maleQueue.splice(index, 1)
+  async addParticipant(name: string, socket: Socket, gender: string) {
+    const participant = JSON.stringify({ name, socketId: socket.id })
+    const genderQueue = gender === 'MALE' ? 'maleQueue' : 'femaleQueue'
+
+    const queue = await this.redis.lrange(genderQueue, 0, -1)
+
+    /**중복 유저 제거과정 최적화 필요 */
+    for (const item of queue) {
+      const parsedItem = JSON.parse(item)
+      if (parsedItem.name === name) {
+        await this.redis.lrem(genderQueue, 0, item)
       }
-      // 새로운 참가자 추가
-      this.maleQueue.push({ name, socketId: socket.id })
-      console.log(
-        'male Queue : ',
-        this.maleQueue.map(p => p.name),
-      )
-    } else if (gender === 'FEMALE') {
-      const index = this.femaleQueue.findIndex(p => p.name === name)
-      if (index !== -1) {
-        // 기존 참가자를 제거
-        this.femaleQueue.splice(index, 1)
-      }
-      // 새로운 참가자 추가
-      this.femaleQueue.push({ name, socketId: socket.id })
-      console.log(
-        'female Queue : ',
-        this.femaleQueue.map(p => p.name),
-      )
     }
+
+    await this.redis.rpush(genderQueue, participant)
+    console.log(
+      `${gender} Queue : `,
+      (await this.redis.lrange(genderQueue, 0, -1)).map(
+        item => JSON.parse(item).name,
+      ),
+    )
   }
 
   removeParticipant(name: string, gender: string) {
