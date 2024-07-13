@@ -6,6 +6,7 @@ import { JwtAuthWsGuard } from '../guards/jwt-auth.ws.guard'
 import { JwtService } from '@nestjs/jwt'
 import { QueueService } from './services/queue.service'
 import { ConfigService } from '@nestjs/config'
+import { SessionService } from './services/session.service'
 import { CommonModule } from '../common/common.module'
 import { CacheModule } from '@nestjs/cache-manager'
 import * as redisStore from 'cache-manager-ioredis'
@@ -27,6 +28,7 @@ import * as redisStore from 'cache-manager-ioredis'
     JwtService,
     JwtAuthWsGuard,
     ConfigService,
+    SessionService,
   ],
   exports: [CacheModule],
 })
