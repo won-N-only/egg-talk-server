@@ -76,8 +76,8 @@ export class QueueService {
         const readyFemales = femaleQueue
           .splice(0, 3)
           .map(item => JSON.parse(item))
-        const readyUsers = [...readyMales, ...readyFemales]
 
+        const readyUsers = [...readyMales, ...readyFemales]
         for (const user of readyUsers) {
           this.meetingService.addParticipant(
             sessionId,
@@ -85,6 +85,7 @@ export class QueueService {
             user.socketId,
           )
         }
+
         await this.redis.ltrim('maleQueue', 3, -1)
         await this.redis.ltrim('femaleQueue', 3, -1)
 
@@ -92,13 +93,6 @@ export class QueueService {
         await this.meetingService.startVideoChatSession(sessionId)
         return { sessionId, readyUsers }
       }
-
-      // 이 부분은 클라 확인차 로그로써 삭제해도 무방 다만 테스트 시 확인이 힘들어짐
-      const participants = this.meetingService.getParticipants(sessionId)
-      console.log(
-        'Current waiting participants: ',
-        participants.map(p => p.name),
-      )
       return { sessionId }
     } catch (error) {
       console.error('Error joining queue:', error)

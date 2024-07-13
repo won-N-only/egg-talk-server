@@ -219,16 +219,13 @@ export class MeetingGateway
   @SubscribeMessage('startTimer')
   async handleStartTimer(@MessageBody() payload: { sessionId: string }) {
     const { sessionId } = payload
-    console.log(
-      '현재 타이머가 시작되었나요? => ',
-      await this.meetingService.getTimerFlagBySessionId(sessionId),
-      '혹시 클라에서 온 세션 이름은?? ',
-      sessionId,
-    )
-    if (!(await this.meetingService.getTimerFlagBySessionId(sessionId))) {
-      console.log('타이머가 시작되었습니다.')
+
+    const currentCount =
+      await this.meetingService.setTimerCountBySessionId(sessionId)
+
+    if (currentCount === 6) {
       this.meetingService.startSessionTimer(sessionId, this.server)
-      await this.meetingService.setTimerFlagBySessionId(sessionId)
+      this.meetingService.deleteTimerCountBySessionId(sessionId)
     }
   }
 

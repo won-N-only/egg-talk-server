@@ -275,15 +275,16 @@ export class MeetingService {
 
   startSessionTimer(sessionId: string, server: Server) {
     const timers = [
-      { time: 0.5, event: 'introduce' },
-      { time: 2.5, event: 'keyword' },
-      { time: 4, event: 'cupidTime' },
-      { time: 6, event: 'cam' },
-      { time: 6.5, event: 'drawingContest' },
-      { time: 8.5, event: 'lastCupidTime' },
-      { time: 9, event: 'finish' },
+      { time: 1 / 12, event: 'introduce' },
+      { time: 1 / 3, event: 'keyword' },
+      { time: 2 / 3, event: 'cupidTime' },
+      { time: 94 / 60, event: 'cam' },
+      { time: 104 / 60, event: 'drawingContest' },
+      { time: 2.9, event: 'lastCupidTime' },
+      { time: 3.1, event: 'finish' },
     ]
 
+    // 세션 타이머 초기화 (필요한 경우)
     if (this.sessionTimers[sessionId]) {
       clearTimeout(this.sessionTimers[sessionId])
     }
@@ -295,7 +296,7 @@ export class MeetingService {
       elapsedTime += 1
       if (
         currentTimerIndex < timers.length &&
-        elapsedTime === timers[currentTimerIndex].time * 60
+        elapsedTime === Math.floor(timers[currentTimerIndex].time * 60)
       ) {
         const { event } = timers[currentTimerIndex]
         let message: string | null = null
@@ -304,11 +305,15 @@ export class MeetingService {
         if (event === 'keyword') {
           const getRandomNumber = () => Math.floor(Math.random() * 20) + 1
           message = `${getRandomNumber()}`
+          // message = '0'
         } else if (event === 'introduce') {
           const TeamArray = this.getParticipants(sessionId).map(
             user => user.name,
           )
+          // const TeamArray = ['시아']
+
           messageArray = this.shuffleArray(TeamArray)
+          // messageArray = TeamArray
         } else {
           message = `${event}`
         }
@@ -320,8 +325,7 @@ export class MeetingService {
           server,
           messageArray,
         )
-
-        currentTimerIndex++
+        currentTimerIndex++ // 다음 타이머로 이동
       }
 
       if (currentTimerIndex >= timers.length) {
@@ -342,6 +346,8 @@ export class MeetingService {
     const participants = this.getParticipants(sessionId)
     if (eventType == 'keyword') {
       const getRandomParticipant = participants[1].name
+    //  const getRandomParticipant = '시아'
+
       participants.forEach(({ socketId }) => {
         server.to(socketId).emit(eventType, { message, getRandomParticipant })
       })
@@ -364,13 +370,11 @@ export class MeetingService {
   // 1:1 선택 결과
   async getChooseData(sessionId: string): Promise<ChooseResult[]> {
     const chooseData = await this.redis.hgetall(`choose:${sessionId}`)
-
     const result: ChooseResult[] = []
 
     for (const [sender, receiver] of Object.entries(chooseData)) {
       result.push({ sender, receiver })
     }
-
     return result
   }
 
