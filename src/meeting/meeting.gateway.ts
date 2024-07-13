@@ -228,10 +228,7 @@ export class MeetingGateway
       '혹시 클라에서 온 세션 이름은?? ',
       sessionId,
     )
-    if (
-      (await this.meetingService.getTimerFlagBySessionId(sessionId)) ==
-      undefined
-    ) {
+    if (!(await this.meetingService.getTimerFlagBySessionId(sessionId))) {
       console.log('타이머가 시작되었습니다.')
       this.meetingService.startSessionTimer(sessionId, this.server)
       await this.meetingService.setTimerFlagBySessionId(sessionId)
@@ -357,8 +354,7 @@ export class MeetingGateway
         const matches = await this.meetingService.findMatchingPairs(sessionId)
 
         if (
-          (await this.meetingService.getLastCupidFlagBySessionId(sessionId)) ==
-          undefined
+          !(await this.meetingService.getLastCupidFlagBySessionId(sessionId))
         ) {
           participant.forEach(({ socketId, name }) => {
             const matchedPair = matches.find(elem => elem.pair.includes(name))
