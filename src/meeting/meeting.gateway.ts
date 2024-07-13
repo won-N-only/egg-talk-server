@@ -148,6 +148,7 @@ export class MeetingGateway
     for (const sessionId in sessions) {
       if (sessions.hasOwnProperty(sessionId)) {
         this.meetingService.removeParticipant(sessionId, participantName)
+        await this.meetingService.decrTimerCountBySessionId(sessionId)
       }
     }
     await this.meetingService.deleteConnectedSocket(client.id)
@@ -220,8 +221,9 @@ export class MeetingGateway
   async handleStartTimer(@MessageBody() payload: { sessionId: string }) {
     const { sessionId } = payload
 
+    await this.meetingService.incrTimerCountBySessionId(sessionId)
     const currentCount =
-      await this.meetingService.setTimerCountBySessionId(sessionId)
+      await this.meetingService.getTimerCountBySessionId(sessionId)
 
     if (currentCount === 6) {
       this.meetingService.startSessionTimer(sessionId, this.server)
@@ -430,7 +432,7 @@ export class MeetingGateway
     }
     await this.meetingService.deleteParticipantNameInSession(participantName)
     await this.meetingService.deleteConnectedSocket(client.id)
-    await this.meetingService.deleteTimerFlagBySessionId(sessionId)
+    await this.meetingService.deleteTimerCountBySessionId(sessionId)
     await this.meetingService.deleteCupidFlagBySessionId(sessionId)
     await this.meetingService.deleteLastCupidFlagBySessionId(sessionId)
   }
