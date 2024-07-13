@@ -86,18 +86,17 @@ export class MeetingService {
   }
 
   // 타이머 플래그
-  async getTimerFlagBySessionId(sessionId: string): Promise<boolean> {
-    return await this.cacheManager.get<boolean>(
-      `session:${sessionId}:timerFlag`,
-    )
+  async getTimerFlagBySessionId(sessionId: string): Promise<boolean | null> {
+    const flag = await this.redis.get(`session:${sessionId}:timerFlag`)
+    return flag === 'true'
   }
 
   async setTimerFlagBySessionId(sessionId: string): Promise<void> {
-    await this.cacheManager.set(`session:${sessionId}:timerFlag`, true)
+    await this.redis.set(`session:${sessionId}:timerFlag`, 'true')
   }
 
   async deleteTimerFlagBySessionId(sessionId: string): Promise<void> {
-    await this.cacheManager.del(`session:${sessionId}:timerFlag`)
+    await this.redis.del(`session:${sessionId}:timerFlag`)
   }
 
   // 큐피드 플래그
