@@ -110,7 +110,6 @@ export class MeetingService {
   removeParticipant(sessionId: string, myId: string) {
     this.sessionService.removeParticipant(sessionId, myId)
     if (this.sessionService.getParticipants(sessionId).length === 0) {
-      this.timerService.clearSessionTimer(sessionId)
       this.clearSessionData(sessionId)
     }
   }
@@ -131,8 +130,9 @@ export class MeetingService {
       return []
     }
 
-    const tokenPromises = this.getParticipants(sessionId).map(
-      async ({ name }) => {
+    const tokenPromises = this.sessionService
+      .getParticipants(sessionId)
+      .map(async ({ name }) => {
         const tokenOptions = {
           role: OpenViduRole.PUBLISHER,
           data: name,
@@ -151,8 +151,7 @@ export class MeetingService {
           )
           throw error
         }
-      },
-    )
+      })
 
     try {
       const tokens = await Promise.all(tokenPromises)
