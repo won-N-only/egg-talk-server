@@ -157,8 +157,6 @@ export class MeetingGateway
         await this.timerService.decrTimerCountBySessionId(sessionId)
       }
     }
-    await this.meetingService.deleteConnectedSocket(client.id)
-    await this.meetingService.deleteParticipantNameInSession(participantName)
   }
 
   @SubscribeMessage('choose')
@@ -433,7 +431,6 @@ export class MeetingGateway
     }
     await this.meetingService.deleteParticipantNameInSession(participantName)
     await this.meetingService.deleteConnectedSocket(client.id)
-    await this.timerService.deleteTimerCountBySessionId(sessionId)
     await this.meetingService.deleteCupidFlagBySessionId(sessionId)
     await this.meetingService.deleteLastCupidFlagBySessionId(sessionId)
   }
