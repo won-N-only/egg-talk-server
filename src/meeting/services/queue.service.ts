@@ -78,20 +78,19 @@ export class QueueService {
       const maleFriendsMap = await this.buildFriendsMap(this.maleQueue)
       const femaleFriendsMap = await this.buildFriendsMap(this.femaleQueue)
 
-      // 남성 및 여성 큐를 친구 관계의 수로 정렬
       const sortedMaleQueue = this.maleQueue
         .slice()
         .sort(
           (a, b) =>
-            (maleFriendsMap.get(a.name) || []).length -
-            (maleFriendsMap.get(b.name) || []).length,
+            (maleFriendsMap.get(a.name) || new Set()).size -
+            (maleFriendsMap.get(b.name) || new Set()).size,
         )
       const sortedFemaleQueue = this.femaleQueue
         .slice()
         .sort(
           (a, b) =>
-            (femaleFriendsMap.get(a.name) || []).length -
-            (femaleFriendsMap.get(b.name) || []).length,
+            (femaleFriendsMap.get(a.name) || new Set()).size -
+            (femaleFriendsMap.get(b.name) || new Set()).size,
         )
 
       for (let i = 0; i < sortedMaleQueue.length - 2; i++) {
@@ -171,10 +170,10 @@ export class QueueService {
   }
 
   private async buildFriendsMap(queue: { name: string; socket: Socket }[]) {
-    const friendsMap = new Map<string, string[]>()
+    const friendsMap = new Map<string, Set<string>>()
     for (const participant of queue) {
       const friends = await this.getFriends(participant.name)
-      friendsMap.set(participant.name, friends)
+      friendsMap.set(participant.name, new Set(friends))
     }
     return friendsMap
   }
@@ -182,21 +181,21 @@ export class QueueService {
   private noCommonFriends(
     maleNames: string[],
     femaleNames: string[],
-    maleFriendsMap: Map<string, string[]>,
-    femaleFriendsMap: Map<string, string[]>,
+    maleFriendsMap: Map<string, Set<string>>,
+    femaleFriendsMap: Map<string, Set<string>>,
   ): boolean {
     for (const male of maleNames) {
-      const maleFriends = maleFriendsMap.get(male) || []
+      const maleFriends = maleFriendsMap.get(male) || new Set()
       for (const female of femaleNames) {
-        if (maleFriends.includes(female)) {
+        if (maleFriends.has(female)) {
           return false
         }
       }
     }
     for (const female of femaleNames) {
-      const femaleFriends = femaleFriendsMap.get(female) || []
+      const femaleFriends = femaleFriendsMap.get(female) || new Set()
       for (const male of maleNames) {
-        if (femaleFriends.includes(male)) {
+        if (femaleFriends.has(male)) {
           return false
         }
       }
