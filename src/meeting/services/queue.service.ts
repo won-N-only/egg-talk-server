@@ -75,96 +75,63 @@ export class QueueService {
 
   async filterQueues() {
     if (this.maleQueue.length >= 3 && this.femaleQueue.length >= 3) {
+      console.log('Attempting to filter queues for matching...')
       const maleFriendsMap = await this.buildFriendsMap(this.maleQueue)
       const femaleFriendsMap = await this.buildFriendsMap(this.femaleQueue)
 
-      const sortedMaleQueue = this.maleQueue
-        .slice()
-        .sort(
-          (a, b) =>
-            (maleFriendsMap.get(a.name) || new Set()).size -
-            (maleFriendsMap.get(b.name) || new Set()).size,
-        )
-      const sortedFemaleQueue = this.femaleQueue
-        .slice()
-        .sort(
-          (a, b) =>
-            (femaleFriendsMap.get(a.name) || new Set()).size -
-            (femaleFriendsMap.get(b.name) || new Set()).size,
-        )
+      const maleCombinations = this.getCombinations(this.maleQueue, 3)
+      const femaleCombinations = this.getCombinations(this.femaleQueue, 3)
 
-      for (let i = 0; i < sortedMaleQueue.length - 2; i++) {
-        for (let j = i + 1; j < sortedMaleQueue.length - 1; j++) {
-          for (let k = j + 1; k < sortedMaleQueue.length; k++) {
-            const males = [
-              sortedMaleQueue[i],
-              sortedMaleQueue[j],
-              sortedMaleQueue[k],
-            ]
-            const maleNames = males.map(m => m.name)
+      for (const males of maleCombinations) {
+        for (const females of femaleCombinations) {
+          if (
+            this.noCommonFriends(
+              males,
+              females,
+              maleFriendsMap,
+              femaleFriendsMap,
+            )
+          ) {
+            const sessionId = await this.findOrCreateNewSession()
 
-            for (let a = 0; a < sortedFemaleQueue.length - 2; a++) {
-              for (let b = a + 1; b < sortedFemaleQueue.length - 1; b++) {
-                for (let c = b + 1; c < sortedFemaleQueue.length; c++) {
-                  const females = [
-                    sortedFemaleQueue[a],
-                    sortedFemaleQueue[b],
-                    sortedFemaleQueue[c],
-                  ]
-                  const femaleNames = females.map(f => f.name)
+            await Promise.all([
+              ...males.map(male =>
+                this.meetingService.addParticipant(
+                  sessionId,
+                  male.name,
+                  male.socket,
+                ),
+              ),
+              ...females.map(female =>
+                this.meetingService.addParticipant(
+                  sessionId,
+                  female.name,
+                  female.socket,
+                ),
+              ),
+            ])
 
-                  if (
-                    this.noCommonFriends(
-                      maleNames,
-                      femaleNames,
-                      maleFriendsMap,
-                      femaleFriendsMap,
-                    )
-                  ) {
-                    const sessionId = await this.findOrCreateNewSession()
+            console.log('현재 큐 시작진입합니다 세션 이름은: ', sessionId)
+            await this.meetingService.startVideoChatSession(sessionId)
 
-                    await Promise.all([
-                      ...males.map(male =>
-                        this.meetingService.addParticipant(
-                          sessionId,
-                          male.name,
-                          male.socket,
-                        ),
-                      ),
-                      ...females.map(female =>
-                        this.meetingService.addParticipant(
-                          sessionId,
-                          female.name,
-                          female.socket,
-                        ),
-                      ),
-                    ])
+            this.maleQueue = this.maleQueue.filter(
+              m => !males.map(male => male.name).includes(m.name),
+            )
+            this.femaleQueue = this.femaleQueue.filter(
+              f => !females.map(female => female.name).includes(f.name),
+            )
 
-                    console.log(
-                      '현재 큐 시작진입합니다 세션 이름은: ',
-                      sessionId,
-                    )
-                    await this.meetingService.startVideoChatSession(sessionId)
-
-                    this.maleQueue = this.maleQueue.filter(
-                      m => !maleNames.includes(m.name),
-                    )
-                    this.femaleQueue = this.femaleQueue.filter(
-                      f => !femaleNames.includes(f.name),
-                    )
-
-                    return {
-                      sessionId,
-                      readyMales: males,
-                      readyFemales: females,
-                    }
-                  }
-                }
-              }
+            return {
+              sessionId,
+              readyMales: males,
+              readyFemales: females,
             }
           }
         }
       }
+      console.log('Not enough matched participants to start a session.')
+    } else {
+      console.log('Not enough participants in both queues to start matching.')
     }
     return null
   }
@@ -175,41 +142,64 @@ export class QueueService {
       const friends = await this.getFriends(participant.name)
       friendsMap.set(participant.name, new Set(friends))
     }
+    console.log('Built friends map:', friendsMap)
     return friendsMap
-  }
-
-  private noCommonFriends(
-    maleNames: string[],
-    femaleNames: string[],
-    maleFriendsMap: Map<string, Set<string>>,
-    femaleFriendsMap: Map<string, Set<string>>,
-  ): boolean {
-    for (const male of maleNames) {
-      const maleFriends = maleFriendsMap.get(male) || new Set()
-      for (const female of femaleNames) {
-        if (maleFriends.has(female)) {
-          return false
-        }
-      }
-    }
-    for (const female of femaleNames) {
-      const femaleFriends = femaleFriendsMap.get(female) || new Set()
-      for (const male of maleNames) {
-        if (femaleFriends.has(male)) {
-          return false
-        }
-      }
-    }
-    return true
   }
 
   private async getFriends(name: string): Promise<string[]> {
     const cachedFriends = this.friendCache.get<string[]>(name)
     if (cachedFriends) {
+      console.log(`Cache hit for friends of ${name}`)
       return cachedFriends
     }
+    console.log(
+      `Cache miss for friends of ${name}, fetching from commonService`,
+    )
     const friends = await this.commonService.sortFriend(name)
     this.friendCache.set(name, friends)
     return friends
+  }
+
+  private getCombinations(
+    queue: { name: string; socket: Socket }[],
+    size: number,
+  ) {
+    const result: { name: string; socket: Socket }[][] = []
+    const f = (start: number, combo: { name: string; socket: Socket }[]) => {
+      if (combo.length === size) {
+        result.push(combo)
+        return
+      }
+      for (let i = start; i < queue.length; i++) {
+        f(i + 1, combo.concat(queue[i]))
+      }
+    }
+    f(0, [])
+    return result
+  }
+
+  private noCommonFriends(
+    males: { name: string; socket: Socket }[],
+    females: { name: string; socket: Socket }[],
+    maleFriendsMap: Map<string, Set<string>>,
+    femaleFriendsMap: Map<string, Set<string>>,
+  ): boolean {
+    for (const male of males) {
+      const maleFriends = maleFriendsMap.get(male.name) || new Set()
+      for (const female of females) {
+        if (maleFriends.has(female.name)) {
+          return false
+        }
+      }
+    }
+    for (const female of females) {
+      const femaleFriends = femaleFriendsMap.get(female.name) || new Set()
+      for (const male of males) {
+        if (femaleFriends.has(male.name)) {
+          return false
+        }
+      }
+    }
+    return true
   }
 }
