@@ -1,13 +1,15 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { Redis } from 'ioredis'
 import { OpenVidu, Session } from 'openvidu-node-client'
-import { CommonService } from 'src/common/common.service'
+import { MeetingService } from '../services/meeting.service'
 import { v4 as uuidv4 } from 'uuid'
+import { Server } from 'socket.io'
 
 @Injectable()
 export class SessionService {
   private openVidu: OpenVidu
   private redis: Redis
+  private server: Server
   private sessions: Record<
     string,
     { session: Session; participants: { name: string; socketId: string }[] }
@@ -15,7 +17,7 @@ export class SessionService {
 
   constructor(
     @Inject('REDIS') redis: Redis,
-    private readonly commonService: CommonService,
+    private readonly meetingService: MeetingService,
   ) {
     this.redis = redis
     this.initSubscriber()
@@ -50,9 +52,13 @@ export class SessionService {
     token: string,
     participantName: string,
   ) {
-    const clientSocket =
-      await this.commonService.getSocketByUserId(participantName)
-    clientSocket.emit('startCall', { sessionId, token, participantName })
+    const clientSocketId =
+      await this.meetingService.getSocketIdByParticipantName(participantName)
+    this.server.to(clientSocketId).emit('startCall', {
+      sessionId,
+      token,
+      participantName,
+    })
   }
 
   generateSessionId() {
