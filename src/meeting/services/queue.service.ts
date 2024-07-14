@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, Inject } from '@nestjs/common'
 import { Socket } from 'socket.io'
 import { MeetingService } from './meeting.service'
-import { Redis } from 'ioredis'
+import Redis from 'ioredis'
 import { CommonService } from '../../common/common.service'
+import { SessionService } from './session.service'
 
 @Injectable()
 export class QueueService {
@@ -10,12 +11,11 @@ export class QueueService {
   private userQueueCount = 3
   constructor(
     private readonly meetingService: MeetingService,
+    private readonly sessionService: SessionService,
     private readonly commonService: CommonService,
+    @Inject('REDIS') redis: Redis,
   ) {
-    this.redis = new Redis({
-      host: process.env.REDIS_HOST,
-      port: parseInt(process.env.REDIS_PORT, 10),
-    })
+    this.redis = redis
   }
 
   /* 참여자 대기열 추가 */
@@ -56,7 +56,7 @@ export class QueueService {
 
   async findOrCreateNewSession(): Promise<string> {
     const newSessionId = this.meetingService.generateSessionId()
-    await this.meetingService.createSession(newSessionId)
+    await this.sessionService.createSession(newSessionId)
     console.log(`Creating and returning new session: ${newSessionId}`)
     return newSessionId
   }
@@ -74,12 +74,12 @@ export class QueueService {
       const maleQueue = await this.redis.lrange(
         'maleQueue',
         0,
-        this.userQueueCount,
+        this.userQueueCount - 1,
       )
       const femaleQueue = await this.redis.lrange(
         'femaleQueue',
         0,
-        this.userQueueCount,
+        this.userQueueCount - 1,
       )
 
       if (
@@ -115,7 +115,7 @@ export class QueueService {
       return { sessionId }
     } catch (error) {
       console.error('Error joining queue:', error)
-      await this.meetingService.deleteSession(sessionId)
+      await this.sessionService.deleteSession(sessionId)
     }
   }
 }

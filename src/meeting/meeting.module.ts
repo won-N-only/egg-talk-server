@@ -6,10 +6,24 @@ import { JwtAuthWsGuard } from '../guards/jwt-auth.ws.guard'
 import { JwtService } from '@nestjs/jwt'
 import { QueueService } from './services/queue.service'
 import { ConfigService } from '@nestjs/config'
+import { SessionService } from './services/session.service'
+import { TimerService } from './services/timer.service'
+import { DrawingContestService } from './services/drawingContest.service'
 import { CommonService } from '../common/common.service'
+import Redis from 'ioredis'
 
 @Module({
   providers: [
+    {
+      provide: 'REDIS',
+      useFactory: () => {
+        return new Redis({
+          host: process.env.REDIS_HOST,
+          port: parseInt(process.env.REDIS_PORT, 10),
+        })
+      },
+    },
+
     MeetingGateway,
     MeetingService,
     QueueService,
@@ -18,6 +32,10 @@ import { CommonService } from '../common/common.service'
     JwtAuthWsGuard,
     ConfigService,
     CommonService,
+    SessionService,
+    DrawingContestService,
+    TimerService,
   ],
+  exports: ['REDIS'],
 })
 export class MeetingModule {}
