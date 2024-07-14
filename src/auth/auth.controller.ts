@@ -9,7 +9,7 @@ import {
 import { AuthService } from './auth.service'
 import { ValidationPipe } from '../validation/validation.pipe'
 import { CreateUserDto } from './dto/request/create-user.dto'
-import { SignInUserDto } from './dto/request/signin-user.dto'
+import { SignInUserDto } from './dto/request/signIn-user.dto'
 import { Response } from 'express'
 import { MessageResponseDto } from '../common_dto/response/message.dto'
 
@@ -31,7 +31,6 @@ export class AuthController {
   ) {
     const { access_token } = await this.authService.signIn(signInUserDto)
     response.setHeader('Authorization', `${access_token}`)
-
 
     return new MessageResponseDto('Sign-in successful')
   }

@@ -77,7 +77,7 @@ export class CommonGateway
   async friendStat(@ConnectedSocket() client: Socket) {
     try {
       const nickname = client['user'].nickname
-      // const nickname = 'jinyong'
+      // const nickname = 'jinYong'
       const friendIds = await this.commonService.sortFriend(nickname)
       // const friendStat = new Map<string, boolean>();
       const friendStat: Array<{ [key: string]: boolean }> = []
@@ -128,7 +128,7 @@ export class CommonGateway
     }
   }
 
-  @SubscribeMessage('joinchat')
+  @SubscribeMessage('joinChat')
   async handleJoinRoom(
     client: Socket,
     payload: { newChatRoomId: string; friendName: string }, // nickName == userId
@@ -157,11 +157,11 @@ export class CommonGateway
   @SubscribeMessage('closeChat')
   async closeChat(
     @ConnectedSocket() client: Socket,
-    @MessageBody() payload: { chatRoomdId: string },
+    @MessageBody() payload: { chatRoomId: string },
   ) {
     try {
-      const { chatRoomdId } = payload
-      client.leave(chatRoomdId)
+      const { chatRoomId } = payload
+      client.leave(chatRoomId)
     } catch (error) {
       logger.error('채팅방 떠나기 오류', error)
     }
@@ -210,7 +210,7 @@ export class CommonGateway
         await this.commonService.newMessage(receiverNickname, userNickname)
       }
 
-      // 1. recieverId에 대응 하는 socket ID 가 connectClient에 존재하는지 확인
+      // 1. receiverId에 대응 하는 socket ID 가 connectClient에 존재하는지 확인
       // 2. (존재하는경우)
       //                1) 상대방이 room에 join 한경우         emit("message")
       //                2) 상대방이 room에 join 하지 않은 경우   emit("online_notice_message")

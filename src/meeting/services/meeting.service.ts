@@ -356,7 +356,7 @@ export class MeetingService {
     const participants = this.getParticipants(sessionId)
     if (eventType == 'keyword') {
       const getRandomParticipant = participants[1].name
-    //  const getRandomParticipant = '시아'
+      //  const getRandomParticipant = '시아'
 
       participants.forEach(({ socketId }) => {
         server.to(socketId).emit(eventType, { message, getRandomParticipant })
