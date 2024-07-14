@@ -68,7 +68,7 @@ export class MeetingGateway
     const user = client['user']
     if (!Object.keys(sessions).length && user) {
       const gender = client['user'].gender
-      this.queueService.removeParticipant(participantName, gender)
+      this.queueService.removeParticipantInQueue(participantName, gender)
     }
 
     for (const sessionId in sessions) {
@@ -149,7 +149,7 @@ export class MeetingGateway
       gender = payload.gender
     }
 
-    this.queueService.removeParticipant(participantName, gender)
+    this.queueService.removeParticipantInQueue(participantName, gender)
 
     for (const sessionId in sessions) {
       if (sessions.hasOwnProperty(sessionId)) {

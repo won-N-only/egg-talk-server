@@ -34,7 +34,7 @@ export class QueueService {
     )
   }
 
-  async removeParticipant(name: string, gender: string) {
+  async removeParticipantInQueue(name: string, gender: string) {
     const genderQueue = gender === 'MALE' ? 'maleQueue' : 'femaleQueue'
     const participant = JSON.stringify({ name })
 
