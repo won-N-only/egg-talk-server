@@ -37,7 +37,7 @@ export class MeetingGateway
 {
   @WebSocketServer() server: Server
   private isDevelopment: boolean
-  private userCount = 6
+  private userCount = this.queueService.userQueueCount * 2
   constructor(
     private readonly meetingService: MeetingService,
     private readonly queueService: QueueService,

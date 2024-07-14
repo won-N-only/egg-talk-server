@@ -8,7 +8,7 @@ import { SessionService } from './session.service'
 @Injectable()
 export class QueueService {
   private redis: Redis
-  private userQueueCount = 3
+  public userQueueCount = 3
   constructor(
     private readonly meetingService: MeetingService,
     private readonly sessionService: SessionService,
