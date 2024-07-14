@@ -36,9 +36,9 @@ export class MeetingService {
 
   async setConnectedSocket(
     participantName: string,
-    clientId: string,
+    socketId: string,
   ): Promise<void> {
-    await this.redis.set(`socket:${clientId}:participantName`, participantName)
+    await this.redis.set(`socket:${socketId}:participantName`, participantName)
   }
 
   async deleteConnectedSocket(socketId: string): Promise<void> {
