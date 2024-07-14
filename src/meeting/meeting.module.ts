@@ -6,10 +6,9 @@ import { JwtAuthWsGuard } from '../guards/jwt-auth.ws.guard'
 import { JwtService } from '@nestjs/jwt'
 import { QueueService } from './services/queue.service'
 import { ConfigService } from '@nestjs/config'
-import { CommonModule } from '../common/common.module'
+import { CommonService } from '../common/common.service'
 
 @Module({
-  imports: [CommonModule],
   providers: [
     MeetingGateway,
     MeetingService,
@@ -18,6 +17,7 @@ import { CommonModule } from '../common/common.module'
     JwtService,
     JwtAuthWsGuard,
     ConfigService,
+    CommonService,
   ],
 })
 export class MeetingModule {}

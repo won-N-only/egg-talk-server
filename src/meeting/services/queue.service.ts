@@ -2,12 +2,16 @@ import { Injectable } from '@nestjs/common'
 import { Socket } from 'socket.io'
 import { MeetingService } from './meeting.service'
 import { Redis } from 'ioredis'
+import { CommonService } from '../../common/common.service'
 
 @Injectable()
 export class QueueService {
   private redis: Redis
   private userQueueCount = 3
-  constructor(private readonly meetingService: MeetingService) {
+  constructor(
+    private readonly meetingService: MeetingService,
+    private readonly commonService: CommonService,
+  ) {
     this.redis = new Redis({
       host: process.env.REDIS_HOST,
       port: parseInt(process.env.REDIS_PORT, 10),
@@ -83,6 +87,7 @@ export class QueueService {
         femaleQueue.length >= this.userQueueCount
       ) {
         sessionId = await this.findOrCreateNewSession()
+
         const readyMales = maleQueue
           .splice(0, this.userQueueCount)
           .map(item => JSON.parse(item))
@@ -106,6 +111,7 @@ export class QueueService {
         await this.meetingService.startVideoChatSession(sessionId)
         return { sessionId, readyUsers }
       }
+
       return { sessionId }
     } catch (error) {
       console.error('Error joining queue:', error)

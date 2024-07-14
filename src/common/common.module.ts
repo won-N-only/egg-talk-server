@@ -40,6 +40,6 @@ import * as redisStore from 'cache-manager-ioredis'
     UsersRepository,
     UsersService,
   ],
-  exports: [CacheModule, CommonRepository],
+  exports: [CacheModule],
 })
 export class CommonModule {}
