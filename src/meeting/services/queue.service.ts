@@ -53,7 +53,7 @@ export class QueueService {
     participantName: string,
     client: Socket,
     gender: string,
-  ) {
+  ): Promise<{ sessionId: string; readyUsers?: any[] }> {
     let sessionId = ''
     try {
       await this.addParticipantToQueue(participantName, client, gender)
@@ -83,19 +83,19 @@ export class QueueService {
           .map(item => JSON.parse(item))
 
         const readyUsers = [...readyMales, ...readyFemales]
-        for (const user of readyUsers) {
-          this.sessionService.addParticipant(
-            sessionId,
-            user.name,
-            user.socketId,
-          )
-        }
 
+        const sessionData = JSON.stringify({
+          userTokens: [],
+          participants: readyUsers,
+        })
+
+        await this.redis.set(`sessionId:${sessionId}`, sessionData)
         await this.redis.ltrim('maleQueue', this.userQueueCount, -1)
         await this.redis.ltrim('femaleQueue', this.userQueueCount, -1)
 
         console.log('현재 큐 시작진입합니다 세션 이름은 : ', sessionId)
         await this.meetingService.startVideoChatSession(sessionId)
+
         return { sessionId, readyUsers }
       }
 
