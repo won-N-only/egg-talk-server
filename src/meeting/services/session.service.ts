@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { Redis } from 'ioredis'
 import { OpenVidu, Session } from 'openvidu-node-client'
+import { CommonService } from 'src/common/common.service'
 import { v4 as uuidv4 } from 'uuid'
 
 @Injectable()
@@ -9,13 +10,7 @@ export class SessionService {
   private redis: Redis
   private sessions: Record<
     string,
-    {
-      session: Session
-      participants: {
-        name: string
-        socketId: string
-      }[]
-    }
+    { session: Session; participants: { name: string; socketId: string }[] }
   > = {}
 
   constructor(
@@ -41,7 +36,24 @@ export class SessionService {
     })
   }
 
+  private async startVideoChatSession(sessionId: string) {
+    const sessionDataString = await this.redis.get(`sessionId:${sessionId}`)
+    const sessionData = JSON.parse(sessionDataString)
+    const tokens = sessionData.tokens
+    sessionData.participants.forEach((name, index) => {
+      this.sendTokenToParticipant(sessionId, tokens[index], name)
+    })
+  }
 
+  private async sendTokenToParticipant(
+    sessionId: string,
+    token: string,
+    participantName: string,
+  ) {
+    const clientSocket =
+      await this.commonService.getSocketByUserId(participantName)
+    clientSocket.emit('startCall', { sessionId, token, participantName })
+  }
 
   generateSessionId() {
     return uuidv4()
