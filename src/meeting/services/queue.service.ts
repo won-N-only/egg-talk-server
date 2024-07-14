@@ -19,7 +19,7 @@ export class QueueService {
   }
 
   /* 참여자 대기열 추가 */
-  async addParticipant(name: string, socket: Socket, gender: string) {
+  async addParticipantToQueue(name: string, socket: Socket, gender: string) {
     const participant = JSON.stringify({ name, socketId: socket.id })
     const genderQueue = gender === 'MALE' ? 'maleQueue' : 'femaleQueue'
 
@@ -69,7 +69,7 @@ export class QueueService {
   ) {
     let sessionId = ''
     try {
-      await this.addParticipant(participantName, client, gender)
+      await this.addParticipantToQueue(participantName, client, gender)
 
       const maleQueue = await this.redis.lrange(
         'maleQueue',
