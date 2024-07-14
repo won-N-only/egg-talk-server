@@ -126,7 +126,7 @@ export class MeetingGateway
 
       if (sessionId && readyUsers) {
         readyUsers.forEach(user => {
-          this.meetingService.setSessionIdToParticipant(user.name, sessionId)
+          this.meetingService.setSessionIdToParticipant(user, sessionId)
         })
       }
     } catch (error) {
