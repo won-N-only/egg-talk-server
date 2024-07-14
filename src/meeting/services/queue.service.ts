@@ -78,23 +78,39 @@ export class QueueService {
       const maleFriendsMap = await this.buildFriendsMap(this.maleQueue)
       const femaleFriendsMap = await this.buildFriendsMap(this.femaleQueue)
 
-      for (let i = 0; i < this.maleQueue.length; i++) {
-        for (let j = i + 1; j < this.maleQueue.length; j++) {
-          for (let k = j + 1; k < this.maleQueue.length; k++) {
+      // 남성 및 여성 큐를 친구 관계의 수로 정렬
+      const sortedMaleQueue = this.maleQueue
+        .slice()
+        .sort(
+          (a, b) =>
+            (maleFriendsMap.get(a.name) || []).length -
+            (maleFriendsMap.get(b.name) || []).length,
+        )
+      const sortedFemaleQueue = this.femaleQueue
+        .slice()
+        .sort(
+          (a, b) =>
+            (femaleFriendsMap.get(a.name) || []).length -
+            (femaleFriendsMap.get(b.name) || []).length,
+        )
+
+      for (let i = 0; i < sortedMaleQueue.length - 2; i++) {
+        for (let j = i + 1; j < sortedMaleQueue.length - 1; j++) {
+          for (let k = j + 1; k < sortedMaleQueue.length; k++) {
             const males = [
-              this.maleQueue[i],
-              this.maleQueue[j],
-              this.maleQueue[k],
+              sortedMaleQueue[i],
+              sortedMaleQueue[j],
+              sortedMaleQueue[k],
             ]
             const maleNames = males.map(m => m.name)
 
-            for (let a = 0; a < this.femaleQueue.length; a++) {
-              for (let b = a + 1; b < this.femaleQueue.length; b++) {
-                for (let c = b + 1; c < this.femaleQueue.length; c++) {
+            for (let a = 0; a < sortedFemaleQueue.length - 2; a++) {
+              for (let b = a + 1; b < sortedFemaleQueue.length - 1; b++) {
+                for (let c = b + 1; c < sortedFemaleQueue.length; c++) {
                   const females = [
-                    this.femaleQueue[a],
-                    this.femaleQueue[b],
-                    this.femaleQueue[c],
+                    sortedFemaleQueue[a],
+                    sortedFemaleQueue[b],
+                    sortedFemaleQueue[c],
                   ]
                   const femaleNames = females.map(f => f.name)
 
@@ -173,6 +189,14 @@ export class QueueService {
       const maleFriends = maleFriendsMap.get(male) || []
       for (const female of femaleNames) {
         if (maleFriends.includes(female)) {
+          return false
+        }
+      }
+    }
+    for (const female of femaleNames) {
+      const femaleFriends = femaleFriendsMap.get(female) || []
+      for (const male of maleNames) {
+        if (femaleFriends.includes(male)) {
           return false
         }
       }
