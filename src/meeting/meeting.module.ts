@@ -19,6 +19,5 @@ import { CommonModule } from '../common/common.module'
     JwtAuthWsGuard,
     ConfigService,
   ],
-  exports: [],
 })
 export class MeetingModule {}
