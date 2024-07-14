@@ -77,7 +77,7 @@ export class MeetingGateway
       }
     }
 
-    await this.meetingService.deleteConnectedSocket(client.id)
+    await this.meetingService.deleteConnectedSocket(client.id, participantName)
     await this.meetingService.deleteParticipantNameInSession(participantName)
     await this.meetingService.deleteAcceptanceStatus(client.id)
   }
@@ -124,7 +124,11 @@ export class MeetingGateway
           this.meetingService.setSessionIdToParticipant(user.name, sessionId)
         })
       }
-      await this.meetingService.setConnectedSocket(participantName, client.id)
+      await this.meetingService.setConnectedSocket(
+        participantName,
+        client.id,
+        client,
+      )
     } catch (error) {
       console.log('Error handling join Queue request:', error)
     }
@@ -427,7 +431,7 @@ export class MeetingGateway
       this.meetingService.removeParticipant(sessionId, participantName)
     }
     await this.meetingService.deleteParticipantNameInSession(participantName)
-    await this.meetingService.deleteConnectedSocket(client.id)
+    await this.meetingService.deleteConnectedSocket(client.id, participantName)
     await this.meetingService.deleteCupidFlagBySessionId(sessionId)
     await this.meetingService.deleteLastCupidFlagBySessionId(sessionId)
   }
