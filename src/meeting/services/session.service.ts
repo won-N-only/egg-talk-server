@@ -1,10 +1,12 @@
-import { Injectable } from '@nestjs/common'
+import { Inject, Injectable } from '@nestjs/common'
+import { Redis } from 'ioredis'
 import { OpenVidu, Session } from 'openvidu-node-client'
 import { v4 as uuidv4 } from 'uuid'
 
 @Injectable()
 export class SessionService {
   private openVidu: OpenVidu
+  private redis: Redis
   private sessions: Record<
     string,
     {
@@ -16,7 +18,11 @@ export class SessionService {
     }
   > = {}
 
-  constructor() {
+  constructor(
+    @Inject('REDIS') redis: Redis,
+    private readonly commonService: CommonService,
+  ) {
+    this.redis = redis
     const OPENVIDU_URL = process.env.OPENVIDU_URL
     const OPENVIDU_SECRET = process.env.OPENVIDU_SECRET
     this.openVidu = new OpenVidu(OPENVIDU_URL, OPENVIDU_SECRET)
