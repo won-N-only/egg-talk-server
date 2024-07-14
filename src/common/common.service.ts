@@ -11,6 +11,8 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Cache } from 'cache-manager'
 import Redis from 'ioredis'
 import { Cron, CronExpression} from '@nestjs/schedule'
+import { ChatRoom } from 'src/entities/chat-room.entity'
+import { timestamp } from 'rxjs'
 
 @Injectable()
 export class CommonService {
@@ -74,17 +76,30 @@ export class CommonService {
 
   // Redis 버전
   async getChatHistory(chatRoomId: string): Promise<Chat[]> {
-    const chatHistory = await this.commonRepository.getChatHistoryFromRedis(chatRoomId); // Redis에서 가져오기
+    const messageIds = await this.redisClient.hkeys('chatHistory');
+    const filteredIds = messageIds.filter(id => id.startsWith(`${chatRoomId}:`));
   
-    if (chatHistory.length === 0) {
-      // Redis에 없으면 데이터베이스에서 가져와 Redis에 저장
+    if (filteredIds.length === 0) {
+      // Redis에 해당 채팅방 메시지가 없으면 DB에서 가져와 Redis에 저장
       const dbChatHistory = await this.commonRepository.getChatHistoryFromDatabase(chatRoomId);
-      console.log(dbChatHistory);
-      await this.commonRepository.saveChatHistoryToRedis(chatRoomId, dbChatHistory);
-      return dbChatHistory;
+      const dbChats = dbChatHistory.chats as unknown as Chat[];
+  
+      const pipeline = this.redisClient.pipeline();
+      for (const chat of dbChats) {
+        const messageId = Date.now() + Math.random(); // 랜덤 값 추가하여 중복 방지
+        pipeline.hset('chatHistory', `${chatRoomId}:${messageId}`, JSON.stringify(chat));
+      }
+      await pipeline.exec();
+  
+      return dbChats;
     }
   
-    return chatHistory;
+    const messages = await this.redisClient.hmget('chatHistory', ...filteredIds);
+    return messages.map(message => {
+      const parsedMessage = JSON.parse(message);
+      parsedMessage.chatRoomId = new Types.ObjectId(parsedMessage.chatRoomId); // ObjectId로 변환
+      return parsedMessage as Chat;
+    });
   }
 
   // async sendMessage(
@@ -119,36 +134,64 @@ export class CommonService {
       newChat.sender = senderNickName
       newChat.message = message;
       newChat.chatRoomId = new Types.ObjectId(chatRoomId);
+      const messageId = Date.now();
       
-      // Redis List에 메세지 추가
-      await this.redisClient.rpush(`chatHistory:${chatRoomId}`, JSON.stringify(newChat))
+      // Redis Hash에 메세지 추가
+      await this.redisClient.hset(
+        'chatHistory',
+        `${chatRoomId}:${messageId}`,
+        JSON.stringify({ ...newChat, timestamp: messageId }) // chatRoomId는 ObjectId 그대로 유지
+      );
+      // await this.redisClient.rpush(`chatHistory:${chatRoomId}`, JSON.stringify(newChat))
       // ChatRoom의 isRead 업데이트
       await this.commonRepository.updateChatRoomIsRead(chatRoomId, isReceiverOnline);
-      // 5분마다 채팅 기록을 DB에 저장하는 스케줄러 함수 호출
-      // this.saveChatHistoryToDataBase()
+      console.log("service 까지는 들어옵니다")
       return newChat
     }
 
-  @Cron(CronExpression.EVERY_10_SECONDS)
-  async saveChatHistoryToDataBase(){
-    console.log("Cron 정상작동합니다!!!!!!")
-    const chatRoomIds = await this.redisClient.keys('chatHistory:*')
+    @Cron(CronExpression.EVERY_30_SECONDS) 
+    async saveChatHistoryToDataBase() {
+      console.log("Cron 정상작동합니다!!!!!!");
+    
+      const messageIds = await this.redisClient.hkeys('chatHistory');
+      const chatRoomMessages = {};
+      for (const messageId of messageIds) {
+        const [chatRoomId, _] = messageId.split(':');
+        chatRoomMessages[chatRoomId] = chatRoomMessages[chatRoomId] || [];
+        chatRoomMessages[chatRoomId].push(messageId);
+      }
+    
+      for (const chatRoomId in chatRoomMessages) {
+        const messages = await this.redisClient.hmget('chatHistory', ...chatRoomMessages[chatRoomId]);
+    
+        if (messages.length > 0) {
+          const chatEntities = messages.map(message => JSON.parse(message) as Chat & { timestamp: number })
+            .sort((a, b) => a.timestamp - b.timestamp)
+            .filter((chat : any) => !chat._id);
 
-    for (const chatRoomId of chatRoomIds) {
-      const messages = await this.redisClient.lrange(chatRoomId, 0, -1)
-      if (messages.length > 0){
-        const chatEntities = messages.map(message => JSON.parse(message) as Chat);
-        await this.commonRepository.saveChatHistoryToDatabase(chatRoomId.replace('chatHistory:', ''), chatEntities)
-
-        // // 캐시 무효화
-        // await this.cacheManager.del(`chatHistory:${chatRoomId.replace('chatHistory:', '')}`)
-        // Redis List 비우기
-        await this.redisClient.ltrim(chatRoomId, 1, 0);
+          
+          console.log(chatEntities, "제대로 들어오는지 확인")
+          // MongoDB에 저장 (chatRoomId를 ObjectId로 변환)
+          if (chatEntities.length > 0) {
+            try {
+              await this.commonRepository.saveChatHistoryToMongo(
+                new Types.ObjectId(chatRoomId),
+                chatEntities
+              );
+    
+              // MongoDB 저장 성공 후 Redis에서 메시지 삭제
+              await this.redisClient.hdel('chatHistory', ...chatRoomMessages[chatRoomId]);
+            } catch (error) {
+              console.error('Error saving chat history:', error);
+              // 에러 처리 (예: 재시도 로직 추가)
+            }
+          }
+        }
       }
     }
-  }
-
-
+    
+    
+  
   async changeNotice(userId: string) {
     try {
       await this.commonRepository.setNewNotification(userId)

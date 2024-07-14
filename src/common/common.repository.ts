@@ -189,22 +189,48 @@ export class CommonRepository {
     }
   }
 
-  // 5분마다 채팅 기록을 DB에 저장하는 스케줄러 함수
-  async saveChatHistoryToDatabase(chatRoomId: string, messages: Chat[]){
-    try{
-      // 1. chatRoomId를 ObjectId로 변환
-      const chatRoomIdObj = new Types.ObjectId(chatRoomId);
+  // // 5분마다 채팅 기록을 DB에 저장하는 스케줄러 함수
+  // async saveChatHistoryToDatabase(chatRoomId: string, messages: Chat[]){
+  //   try{
+  //     // 1. chatRoomId를 ObjectId로 변환
+  //     const chatRoomIdObj = new Types.ObjectId(chatRoomId);
 
-      // 2. Chat 객체 배열을 바로 사용
-      messages.forEach(chat => {
-        chat.chatRoomId === chatRoomIdObj
-      })
-      await this.chatModel.insertMany(messages)
+  //     // 2. Chat 객체 배열을 바로 사용
+  //     messages.forEach(chat => {
+  //       chat.chatRoomId === chatRoomIdObj
+  //     })
+  //     console.log("메세지 입니다---------------------", messages);
+  //     await this.chatModel.insertMany(messages)
 
-    } catch (error){
-      console.error('채팅 기록 저장 실패:', error)
+  //   } catch (error){
+  //     console.error('채팅 기록 저장 실패:', error)
+  //   }
+  // }
+  async saveChatHistoryToMongo(chatRoomId: Types.ObjectId, chats: Chat[]): Promise<void> {
+    try {
+      const chatRoom = await this.chatRoomModel.findById(chatRoomId);
+  
+      if (!chatRoom) {
+        throw new Error(`ChatRoom not found with ID: ${chatRoomId}`);
+      }
+  
+      // 1. Chat 모델 인스턴스 생성 및 저장
+      const chatInstances = chats.map(chatData => new this.chatModel(chatData)); 
+      const savedChats = await this.chatModel.insertMany(chatInstances);
+  
+      // 3. 저장된 채팅 메시지의 ObjectId 가져오기
+      const savedChatIds = savedChats.map(chat => chat._id);
+  
+      // 4. ChatRoom에 채팅 메시지 ID 추가 및 저장
+      chatRoom.chats.push(...savedChatIds);
+      await chatRoom.save();
+    } catch (error) {
+      console.error('Error saving chat history to MongoDB:', error);
+      throw error;
     }
   }
+  
+  
 
   // Redis List에서 채팅 기록을 가져와 Chat 객체 배열로 반환합
   async getChatHistoryFromRedis(chatRoomId: string): Promise<Chat[]> {
@@ -213,7 +239,7 @@ export class CommonRepository {
   }
   
   // 기존의 데이터베이스 조회 로직을 그대로 사용
-  async getChatHistoryFromDatabase(chatRoomId: string): Promise<Chat[]> {
+  async getChatHistoryFromDatabase(chatRoomId: string){
     const chatRoomIdObj = new Types.ObjectId(chatRoomId);
     const chatRoom = await this.chatRoomModel
       .findByIdAndUpdate(chatRoomIdObj, { $set: { isRead: true } }, { new: true })
@@ -226,9 +252,9 @@ export class CommonRepository {
         model: 'Chat',
         options: { sort: { createdAt: 1 } }, // createdAt 필드명 확인
         populate: { path: 'sender', select: 'nickname' },
-      }) as unknown as Chat[]; // 타입 단언 추가
+      }) // 타입 단언 추가
     } else {
-      return [];
+      return null;
     }
   }
   // 채팅 기록을 Redis List에 저장

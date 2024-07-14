@@ -150,6 +150,8 @@ export class CommonGateway
 
     // 4. 채팅 기록 불러오기 (필요하다면)
     const chatHistory = await this.commonService.getChatHistory(chatRoomId)
+
+    // 5. 읽음 표시
     await this.commonService.readMessage(friendName, nickname)
     client.emit('chatHistory', chatHistory)
   }
@@ -160,10 +162,13 @@ export class CommonGateway
     @MessageBody() payload: { chatRoomId: string },
   ) {
     try {
-      const { chatRoomId } = payload
-      client.leave(chatRoomId)
+      const { chatRoomId } = payload;
+      client.leave(chatRoomId);
+  
+      // 채팅방 퇴장 시에도 Redis 데이터 유지 (삭제하지 않음)
+      // ... (나머지 로직)
     } catch (error) {
-      logger.error('채팅방 떠나기 오류', error)
+      logger.error('채팅방 떠나기 오류', error);
     }
   }
 
@@ -197,13 +202,14 @@ export class CommonGateway
       if (receiverSocket) {
         this.server.to(chatRoomId).emit('message', newChat) // 상대방이 (온라인 상태 + 채팅방 참여) 일때 메시지 전송
       } else {
-        const receiverSocketId = await this.commonService
-          .getSocketByUserId(receiverNickname)
-          .then(sock => sock.id)
+        console.log("게이트웨이까지 다시 돌아옴!!!!")
+        const receiverSocket = await this.commonService
+        .getSocketByUserId(receiverNickname)
+        const receiverSocketId = receiverSocket ? receiverSocket.id : null; 
         if (receiverSocketId) {
           this.server
-            .to(receiverSocketId)
-            .emit('newMessageNotification', chatRoomId)
+          .to(receiverSocketId)
+          .emit('newMessageNotification', chatRoomId)
         }
         // 유저 정보에서 "newNotification": bool 부분만 바꿔주면됌
         await this.commonService.changeNotice(receiverNickname)
