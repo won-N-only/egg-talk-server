@@ -118,7 +118,6 @@ export class MeetingGateway
         gender,
       )
 
-      console.log('레디일때의 sessionId은?? ', sessionId)
       if (sessionId && readyUsers) {
         readyUsers.forEach(user => {
           this.meetingService.setSessionIdToParticipant(user.name, sessionId)
@@ -381,7 +380,6 @@ export class MeetingGateway
     const isAccepted =
       await this.meetingService.getAcceptanceStatus(partnerName)
     if (isAccepted === true) {
-      console.log('===========handleMoveToPrivateRoom 1==================')
       const newSessionId = this.sessionService.generateSessionId()
 
       await this.sessionService.createSession(newSessionId)
@@ -395,14 +393,12 @@ export class MeetingGateway
         partnerName,
         partner.socketId,
       )
-      console.log('===========handleMoveToPrivateRoom 2==================')
       const enterToken = await this.meetingService.generateTokens(newSessionId)
 
       const myToken = enterToken.find(elem => elem.participant === myName).token
       const partnerToken = enterToken.find(
         elem => elem.participant === partnerName,
       ).token
-      console.log('===========handleMoveToPrivateRoom 3==================')
       if (myToken && partnerToken) {
         this.server
           .to(client.id)
@@ -415,7 +411,6 @@ export class MeetingGateway
       }
     } else {
       await this.meetingService.setAcceptanceStatus(myName)
-      console.log('===========handleMoveToPrivateRoom 0==================')
     }
   }
 

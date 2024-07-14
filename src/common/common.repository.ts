@@ -193,8 +193,6 @@ export class CommonRepository {
     // 3. 유저의 친구 목록에서 친구 ObjectId를 추출합니다.
     const friendIds = user.friends.map((friend: Friend) => friend.friend)
 
-    console.log('친구들은 어떻게 되어있나??', friendIds)
-
     // 4. 찾은 친구 객체들에서 닉네임만 추출하여 배열로 반환합니다.
     return friendIds.map(friend => friend)
   }
