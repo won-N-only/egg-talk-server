@@ -63,7 +63,6 @@ export class CommonService {
 
     const chatRoom =
       await this.commonRepository.getChatRoomMessage(chatRoomIdObj)
-    console.log('chatroom populate result: ', chatRoom.chats)
     return chatRoom.chats as unknown as Chat[]
   }
 

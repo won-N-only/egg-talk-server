@@ -4,7 +4,6 @@ import { Server } from 'socket.io'
 import Redis from 'ioredis'
 import { SessionService } from './session.service'
 import { TimerService } from './timer.service'
-import { DrawingContestService } from './drawingContest.service'
 
 type ChooseResult = {
   sender: string
