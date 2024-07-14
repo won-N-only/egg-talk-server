@@ -127,7 +127,7 @@ export class CommonRepository {
     } else return null
   }
 
-  async saveMessagetoChatRoom(
+  async saveMessageToChatRoom(
     sender: string,
     message: string,
     chatRoomId: string,
