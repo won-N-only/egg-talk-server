@@ -70,15 +70,13 @@ export class QueueService {
 
         const readyMales = maleQueue.splice(0, this.userQueueCount)
         const readyFemales = femaleQueue.splice(0, this.userQueueCount)
-
         const readyUsers = [...readyMales, ...readyFemales]
+        for (const user of readyUsers) {
+          const socketId =
+            await this.meetingService.getSocketIdByParticipantName(user)
+          this.sessionService.addParticipant(sessionId, user, socketId)
+        }
 
-        const sessionData = JSON.stringify({
-          tokens: [],
-          participants: readyUsers,
-        })
-
-        await this.redis.set(`sessionId:${sessionId}`, sessionData)
         await this.redis.ltrim('maleQueue', this.userQueueCount, -1)
         await this.redis.ltrim('femaleQueue', this.userQueueCount, -1)
 

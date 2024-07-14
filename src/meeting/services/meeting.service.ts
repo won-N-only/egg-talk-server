@@ -29,11 +29,8 @@ export class MeetingService {
     return await this.redis.get(`socketId:${socketId}:participantName`)
   }
 
-  async getSocketByParticipantName(participantName: string) {
-    const socketId = await this.redis.get(
-      `participantName:${participantName}:socketId`,
-    )
-    return this.connectedSockets.get(socketId)
+  async getSocketIdByParticipantName(participantName: string) {
+    return await this.redis.get(`participantName:${participantName}:socketId`)
   }
 
   async setConnectedSocket(
@@ -191,15 +188,15 @@ export class MeetingService {
     try {
       const tokens = await this.generateTokens(sessionId)
 
-      tokens.forEach(({ participant, token }, index) => {
+      for (const { participant, token } of tokens) {
         const participantSocketId =
-          this.sessionService.getParticipants(sessionId)[index].socketId
+          await this.getSocketIdByParticipantName(participant)
         this.server.to(participantSocketId).emit('startCall', {
           sessionId: sessionId,
           token: token,
           participantName: participant,
         })
-      })
+      }
     } catch (error) {
       console.error('Error generating tokens: ', error)
     }
