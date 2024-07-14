@@ -4,6 +4,25 @@ import { MeetingService } from './meeting.service'
 import { CommonService } from '../../common/common.service'
 import * as NodeCache from 'node-cache'
 
+class BipartiteGraph {
+  private edges: Map<string, Set<string>> = new Map()
+
+  addEdge(male: string, female: string) {
+    if (!this.edges.has(male)) {
+      this.edges.set(male, new Set())
+    }
+    this.edges.get(male).add(female)
+  }
+
+  getNeighbors(node: string): Set<string> {
+    return this.edges.get(node) || new Set()
+  }
+
+  getNodes(): string[] {
+    return Array.from(this.edges.keys())
+  }
+}
+
 @Injectable()
 export class QueueService {
   private maleQueue: { name: string; socket: Socket }[] = []
@@ -79,56 +98,59 @@ export class QueueService {
       const maleFriendsMap = await this.buildFriendsMap(this.maleQueue)
       const femaleFriendsMap = await this.buildFriendsMap(this.femaleQueue)
 
-      const maleCombinations = this.getCombinations(this.maleQueue, 3)
-      const femaleCombinations = this.getCombinations(this.femaleQueue, 3)
-
-      for (const males of maleCombinations) {
-        for (const females of femaleCombinations) {
+      const graph = new BipartiteGraph()
+      for (const male of this.maleQueue) {
+        for (const female of this.femaleQueue) {
           if (
-            this.noCommonFriends(
-              males,
-              females,
-              maleFriendsMap,
-              femaleFriendsMap,
-            )
+            !maleFriendsMap.get(male.name).has(female.name) &&
+            !femaleFriendsMap.get(female.name).has(male.name)
           ) {
-            const sessionId = await this.findOrCreateNewSession()
-
-            await Promise.all([
-              ...males.map(male =>
-                this.meetingService.addParticipant(
-                  sessionId,
-                  male.name,
-                  male.socket,
-                ),
-              ),
-              ...females.map(female =>
-                this.meetingService.addParticipant(
-                  sessionId,
-                  female.name,
-                  female.socket,
-                ),
-              ),
-            ])
-
-            console.log('현재 큐 시작진입합니다 세션 이름은: ', sessionId)
-            await this.meetingService.startVideoChatSession(sessionId)
-
-            this.maleQueue = this.maleQueue.filter(
-              m => !males.map(male => male.name).includes(m.name),
-            )
-            this.femaleQueue = this.femaleQueue.filter(
-              f => !females.map(female => female.name).includes(f.name),
-            )
-
-            return {
-              sessionId,
-              readyMales: males,
-              readyFemales: females,
-            }
+            graph.addEdge(male.name, female.name)
           }
         }
       }
+
+      const result = this.findMatchingGroups(graph)
+
+      if (result) {
+        const { males, females } = result
+
+        const sessionId = await this.findOrCreateNewSession()
+
+        await Promise.all([
+          ...males.map(male =>
+            this.meetingService.addParticipant(
+              sessionId,
+              male.name,
+              male.socket,
+            ),
+          ),
+          ...females.map(female =>
+            this.meetingService.addParticipant(
+              sessionId,
+              female.name,
+              female.socket,
+            ),
+          ),
+        ])
+
+        console.log('현재 큐 시작진입합니다 세션 이름은: ', sessionId)
+        await this.meetingService.startVideoChatSession(sessionId)
+
+        this.maleQueue = this.maleQueue.filter(
+          m => !males.map(male => male.name).includes(m.name),
+        )
+        this.femaleQueue = this.femaleQueue.filter(
+          f => !females.map(female => female.name).includes(f.name),
+        )
+
+        return {
+          sessionId,
+          readyMales: males,
+          readyFemales: females,
+        }
+      }
+
       console.log('Not enough matched participants to start a session.')
     } else {
       console.log('Not enough participants in both queues to start matching.')
@@ -160,42 +182,58 @@ export class QueueService {
     return friends
   }
 
-  private getCombinations(
-    queue: { name: string; socket: Socket }[],
-    size: number,
-  ) {
-    const result: { name: string; socket: Socket }[][] = []
-    const f = (start: number, combo: { name: string; socket: Socket }[]) => {
-      if (combo.length === size) {
-        result.push(combo)
-        return
-      }
-      for (let i = start; i < queue.length; i++) {
-        f(i + 1, combo.concat(queue[i]))
-      }
-    }
-    f(0, [])
-    return result
-  }
+  private findMatchingGroups(graph: BipartiteGraph) {
+    const males = graph.getNodes()
+    const females = Array.from(
+      new Set(
+        [].concat(...males.map(male => Array.from(graph.getNeighbors(male)))),
+      ),
+    )
 
-  private noCommonFriends(
-    males: { name: string; socket: Socket }[],
-    females: { name: string; socket: Socket }[],
-    maleFriendsMap: Map<string, Set<string>>,
-    femaleFriendsMap: Map<string, Set<string>>,
-  ): boolean {
-    for (const male of males) {
-      const maleFriends = maleFriendsMap.get(male.name) || new Set()
-      for (const female of females) {
-        if (maleFriends.has(female.name)) {
-          return false
+    console.log('Male nodes:', males)
+    console.log('Female nodes:', females)
+
+    for (let i = 0; i < males.length - 2; i++) {
+      for (let j = i + 1; j < males.length - 1; j++) {
+        for (let k = j + 1; k < males.length; k++) {
+          const maleGroup = [males[i], males[j], males[k]]
+
+          for (let a = 0; a < females.length - 2; a++) {
+            for (let b = a + 1; b < females.length - 1; b++) {
+              for (let c = b + 1; c < females.length; c++) {
+                const femaleGroup = [females[a], females[b], females[c]]
+
+                if (this.isGroupValid(maleGroup, femaleGroup, graph)) {
+                  return {
+                    males: maleGroup.map(name => ({
+                      name,
+                      socket: this.maleQueue.find(p => p.name === name).socket,
+                    })),
+                    females: femaleGroup.map(name => ({
+                      name,
+                      socket: this.femaleQueue.find(p => p.name === name)
+                        .socket,
+                    })),
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }
-    for (const female of females) {
-      const femaleFriends = femaleFriendsMap.get(female.name) || new Set()
-      for (const male of males) {
-        if (femaleFriends.has(male.name)) {
+    return null
+  }
+
+  private isGroupValid(
+    males: string[],
+    females: string[],
+    graph: BipartiteGraph,
+  ): boolean {
+    for (const male of males) {
+      const neighbors = graph.getNeighbors(male)
+      for (const female of females) {
+        if (!neighbors.has(female)) {
           return false
         }
       }
