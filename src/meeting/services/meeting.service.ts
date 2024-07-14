@@ -127,9 +127,6 @@ export class MeetingService {
   async clearSessionData(sessionId: string) {
     console.log(`Clearing session data for ${sessionId}`)
     await this.deleteChooseData(sessionId)
-    await this.drawingContestService.resetDrawings(sessionId)
-    await this.drawingContestService.resetPhotos(sessionId)
-    await this.drawingContestService.deleteVotes(sessionId)
     await this.timerService.deleteTimerCountBySessionId(sessionId)
     await this.deleteCupidFlagBySessionId(sessionId)
     await this.deleteLastCupidFlagBySessionId(sessionId)
