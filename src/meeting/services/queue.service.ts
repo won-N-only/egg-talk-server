@@ -1,17 +1,16 @@
 import { Injectable, Inject } from '@nestjs/common'
 import { MeetingService } from './meeting.service'
 import Redis from 'ioredis'
-import { CommonService } from '../../common/common.service'
 import { SessionService } from './session.service'
 
 @Injectable()
 export class QueueService {
   private redis: Redis
   public userQueueCount = 3
+
   constructor(
     private readonly meetingService: MeetingService,
     private readonly sessionService: SessionService,
-    private readonly commonService: CommonService,
     @Inject('REDIS') redis: Redis,
   ) {
     this.redis = redis
