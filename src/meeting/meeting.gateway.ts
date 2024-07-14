@@ -100,6 +100,12 @@ export class MeetingGateway
         gender = payload.gender
       }
 
+      await this.meetingService.setConnectedSocket(
+        participantName,
+        client.id,
+        client,
+      )
+
       const existingSessionId =
         await this.meetingService.getSessionIdByParticipantName(participantName)
 
@@ -123,11 +129,6 @@ export class MeetingGateway
           this.meetingService.setSessionIdToParticipant(user.name, sessionId)
         })
       }
-      await this.meetingService.setConnectedSocket(
-        participantName,
-        client.id,
-        client,
-      )
     } catch (error) {
       console.log('Error handling join Queue request:', error)
     }
