@@ -157,11 +157,11 @@ export class CommonGateway
   @SubscribeMessage('closeChat')
   async closeChat(
     @ConnectedSocket() client: Socket,
-    @MessageBody() payload: { chatRoomdId: string },
+    @MessageBody() payload: { chatRoomId: string },
   ) {
     try {
-      const { chatRoomdId } = payload
-      client.leave(chatRoomdId)
+      const { chatRoomId } = payload
+      client.leave(chatRoomId)
     } catch (error) {
       logger.error('채팅방 떠나기 오류', error)
     }
