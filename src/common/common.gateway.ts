@@ -128,7 +128,7 @@ export class CommonGateway
     }
   }
 
-  @SubscribeMessage('joinchat')
+  @SubscribeMessage('joinChat')
   async handleJoinRoom(
     client: Socket,
     payload: { newChatRoomId: string; friendName: string }, // nickName == userId

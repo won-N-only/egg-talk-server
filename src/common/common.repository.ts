@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common'
+import { Inject,Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { User, Friend } from '../entities/user.entity'
 import { Model, Types, ObjectId } from 'mongoose'
@@ -6,15 +6,23 @@ import { AcceptFriend, AddFriendDto } from './dto/request/notification.dto'
 import { ChatRoom } from '../entities/chat-room.entity'
 import { Notification } from '../entities/notification.entity'
 import { Chat } from '../entities/chat.entity'
+import { CACHE_MANAGER } from '@nestjs/cache-manager'
+import { Redis } from 'ioredis'
+import { Cache } from 'cache-manager';
 @Injectable()
 export class CommonRepository {
+  private redisClient: Redis
+
   constructor(
     @InjectModel(User.name) private readonly userModel: Model<User>,
     @InjectModel(ChatRoom.name) private readonly chatRoomModel: Model<ChatRoom>,
     @InjectModel(Chat.name) private chatModel: Model<Chat>,
     @InjectModel(Notification.name)
     private readonly notificationModel: Model<Notification>,
-  ) {}
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+  ) {
+    this.redisClient = (this.cacheManager as any).store.getClient();
+  }
 
   async getNotification(nickname: String): Promise<Notification[]> {
     await this.userModel.findOneAndUpdate(
@@ -107,39 +115,43 @@ export class CommonRepository {
     }
   }
 
-  async getChatRoomMessage(chatRoomObjectId: Types.ObjectId) {
-    const chatRoom = await this.chatRoomModel
-      .findByIdAndUpdate(
-        chatRoomObjectId,
-        { $set: { isRead: true } },
-        { new: true },
-      )
-      .lean()
-      .exec()
+  // async getChatRoomMessage(chatRoomObjectId: Types.ObjectId) {
+  //   const chatRoom = await this.chatRoomModel
+  //     .findByIdAndUpdate(
+  //       chatRoomObjectId,
+  //       { $set: { isRead: true } },
+  //       { new: true },
+  //     )
+  //     .lean()
+  //     .exec()
 
-    if (chatRoom) {
-      return await this.chatRoomModel.populate(chatRoom, {
-        path: 'chats',
-        model: 'Chat',
-        options: { sort: { createAt: 1 } },
-        populate: { path: 'sender', select: 'nickname' },
-      })
-    } else return null
-  }
+  //   if (chatRoom) {
+  //     return await this.chatRoomModel.populate(chatRoom, {
+  //       path: 'chats',
+  //       model: 'Chat',
+  //       options: { sort: { createAt: 1 } },
+  //       populate: { path: 'sender', select: 'nickname' },
+  //     })
+  //   } else return null
+  // }
 
-  async saveMessagetoChatRoom(
-    sender: string,
-    message: string,
-    chatRoomId: string,
-    isReceiverOnline: boolean,
-  ): Promise<Chat> {
-    const newChat = await this.chatModel.create({ sender, message })
-    await this.chatRoomModel.findByIdAndUpdate(chatRoomId, {
-      $push: { chats: newChat._id },
-      isRead: isReceiverOnline,
-    })
-    return newChat
-  }
+  // async saveMessagetoChatRoom(
+  //   sender: string,
+  //   message: string,
+  //   chatRoomId: string,
+  //   isReceiverOnline: boolean,
+  // ): Promise<Chat> {
+  //   const newChat = await this.chatModel.create({ sender, message })
+  //   await this.chatRoomModel.findByIdAndUpdate(chatRoomId, {
+  //     $push: { chats: newChat._id },
+  //     isRead: isReceiverOnline,
+  //   })
+  //   return newChat
+  // }
+
+  async updateChatRoomIsRead(chatRoomId: string, isRead: boolean): Promise<void> {
+  await this.chatRoomModel.findByIdAndUpdate(chatRoomId, { isRead });
+}
 
   async setNewNotification(userId: string) {
     await this.userModel.findOneAndUpdate(
@@ -170,7 +182,7 @@ export class CommonRepository {
 
       const friendToUpdateIndex = user.friends.findIndex(friend => friend.friend == receiverNickname);
   
-      user.friends[friendToUpdateIndex].newMessage = false;
+      // user.friends[friendToUpdateIndex].newMessage = false;
       await user.save();
     } catch (error) {
       throw error;
@@ -183,10 +195,44 @@ export class CommonRepository {
       // 1. chatRoomId를 ObjectId로 변환
       const chatRoomIdObj = new Types.ObjectId(chatRoomId);
 
-      // 2. 메시지 배열을 ChatDocument 배열로 변환
+      // 2. Chat 객체 배열을 바로 사용
+      messages.forEach(chat => {
+        chat.chatRoomId === chatRoomIdObj
+      })
+      await this.chatModel.insertMany(messages)
 
     } catch (error){
-
+      console.error('채팅 기록 저장 실패:', error)
     }
+  }
+
+  // Redis List에서 채팅 기록을 가져와 Chat 객체 배열로 반환합
+  async getChatHistoryFromRedis(chatRoomId: string): Promise<Chat[]> {
+    const messages = await this.redisClient.lrange(`chatHistory:${chatRoomId}`, 0, -1);
+    return messages?.map(message => JSON.parse(message) as Chat);
+  }
+  
+  // 기존의 데이터베이스 조회 로직을 그대로 사용
+  async getChatHistoryFromDatabase(chatRoomId: string): Promise<Chat[]> {
+    const chatRoomIdObj = new Types.ObjectId(chatRoomId);
+    const chatRoom = await this.chatRoomModel
+      .findByIdAndUpdate(chatRoomIdObj, { $set: { isRead: true } }, { new: true })
+      .lean()
+      .exec();
+  
+    if (chatRoom) {
+      return await this.chatRoomModel.populate(chatRoom, {
+        path: 'chats',
+        model: 'Chat',
+        options: { sort: { createdAt: 1 } }, // createdAt 필드명 확인
+        populate: { path: 'sender', select: 'nickname' },
+      }) as unknown as Chat[]; // 타입 단언 추가
+    } else {
+      return [];
+    }
+  }
+  // 채팅 기록을 Redis List에 저장
+  async saveChatHistoryToRedis(chatRoomId: string, messages: Chat[]): Promise<void> {
+    await this.redisClient.rpush(`chatHistory:${chatRoomId}`, JSON.stringify(messages)); // 빈 배열도 저장
   }
 }

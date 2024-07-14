@@ -16,8 +16,7 @@ import {
 } from '../entities/notification.entity'
 import { CacheModule } from '@nestjs/cache-manager'
 import * as redisStore from 'cache-manager-ioredis'
-import { createClient } from 'redis'
-import { createAdapter } from '@socket.io/redis-adapter'
+import { ScheduleModule  } from '@nestjs/schedule'
 
 @Module({
   imports: [
@@ -32,6 +31,7 @@ import { createAdapter } from '@socket.io/redis-adapter'
       host: process.env.REDIS_HOST,
       port: process.env.REDIS_PORT,
     }),
+    ScheduleModule.forRoot()
   ],
   providers: [
     CommonGateway,
@@ -46,16 +46,5 @@ import { createAdapter } from '@socket.io/redis-adapter'
 })
 export class CommonModule {
   constructor(private commonGateway: CommonGateway) {
-    const pubClient = createClient({
-      url: `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`,
-    })
-    const subClient = pubClient.duplicate()
-
-    Promise.all([pubClient.connect(), subClient.connect()])
-      .then(() => {
-        this.commonGateway.server.adapter(createAdapter(pubClient, subClient))
-        console.log('Redis Adapter connected to Socket.IO')
-      })
-      .catch(console.error)
   }
 }

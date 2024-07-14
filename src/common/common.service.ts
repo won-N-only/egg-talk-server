@@ -73,10 +73,18 @@ export class CommonService {
   // }
 
   // Redis 버전
-  async getChatHistory(chatRoomdId: string): Promise<Chat[]> {
-    // Redis List에서 메시지 가져오기
-    const chatHistory = await this.redisClient.lrange(`chatHistory:${chatRoomdId}`, 0, -1)
-    return chatHistory.map(message => JSON.parse(message) as Chat)
+  async getChatHistory(chatRoomId: string): Promise<Chat[]> {
+    const chatHistory = await this.commonRepository.getChatHistoryFromRedis(chatRoomId); // Redis에서 가져오기
+  
+    if (chatHistory.length === 0) {
+      // Redis에 없으면 데이터베이스에서 가져와 Redis에 저장
+      const dbChatHistory = await this.commonRepository.getChatHistoryFromDatabase(chatRoomId);
+      console.log(dbChatHistory);
+      await this.commonRepository.saveChatHistoryToRedis(chatRoomId, dbChatHistory);
+      return dbChatHistory;
+    }
+  
+    return chatHistory;
   }
 
   // async sendMessage(
@@ -114,10 +122,32 @@ export class CommonService {
       
       // Redis List에 메세지 추가
       await this.redisClient.rpush(`chatHistory:${chatRoomId}`, JSON.stringify(newChat))
-
+      // ChatRoom의 isRead 업데이트
+      await this.commonRepository.updateChatRoomIsRead(chatRoomId, isReceiverOnline);
       // 5분마다 채팅 기록을 DB에 저장하는 스케줄러 함수 호출
+      // this.saveChatHistoryToDataBase()
       return newChat
     }
+
+  @Cron(CronExpression.EVERY_10_SECONDS)
+  async saveChatHistoryToDataBase(){
+    console.log("Cron 정상작동합니다!!!!!!")
+    const chatRoomIds = await this.redisClient.keys('chatHistory:*')
+
+    for (const chatRoomId of chatRoomIds) {
+      const messages = await this.redisClient.lrange(chatRoomId, 0, -1)
+      if (messages.length > 0){
+        const chatEntities = messages.map(message => JSON.parse(message) as Chat);
+        await this.commonRepository.saveChatHistoryToDatabase(chatRoomId.replace('chatHistory:', ''), chatEntities)
+
+        // // 캐시 무효화
+        // await this.cacheManager.del(`chatHistory:${chatRoomId.replace('chatHistory:', '')}`)
+        // Redis List 비우기
+        await this.redisClient.ltrim(chatRoomId, 1, 0);
+      }
+    }
+  }
+
 
   async changeNotice(userId: string) {
     try {
