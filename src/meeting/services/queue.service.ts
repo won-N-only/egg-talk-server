@@ -23,17 +23,9 @@ export class QueueService {
     const participant = JSON.stringify({ name, socketId: socket.id })
     const genderQueue = gender === 'MALE' ? 'maleQueue' : 'femaleQueue'
 
-    const queue = await this.redis.lrange(genderQueue, 0, -1)
-
-    /**중복 유저 제거과정 최적화 필요 */
-    for (const item of queue) {
-      const parsedItem = JSON.parse(item)
-      if (parsedItem.name === name) {
-        await this.redis.lrem(genderQueue, 0, item)
-      }
-    }
-
+    await this.redis.lrem(genderQueue, 0, participant) // 중복 유저 제거
     await this.redis.rpush(genderQueue, participant)
+
     console.log(
       `${gender} Queue : `,
       (await this.redis.lrange(genderQueue, 0, -1)).map(
@@ -44,14 +36,9 @@ export class QueueService {
 
   async removeParticipant(name: string, gender: string) {
     const genderQueue = gender === 'MALE' ? 'maleQueue' : 'femaleQueue'
-    const queue = await this.redis.lrange(genderQueue, 0, -1)
-    for (const item of queue) {
-      const parsedItem = JSON.parse(item)
-      if (parsedItem.name === name) {
-        await this.redis.lrem(genderQueue, 0, item)
-        break
-      }
-    }
+    const participant = JSON.stringify({ name })
+
+    await this.redis.lrem(genderQueue, 0, participant)
   }
 
   async findOrCreateNewSession(): Promise<string> {
