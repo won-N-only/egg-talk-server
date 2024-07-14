@@ -19,14 +19,9 @@ export class MeetingService {
   constructor(
     private readonly sessionService: SessionService,
     private readonly timerService: TimerService,
-    private readonly drawingContestService: DrawingContestService,
     @Inject('REDIS') redis: Redis,
   ) {
     this.redis = redis
-  }
-
-  generateSessionId() {
-    return this.sessionService.generateSessionId()
   }
 
   // 소켓 관리
@@ -112,10 +107,6 @@ export class MeetingService {
     }
   }
 
-  addParticipant(sessionId: string, participantName: string, socketId: string) {
-    this.sessionService.addParticipant(sessionId, participantName, socketId)
-  }
-
   removeParticipant(sessionId: string, myId: string) {
     this.sessionService.removeParticipant(sessionId, myId)
     if (this.sessionService.getParticipants(sessionId).length === 0) {
@@ -131,11 +122,6 @@ export class MeetingService {
     await this.deleteCupidFlagBySessionId(sessionId)
     await this.deleteLastCupidFlagBySessionId(sessionId)
     this.sessionService.deleteSession(sessionId)
-    this.timerService.clearSessionTimer(sessionId)
-  }
-
-  getParticipants(sessionId: string) {
-    return this.sessionService.getParticipants(sessionId)
   }
 
   async generateTokens(sessionId: string) {
@@ -186,7 +172,7 @@ export class MeetingService {
 
       tokens.forEach(({ participant, token }, index) => {
         const participantSocketId =
-          this.getParticipants(sessionId)[index].socketId
+          this.sessionService.getParticipants(sessionId)[index].socketId
         this.server.to(participantSocketId).emit('startCall', {
           sessionId: sessionId,
           token: token,

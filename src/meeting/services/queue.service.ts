@@ -55,7 +55,7 @@ export class QueueService {
   }
 
   async findOrCreateNewSession(): Promise<string> {
-    const newSessionId = this.meetingService.generateSessionId()
+    const newSessionId = this.sessionService.generateSessionId()
     await this.sessionService.createSession(newSessionId)
     console.log(`Creating and returning new session: ${newSessionId}`)
     return newSessionId
@@ -97,7 +97,7 @@ export class QueueService {
 
         const readyUsers = [...readyMales, ...readyFemales]
         for (const user of readyUsers) {
-          this.meetingService.addParticipant(
+          this.sessionService.addParticipant(
             sessionId,
             user.name,
             user.socketId,

@@ -381,15 +381,15 @@ export class MeetingGateway
       await this.meetingService.getAcceptanceStatus(partnerName)
     if (isAccepted === true) {
       console.log('===========handleMoveToPrivateRoom 1==================')
-      const newSessionId = this.meetingService.generateSessionId()
+      const newSessionId = this.sessionService.generateSessionId()
 
       await this.sessionService.createSession(newSessionId)
 
       const partner = participant.find(
         participant => participant.name === partnerName,
       )
-      this.meetingService.addParticipant(newSessionId, myName, client.id)
-      this.meetingService.addParticipant(
+      this.sessionService.addParticipant(newSessionId, myName, client.id)
+      this.sessionService.addParticipant(
         newSessionId,
         partnerName,
         partner.socketId,
