@@ -25,10 +25,6 @@ export class DrawingContestService {
     return await this.redis.hgetall(`session:${sessionId}:drawings`)
   }
 
-  async resetDrawings(sessionId: string): Promise<void> {
-    await this.redis.del(`session:${sessionId}:drawings`)
-  }
-
   // 그림대회 사진 관리
   async savePhoto(
     sessionId: string,
@@ -40,10 +36,6 @@ export class DrawingContestService {
 
   async getPhotos(sessionId: string): Promise<Record<string, string>> {
     return await this.redis.hgetall(`session:${sessionId}:photos`)
-  }
-
-  async resetPhotos(sessionId: string): Promise<void> {
-    await this.redis.del(`session:${sessionId}:photos`)
   }
 
   // 그림대회 투표 관리
@@ -59,7 +51,9 @@ export class DrawingContestService {
     return await this.redis.hgetall(`session:${sessionId}:votes`)
   }
 
-  async deleteVotes(sessionId: string): Promise<void> {
+  async resetDrawingContest(sessionId: string) {
+    await this.redis.del(`session:${sessionId}:drawings`)
+    await this.redis.del(`session:${sessionId}:photos`)
     await this.redis.del(`session:${sessionId}:votes`)
   }
 
@@ -79,7 +73,6 @@ export class DrawingContestService {
     )
     const losers = Object.keys(votes).filter(user => user !== winner)
 
-    await this.deleteVotes(sessionId)
     return { winner, losers }
   }
 }

@@ -263,7 +263,6 @@ export class MeetingGateway
       participants.forEach(({ socketId }) => {
         this.server.to(socketId).emit('drawingSubmit', drawings)
       })
-      await this.drawingContestService.resetDrawings(sessionId)
     }
   }
 
@@ -306,12 +305,11 @@ export class MeetingGateway
     const sessionId =
       await this.meetingService.getSessionIdByParticipantName(userName)
     const participants = this.sessionService.getParticipants(sessionId)
-
+    this.drawingContestService.resetDrawingContest(sessionId)
     if (userName === winners[0])
       participants.forEach(({ socketId }) => {
         this.server.to(socketId).emit('finalResults', { winners, losers })
       })
-    await this.drawingContestService.resetPhotos(sessionId)
   }
 
   @SubscribeMessage('drawingOneToOne')
