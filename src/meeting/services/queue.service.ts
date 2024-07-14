@@ -126,7 +126,11 @@ export class QueueService {
         }
       }
 
-      const result = this.findMatchingGroups(graph)
+      const result = this.findMatchingGroups(
+        graph,
+        maleFriendsMap,
+        femaleFriendsMap,
+      )
 
       if (result) {
         const { males, females } = result
@@ -200,38 +204,40 @@ export class QueueService {
     return friends
   }
 
-  private findMatchingGroups(graph: BipartiteGraph) {
+  private findMatchingGroups(
+    graph: BipartiteGraph,
+    maleFriendsMap: Map<string, Set<string>>,
+    femaleFriendsMap: Map<string, Set<string>>,
+  ) {
     const males = graph.getMales()
     const females = graph.getFemales()
 
     console.log('Male nodes:', males)
     console.log('Female nodes:', females)
 
-    for (let i = 0; i < males.length - 2; i++) {
-      for (let j = i + 1; j < males.length - 1; j++) {
-        for (let k = j + 1; k < males.length; k++) {
-          const maleGroup = [males[i], males[j], males[k]]
+    const maleCombos = this.getCombinations(males, 3)
+    const femaleCombos = this.getCombinations(females, 3)
 
-          for (let a = 0; a < females.length - 2; a++) {
-            for (let b = a + 1; b < females.length - 1; b++) {
-              for (let c = b + 1; c < females.length; c++) {
-                const femaleGroup = [females[a], females[b], females[c]]
-
-                if (this.isGroupValid(maleGroup, femaleGroup, graph)) {
-                  return {
-                    males: maleGroup.map(name => ({
-                      name,
-                      socket: this.maleQueue.find(p => p.name === name).socket,
-                    })),
-                    females: femaleGroup.map(name => ({
-                      name,
-                      socket: this.femaleQueue.find(p => p.name === name)
-                        .socket,
-                    })),
-                  }
-                }
-              }
-            }
+    for (const maleGroup of maleCombos) {
+      for (const femaleGroup of femaleCombos) {
+        if (
+          this.isGroupValid(
+            maleGroup,
+            femaleGroup,
+            graph,
+            maleFriendsMap,
+            femaleFriendsMap,
+          )
+        ) {
+          return {
+            males: maleGroup.map(name => ({
+              name,
+              socket: this.maleQueue.find(p => p.name === name).socket,
+            })),
+            females: femaleGroup.map(name => ({
+              name,
+              socket: this.femaleQueue.find(p => p.name === name).socket,
+            })),
           }
         }
       }
@@ -239,19 +245,55 @@ export class QueueService {
     return null
   }
 
+  private getCombinations(arr: string[], size: number): string[][] {
+    const result: string[][] = []
+    const combine = (start: number, chosen: string[]) => {
+      if (chosen.length === size) {
+        result.push([...chosen])
+        return
+      }
+      for (let i = start; i < arr.length; i++) {
+        chosen.push(arr[i])
+        combine(i + 1, chosen)
+        chosen.pop()
+      }
+    }
+    combine(0, [])
+    return result
+  }
+
   private isGroupValid(
     males: string[],
     females: string[],
     graph: BipartiteGraph,
+    maleFriendsMap: Map<string, Set<string>>,
+    femaleFriendsMap: Map<string, Set<string>>,
   ): boolean {
+    const allMales = new Set(males)
+    const allFemales = new Set(females)
+
     for (const male of males) {
       const neighbors = graph.getMaleNeighbors(male)
+      const maleFriends = maleFriendsMap.get(male) || new Set()
+
       for (const female of females) {
-        if (!neighbors.has(female)) {
+        if (!neighbors.has(female) || maleFriends.has(female)) {
           return false
         }
       }
     }
+
+    for (const female of females) {
+      const neighbors = graph.getFemaleNeighbors(female)
+      const femaleFriends = femaleFriendsMap.get(female) || new Set()
+
+      for (const male of males) {
+        if (!neighbors.has(male) || femaleFriends.has(male)) {
+          return false
+        }
+      }
+    }
+
     return true
   }
 }
