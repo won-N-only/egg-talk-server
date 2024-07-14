@@ -75,7 +75,7 @@ export class QueueService {
         const readyUsers = [...readyMales, ...readyFemales]
 
         const sessionData = JSON.stringify({
-          userTokens: [],
+          tokens: [],
           participants: readyUsers,
         })
 

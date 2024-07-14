@@ -23,10 +23,25 @@ export class SessionService {
     private readonly commonService: CommonService,
   ) {
     this.redis = redis
+    this.initSubscriber()
     const OPENVIDU_URL = process.env.OPENVIDU_URL
     const OPENVIDU_SECRET = process.env.OPENVIDU_SECRET
     this.openVidu = new OpenVidu(OPENVIDU_URL, OPENVIDU_SECRET)
   }
+
+  private initSubscriber() {
+    const subscriber = this.redis.duplicate()
+    subscriber.subscribe('tokenAddedToSession')
+
+    subscriber.on('message', (channel, message) => {
+      if (channel === 'tokenAddedToSession') {
+        const sessionData = JSON.parse(message)
+        this.startVideoChatSession(sessionData.sessionId)
+      }
+    })
+  }
+
+
 
   generateSessionId() {
     return uuidv4()
