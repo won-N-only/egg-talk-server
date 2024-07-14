@@ -118,7 +118,7 @@ export class MeetingService {
   async clearSessionData(sessionId: string) {
     console.log(`Clearing session data for ${sessionId}`)
     await this.deleteChooseData(sessionId)
-    await this.timerService.deleteTimerCountBySessionId(sessionId)
+    this.timerService.clearSessionTimer(sessionId)
     await this.deleteCupidFlagBySessionId(sessionId)
     await this.deleteLastCupidFlagBySessionId(sessionId)
     this.sessionService.deleteSession(sessionId)
@@ -156,10 +156,12 @@ export class MeetingService {
 
     try {
       const tokens = await Promise.all(tokenPromises)
-      return this.getParticipants(sessionId).map((participant, index) => ({
-        participant: participant.name,
-        token: tokens[index],
-      }))
+      return this.sessionService
+        .getParticipants(sessionId)
+        .map((participant, index) => ({
+          participant: participant.name,
+          token: tokens[index],
+        }))
     } catch (error) {
       console.error('Error generating tokens:', error)
       return []
