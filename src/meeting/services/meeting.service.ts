@@ -1,143 +1,138 @@
-import { Injectable } from '@nestjs/common'
-import { OpenVidu, OpenViduRole, Session } from 'openvidu-node-client'
-import { Socket, Server } from 'socket.io'
-import { v4 as uuidv4 } from 'uuid'
+import { Inject, Injectable } from '@nestjs/common'
+import { OpenViduRole } from 'openvidu-node-client'
+import { Server } from 'socket.io'
+import Redis from 'ioredis'
+import { SessionService } from './session.service'
+import { TimerService } from './timer.service'
+import { DrawingContestService } from './drawingContest.service'
+
+type ChooseResult = {
+  sender: string
+  receiver: string
+}
 
 @Injectable()
 export class MeetingService {
-  private openVidu: OpenVidu
-  private sessions: Record<string, { session: Session; participants: any[] }> =
-    {}
-  private chooseData: Record<string, { sender: string; receiver: string }[]> =
-    {}
-  private lastChooseData: Record<string, { sender: string; receiver: string }> =
-    {}
-  private sessionTimers: Record<string, NodeJS.Timeout> = {}
-
   public server: Server
+  private redis: Redis
 
-  constructor() {
-    const OPENVIDU_URL = process.env.OPENVIDU_URL
-    const OPENVIDU_SECRET = process.env.OPENVIDU_SECRET
-    this.openVidu = new OpenVidu(OPENVIDU_URL, OPENVIDU_SECRET)
+  constructor(
+    private readonly sessionService: SessionService,
+    private readonly timerService: TimerService,
+    @Inject('REDIS') redis: Redis,
+  ) {
+    this.redis = redis
   }
-  private shuffleArray<T>(array: T[]): T[] {
-    for (let i = array.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1))
-      ;[array[i], array[j]] = [array[j], array[i]]
+
+  // 소켓 관리
+  async getParticipantNameBySocketId(socketId: string): Promise<string | null> {
+    return await this.redis.get(`socket:${socketId}:participantName`)
+  }
+
+  async setConnectedSocket(
+    participantName: string,
+    socketId: string,
+  ): Promise<void> {
+    await this.redis.set(`socket:${socketId}:participantName`, participantName)
+  }
+
+  async deleteConnectedSocket(socketId: string): Promise<void> {
+    await this.redis.del(`socket:${socketId}:participantName`)
+  }
+
+  // 세션 관리
+  async getSessionIdByParticipantName(
+    participantName: string,
+  ): Promise<string | null> {
+    return await this.redis.get(`participant:${participantName}:sessionId`)
+  }
+
+  async setSessionIdToParticipant(
+    participantName: string,
+    sessionId: string,
+  ): Promise<void> {
+    await this.redis.set(`participant:${participantName}:sessionId`, sessionId)
+  }
+
+  async deleteParticipantNameInSession(participantName: string): Promise<void> {
+    await this.redis.del(`participant:${participantName}:sessionId`)
+  }
+
+  // 큐피드 플래그
+  async getCupidFlagBySessionId(sessionId: string): Promise<boolean | null> {
+    const flag = await this.redis.get(`session:${sessionId}:cupidFlag`)
+    return flag === 'true'
+  }
+
+  async setCupidFlagBySessionId(sessionId: string): Promise<void> {
+    await this.redis.set(`session:${sessionId}:cupidFlag`, 'true')
+  }
+
+  async deleteCupidFlagBySessionId(sessionId: string): Promise<void> {
+    await this.redis.del(`session:${sessionId}:cupidFlag`)
+  }
+
+  // 최종선택 플래그
+  async getLastCupidFlagBySessionId(
+    sessionId: string,
+  ): Promise<boolean | null> {
+    const flag = await this.redis.get(`session:${sessionId}:lastCupidFlag`)
+    return flag === 'true'
+  }
+
+  async setLastCupidFlagBySessionId(sessionId: string): Promise<void> {
+    await this.redis.set(`session:${sessionId}:lastCupidFlag`, 'true')
+  }
+
+  async deleteLastCupidFlagBySessionId(sessionId: string): Promise<void> {
+    await this.redis.del(`session:${sessionId}:lastCupidFlag`)
+  }
+
+  // 1:1대화 수락 플래그
+  async getAcceptanceStatus(partnerName: string): Promise<boolean | null> {
+    const status = await this.redis.get(
+      `partner:${partnerName}:acceptanceStatus`,
+    )
+    return status === 'true'
+  }
+
+  async setAcceptanceStatus(myName: string): Promise<void> {
+    await this.redis.set(`partner:${myName}:acceptanceStatus`, 'true')
+  }
+
+  async deleteAcceptanceStatus(socketId: string): Promise<void> {
+    const participantName = await this.getParticipantNameBySocketId(socketId)
+    if (participantName) {
+      await this.redis.del(`partner:${participantName}:acceptanceStatus`)
     }
-    return array
   }
 
-  generateSessionId() {
-    return uuidv4()
-  }
-
-  async createSession(sessionId: string): Promise<Session> {
-    if (!this.sessions[sessionId]) {
-      try {
-        console.log('create 세션 전====================')
-        const session = await this.openVidu.createSession({
-          customSessionId: sessionId,
-        })
-        console.log('create 세션 후====================')
-        this.sessions[sessionId] = { session, participants: [] }
-        console.log(`Session created: ${sessionId}, ID: ${session.sessionId}`)
-        return session
-      } catch (error) {
-        console.error('Error creating session:', error)
-        throw error
-      }
-    } else {
-      console.log(`Session already exists: ${sessionId}`)
-      return this.sessions[sessionId].session
+  removeParticipant(sessionId: string, myId: string) {
+    this.sessionService.removeParticipant(sessionId, myId)
+    if (this.sessionService.getParticipants(sessionId).length === 0) {
+      this.clearSessionData(sessionId)
     }
   }
 
-  async deleteSession(sessionId: string): Promise<void> {
-    if (this.sessions[sessionId]) {
-      delete this.sessions[sessionId]
-      console.log(`Session deleted: ${sessionId}`)
-    } else {
-      console.error(`Session ${sessionId} does not exist`)
-    }
-  }
-
-  addParticipant(sessionId: string, participantName: string, socket: any) {
-    // gender별로 나눠야할 것 같음
-    if (this.sessions[sessionId]) {
-      this.sessions[sessionId].participants.push({
-        name: participantName,
-        socket,
-      })
-      console.log(
-        '참여자가 추가되었습니다. 세션이름: ',
-        sessionId,
-        '참여자 이름 : ',
-        participantName,
-      )
-    } else {
-      console.error(`Session ${sessionId} does not exist`)
-    }
-  }
-
-  removeParticipant(sessionId: string, socket: any, myId: string) {
-    if (this.sessions[sessionId]) {
-      // console.log(this.sessions[sessionId].participants.map(p => p.name))
-      const participants = this.getParticipants(sessionId)
-      this.sessions[sessionId].participants = participants.filter(
-        p => p.name !== myId,
-      )
-      console.log(
-        "/meetingService' 세션 참가자 수: ",
-        this.sessions[sessionId].participants.length,
-      )
-      if (this.sessions[sessionId].participants.length === 0) {
-        console.log(
-          "'/meetingService' 세션 참가자가 없습니다",
-          this.sessions[sessionId].participants.length,
-          'sessionId 는',
-          sessionId,
-        )
-        clearInterval(this.sessionTimers[sessionId])
-        this.clearSessionData(sessionId)
-      }
-    } else {
-      console.error(`Session ${sessionId} does not exist`)
-    }
-  }
-
-  clearSessionData(sessionId: string) {
+  async clearSessionData(sessionId: string) {
     console.log(`Clearing session data for ${sessionId}`)
-    delete this.chooseData[sessionId]
-    delete this.sessions[sessionId]
-    if (this.sessionTimers[sessionId]) {
-      console.log('타이머 초기화 중')
-      clearInterval(this.sessionTimers[sessionId])
-      delete this.sessionTimers[sessionId]
-    }
-  }
-
-  getParticipants(sessionId: string) {
-    const sessions = this.sessions[sessionId]
-    if (sessions) {
-      return this.sessions[sessionId].participants
-    }
-    return []
-    // return this.sessions[sessionId]
-    //   ? this.sessions[sessionId].participants
-    //   : []
+    await this.deleteChooseData(sessionId)
+    this.timerService.clearSessionTimer(sessionId)
+    await this.deleteCupidFlagBySessionId(sessionId)
+    await this.deleteLastCupidFlagBySessionId(sessionId)
+    this.sessionService.deleteSession(sessionId)
   }
 
   async generateTokens(sessionId: string) {
-    const session = this.sessions[sessionId]?.session
+    const session = this.sessionService.getSession(sessionId)
     if (!session) {
       console.error(`No session found for ${sessionId}`)
       return []
     }
 
-    const tokenPromises = this.sessions[sessionId].participants.map(
-      async ({ name }) => {
+    const tokenPromises = this.sessionService
+      .getParticipants(sessionId)
+      .map(async ({ name }) => {
         const tokenOptions = {
           role: OpenViduRole.PUBLISHER,
           data: name,
@@ -156,266 +151,74 @@ export class MeetingService {
           )
           throw error
         }
-      },
-    )
+      })
 
     try {
       const tokens = await Promise.all(tokenPromises)
-      return this.sessions[sessionId].participants.map(
-        (participant, index) => ({
+      return this.sessionService
+        .getParticipants(sessionId)
+        .map((participant, index) => ({
           participant: participant.name,
           token: tokens[index],
-        }),
-      )
+        }))
     } catch (error) {
       console.error('Error generating tokens:', error)
       return []
     }
   }
 
-  async resetParticipants(sessionId: string) {
-    if (this.sessions[sessionId]) {
-      const newSessionId = this.generateSessionId()
-      const newSession = await this.createSession(newSessionId)
-      this.sessions[newSessionId] = { session: newSession, participants: [] }
-      console.log(
-        `Session ${sessionId} reset and new session ${newSessionId} created with ID ${newSession.sessionId}`,
-      )
-    } else {
-      console.error(`Session ${sessionId} does not exist`)
-    }
-  }
-
-  getSession(sessionId: string) {
-    return this.sessions[sessionId]?.session
-  }
-
   async startVideoChatSession(sessionId: string) {
     try {
       const tokens = await this.generateTokens(sessionId)
-      const session = this.getSession(sessionId)
-      const participants = this.getParticipants(sessionId)
 
-      if (!session) {
-        console.error(
-          `No session found for ${sessionId} during startVideoChatSession`,
-        )
-        return
-      }
       tokens.forEach(({ participant, token }, index) => {
-        const participantSocket = this.getParticipants(sessionId)[index].socket
-        participantSocket.emit('startCall', {
-          sessionId: session.sessionId,
+        const participantSocketId =
+          this.sessionService.getParticipants(sessionId)[index].socketId
+        this.server.to(participantSocketId).emit('startCall', {
+          sessionId: sessionId,
           token: token,
           participantName: participant,
         })
       })
-
-      await this.resetParticipants(sessionId)
     } catch (error) {
       console.error('Error generating tokens: ', error)
     }
   }
-  startSessionTimer(sessionId: string, server: Server) {
-    const timers = [
-      { time: 1 / 12, event: 'introduce' },
-      { time: 1 / 3, event: 'keyword' },
-      { time: 2 / 3, event: 'cupidTime' },
-      { time: 94 / 60, event: 'cam' },
-      { time: 104 / 60, event: 'drawingContest' },
-      { time: 2.9, event: 'lastCupidTime' },
-      { time: 3.1, event: 'finish' },
-    ]
 
-    // 세션 타이머 초기화 (필요한 경우)
-    if (this.sessionTimers[sessionId]) {
-      clearTimeout(this.sessionTimers[sessionId])
+  // 1:1 선택 결과
+  async getChooseData(sessionId: string): Promise<ChooseResult[]> {
+    const chooseData = await this.redis.hgetall(`choose:${sessionId}`)
+    const result: ChooseResult[] = []
+
+    for (const [sender, receiver] of Object.entries(chooseData)) {
+      result.push({ sender, receiver })
     }
-
-    let elapsedTime = 0 // 경과 시간
-    let currentTimerIndex = 0 // 현재 타이머 인덱스
-
-    const timerId = setInterval(() => {
-      elapsedTime += 1 // 1초씩 증가
-
-      // 현재 타이머 인덱스가 유효하고, 경과 시간이 현재 타이머의 시간과 같으면 이벤트 발생
-      if (
-        currentTimerIndex < timers.length &&
-        elapsedTime === Math.floor(timers[currentTimerIndex].time * 60)
-      ) {
-        const { event } = timers[currentTimerIndex]
-        let message: string | null
-        let messageArray: string[] | undefined
-
-        if (event === 'keyword') {
-          // const getRandomNumber = () => Math.floor(Math.random() * 20) + 1;
-          // message = `${getRandomNumber()}`;
-          console.log('키워드 보냈음!!!!!!!!')
-          message = '0'
-        } else if (event === 'introduce') {
-          // const TeamArray = this.getParticipants(sessionId).map((user) => user.name);
-          const TeamArray = ['시아']
-          // messageArray = this.shuffleArray(TeamArray);
-          messageArray = TeamArray
-        } else {
-          message = `${event}`
-          console.log(message, '이벤트 발송합니다!')
-        }
-
-        this.notifySessionParticipants(
-          sessionId,
-          event,
-          message,
-          server,
-          messageArray,
-        )
-
-        currentTimerIndex++ // 다음 타이머로 이동
-      }
-
-      // 모든 타이머가 완료되면 setInterval 종료
-      if (currentTimerIndex >= timers.length) {
-        clearInterval(timerId)
-      }
-    }, 1000) // 1초마다 실행
-
-    this.sessionTimers[sessionId] = timerId // 타이머 ID 저장
+    return result
   }
 
-  notifySessionParticipants(
+  async setChooseData(sessionId: string, sender: string, receiver: string) {
+    await this.redis.hset(`choose:${sessionId}`, sender, receiver)
+  }
+
+  async deleteChooseData(sessionId: string) {
+    await this.redis.del(`choose:${sessionId}`)
+  }
+
+  async findMatchingPairs(
     sessionId: string,
-    eventType: string,
-    message: string,
-    server: Server,
-    messageArray?: string[],
-  ) {
-    const participants = this.getParticipants(sessionId)
-    // console.log('현재 참여자 목록입니다 => ', participants)
-    if (eventType == 'keyword') {
-      const getRandomParticipant = '시아'
-      // const getRandomParticipant = participants[1].name
-      participants.forEach(({ socket }) => {
-        server.to(socket.id).emit(eventType, { message, getRandomParticipant })
-      })
-    } else if (eventType == 'introduce') {
-      participants.forEach(({ socket }) => {
-        server.to(socket.id).emit(eventType, messageArray)
-      })
-    } else if (eventType == 'drawingContest') {
-      const keywordsIndex = Math.random() * 1234
-      participants.forEach(({ socket }) => {
-        server.to(socket.id).emit(eventType, { message, keywordsIndex })
-      })
-    } else {
-      participants.forEach(({ socket }) => {
-        server.to(socket.id).emit(eventType, { message })
-      })
-    }
-  }
+  ): Promise<{ pair: [string, string] }[]> {
+    const chooseData = await this.getChooseData(sessionId)
+    const matches: { pair: [string, string] }[] = []
 
-  getSessions() {
-    return this.sessions
-  }
-
-  storeChoose(sessionId: string, sender: string, receiver: string) {
-    if (!this.chooseData[sessionId]) {
-      this.chooseData[sessionId] = []
-    }
-
-    // 기존 선택이 있는지 확인하고 업데이트
-    const existingChoiceIndex = this.chooseData[sessionId].findIndex(
-      choice => choice.sender === sender,
-    )
-    if (existingChoiceIndex !== -1) {
-      this.chooseData[sessionId][existingChoiceIndex].receiver = receiver
-    } else {
-      this.chooseData[sessionId].push({ sender, receiver })
-    }
-  }
-
-  removeChooseData(sessionId: string) {
-    if (this.chooseData[sessionId]) {
-      delete this.chooseData[sessionId]
-    }
-  }
-
-  getChooseData(sessionId: string) {
-    return this.chooseData[sessionId] || []
-  }
-
-  findMatchingPairs(sessionId: string) {
-    const chooseData = this.getChooseData(sessionId)
-    const matches = []
-    chooseData.forEach(({ sender, receiver }) => {
+    for (const { sender, receiver } of chooseData) {
       const isPair = chooseData.find(
         choice => choice.sender === receiver && choice.receiver === sender,
       )
       if (isPair) {
-        // matches = [ { pair : [jinYong, test] }]
         matches.push({ pair: [sender, receiver] })
       }
-    })
-    return matches
-  }
-
-  /**<sessionId, <username, drawing>> */
-  private drawings: Record<string, Record<string, string>> = {}
-
-  saveDrawing(sessionId: string, userName: string, drawing: string) {
-    if (!this.drawings[sessionId]) this.drawings[sessionId] = {}
-    this.drawings[sessionId][userName] = drawing
-  }
-
-  getDrawings(sessionId: string): Record<string, string> {
-    return this.drawings[sessionId] || {}
-  }
-
-  resetDrawings(sessionId: string): void {
-    delete this.drawings[sessionId]
-  }
-
-  /**<sessionId, <username, photos>> */
-  private photos: Record<string, Record<string, string>> = {}
-
-  savePhoto(sessionId: string, userName: string, photo: string) {
-    if (!this.photos[sessionId]) this.photos[sessionId] = {}
-    this.photos[sessionId][userName] = photo
-  }
-
-  getPhotos(sessionId: string, userName: string) {
-    return this.photos[sessionId] || {}
-  }
-
-  /**<sessionId, <username, votedUser>> */
-  private votes: Record<string, Record<string, string>> = {}
-
-  saveVote(sessionId: string, userName: string, votedUserName: string) {
-    if (!this.votes[sessionId]) this.votes[sessionId] = {}
-    this.votes[sessionId][userName] = votedUserName
-  }
-
-  getVotes(sessionId: string): Record<string, string> {
-    return this.votes[sessionId] || {}
-  }
-
-  calculateWinner(sessionId: string): { winner: string; losers: string[] } {
-    /**저장했던 그림 삭제 */
-    const voteCount: Record<string, number> = {}
-
-    const votes = this.getVotes(sessionId)
-    for (const vote in votes) {
-      const votedUser = votes[vote]
-      if (!voteCount[votedUser]) voteCount[votedUser] = 0
-      voteCount[votedUser]++
     }
 
-    const winner = Object.keys(voteCount).reduce((a, b) =>
-      voteCount[a] > voteCount[b] ? a : b,
-    )
-
-    const losers = Object.keys(votes).filter(user => user !== winner)
-
-    delete this.votes[sessionId]
-    return { winner, losers }
+    return matches
   }
 }
