@@ -1,5 +1,4 @@
 import { Injectable, Inject } from '@nestjs/common'
-import { Socket } from 'socket.io'
 import { MeetingService } from './meeting.service'
 import Redis from 'ioredis'
 import { CommonService } from '../../common/common.service'
@@ -19,26 +18,22 @@ export class QueueService {
   }
 
   /* 참여자 대기열 추가 */
-  async addParticipantToQueue(name: string, socket: Socket, gender: string) {
-    const participant = JSON.stringify({ name, socketId: socket.id })
+  async addParticipantToQueue(name: string, gender: string) {
     const genderQueue = gender === 'MALE' ? 'maleQueue' : 'femaleQueue'
 
-    await this.redis.lrem(genderQueue, 0, participant) // 중복 유저 제거
-    await this.redis.rpush(genderQueue, participant)
+    await this.redis.lrem(genderQueue, 0, name)
+    await this.redis.rpush(genderQueue, name)
 
     console.log(
       `${gender} Queue : `,
-      (await this.redis.lrange(genderQueue, 0, -1)).map(
-        item => JSON.parse(item).name,
-      ),
+      await this.redis.lrange(genderQueue, 0, -1),
     )
   }
 
   async removeParticipantInQueue(name: string, gender: string) {
     const genderQueue = gender === 'MALE' ? 'maleQueue' : 'femaleQueue'
-    const participant = JSON.stringify({ name })
 
-    await this.redis.lrem(genderQueue, 0, participant)
+    await this.redis.lrem(genderQueue, 0, name)
   }
 
   async findOrCreateNewSession(): Promise<string> {
@@ -51,12 +46,11 @@ export class QueueService {
   /* 남녀 3명씩 끊어서 처리하는 작업 */
   async handleJoinQueue(
     participantName: string,
-    client: Socket,
     gender: string,
   ): Promise<{ sessionId: string; readyUsers?: any[] }> {
     let sessionId = ''
     try {
-      await this.addParticipantToQueue(participantName, client, gender)
+      await this.addParticipantToQueue(participantName, gender)
 
       const maleQueue = await this.redis.lrange(
         'maleQueue',
@@ -75,12 +69,8 @@ export class QueueService {
       ) {
         sessionId = await this.findOrCreateNewSession()
 
-        const readyMales = maleQueue
-          .splice(0, this.userQueueCount)
-          .map(item => JSON.parse(item))
-        const readyFemales = femaleQueue
-          .splice(0, this.userQueueCount)
-          .map(item => JSON.parse(item))
+        const readyMales = maleQueue.splice(0, this.userQueueCount)
+        const readyFemales = femaleQueue.splice(0, this.userQueueCount)
 
         const readyUsers = [...readyMales, ...readyFemales]
 

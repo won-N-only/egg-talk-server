@@ -115,7 +115,6 @@ export class MeetingGateway
 
       const { sessionId, readyUsers } = await this.queueService.handleJoinQueue(
         participantName,
-        client,
         gender,
       )
 
