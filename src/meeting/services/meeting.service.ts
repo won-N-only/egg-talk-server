@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { OpenViduRole } from 'openvidu-node-client'
-import { Server } from 'socket.io'
+import { Server, Socket } from 'socket.io'
 import Redis from 'ioredis'
 import { SessionService } from './session.service'
 import { TimerService } from './timer.service'
@@ -14,6 +14,7 @@ type ChooseResult = {
 export class MeetingService {
   public server: Server
   private redis: Redis
+  private connectedSockets = new Map<string, Socket>() // socketId: Socket
 
   constructor(
     private readonly sessionService: SessionService,
@@ -25,18 +26,38 @@ export class MeetingService {
 
   // 소켓 관리
   async getParticipantNameBySocketId(socketId: string): Promise<string | null> {
-    return await this.redis.get(`socket:${socketId}:participantName`)
+    return await this.redis.get(`socketId:${socketId}:participantName`)
+  }
+
+  async getSocketByParticipantName(participantName: string) {
+    const socketId = await this.redis.get(
+      `participantName:${participantName}:socketId`,
+    )
+    return this.connectedSockets.get(socketId)
   }
 
   async setConnectedSocket(
     participantName: string,
     socketId: string,
+    socket: Socket,
   ): Promise<void> {
-    await this.redis.set(`socket:${socketId}:participantName`, participantName)
+    this.connectedSockets.set(socketId, socket)
+    await this.redis.set(
+      `socketId:${socketId}:participantName`,
+      participantName,
+    )
+    await this.redis.set(
+      `participantName:${participantName}:socketId`,
+      socketId,
+    )
   }
 
-  async deleteConnectedSocket(socketId: string): Promise<void> {
-    await this.redis.del(`socket:${socketId}:participantName`)
+  async deleteConnectedSocket(
+    socketId: string,
+    participantName: string,
+  ): Promise<void> {
+    await this.redis.del(`socketId:${socketId}:participantName`)
+    await this.redis.del(`participantName:${participantName}:socketId`)
   }
 
   // 세션 관리
