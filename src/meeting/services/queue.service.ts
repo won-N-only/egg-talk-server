@@ -5,21 +5,35 @@ import { CommonService } from '../../common/common.service'
 import * as NodeCache from 'node-cache'
 
 class BipartiteGraph {
-  private edges: Map<string, Set<string>> = new Map()
+  private maleEdges: Map<string, Set<string>> = new Map()
+  private femaleEdges: Map<string, Set<string>> = new Map()
 
   addEdge(male: string, female: string) {
-    if (!this.edges.has(male)) {
-      this.edges.set(male, new Set())
+    if (!this.maleEdges.has(male)) {
+      this.maleEdges.set(male, new Set())
     }
-    this.edges.get(male).add(female)
+    this.maleEdges.get(male).add(female)
+
+    if (!this.femaleEdges.has(female)) {
+      this.femaleEdges.set(female, new Set())
+    }
+    this.femaleEdges.get(female).add(male)
   }
 
-  getNeighbors(node: string): Set<string> {
-    return this.edges.get(node) || new Set()
+  getMaleNeighbors(male: string): Set<string> {
+    return this.maleEdges.get(male) || new Set()
   }
 
-  getNodes(): string[] {
-    return Array.from(this.edges.keys())
+  getFemaleNeighbors(female: string): Set<string> {
+    return this.femaleEdges.get(female) || new Set()
+  }
+
+  getMales(): string[] {
+    return Array.from(this.maleEdges.keys())
+  }
+
+  getFemales(): string[] {
+    return Array.from(this.femaleEdges.keys())
   }
 }
 
@@ -183,12 +197,8 @@ export class QueueService {
   }
 
   private findMatchingGroups(graph: BipartiteGraph) {
-    const males = graph.getNodes()
-    const females = Array.from(
-      new Set(
-        [].concat(...males.map(male => Array.from(graph.getNeighbors(male)))),
-      ),
-    )
+    const males = graph.getMales()
+    const females = graph.getFemales()
 
     console.log('Male nodes:', males)
     console.log('Female nodes:', females)
@@ -231,7 +241,7 @@ export class QueueService {
     graph: BipartiteGraph,
   ): boolean {
     for (const male of males) {
-      const neighbors = graph.getNeighbors(male)
+      const neighbors = graph.getMaleNeighbors(male)
       for (const female of females) {
         if (!neighbors.has(female)) {
           return false
