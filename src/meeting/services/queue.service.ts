@@ -41,7 +41,7 @@ class BipartiteGraph {
 export class QueueService {
   private maleQueue: { name: string; socket: Socket }[] = []
   private femaleQueue: { name: string; socket: Socket }[] = []
-  private friendCache = new NodeCache({ stdTTL: 600 }) // 캐시 TTL 10분
+  private friendCache = new NodeCache({ stdTTL: 600 })
 
   constructor(
     private readonly meetingService: MeetingService,
@@ -109,8 +109,10 @@ export class QueueService {
   async filterQueues() {
     if (this.maleQueue.length >= 3 && this.femaleQueue.length >= 3) {
       console.log('Attempting to filter queues for matching...')
-      const maleFriendsMap = await this.buildFriendsMap(this.maleQueue)
-      const femaleFriendsMap = await this.buildFriendsMap(this.femaleQueue)
+      const [maleFriendsMap, femaleFriendsMap] = await Promise.all([
+        this.buildFriendsMap(this.maleQueue),
+        this.buildFriendsMap(this.femaleQueue),
+      ])
 
       const graph = new BipartiteGraph()
       for (const male of this.maleQueue) {
@@ -174,10 +176,12 @@ export class QueueService {
 
   private async buildFriendsMap(queue: { name: string; socket: Socket }[]) {
     const friendsMap = new Map<string, Set<string>>()
-    for (const participant of queue) {
-      const friends = await this.getFriends(participant.name)
-      friendsMap.set(participant.name, new Set(friends))
-    }
+    await Promise.all(
+      queue.map(async participant => {
+        const friends = await this.getFriends(participant.name)
+        friendsMap.set(participant.name, new Set(friends))
+      }),
+    )
     console.log('Built friends map:', friendsMap)
     return friendsMap
   }
