@@ -1,7 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { Redis } from 'ioredis'
 import { OpenVidu, Session } from 'openvidu-node-client'
-import { MeetingService } from '../services/meeting.service'
 import { v4 as uuidv4 } from 'uuid'
 import { Server } from 'socket.io'
 
@@ -15,30 +14,14 @@ export class SessionService {
     { session: Session; participants: { name: string; socketId: string }[] }
   > = {}
 
-  constructor(
-    @Inject('REDIS') redis: Redis,
-    private readonly meetingService: MeetingService,
-  ) {
+  constructor(@Inject('REDIS') redis: Redis) {
     this.redis = redis
-    this.initSubscriber()
     const OPENVIDU_URL = process.env.OPENVIDU_URL
     const OPENVIDU_SECRET = process.env.OPENVIDU_SECRET
     this.openVidu = new OpenVidu(OPENVIDU_URL, OPENVIDU_SECRET)
   }
 
-  private initSubscriber() {
-    const subscriber = this.redis.duplicate()
-    subscriber.subscribe('tokenAddedToSession')
-
-    subscriber.on('message', (channel, message) => {
-      if (channel === 'tokenAddedToSession') {
-        const sessionData = JSON.parse(message)
-        this.startVideoChatSession(sessionData.sessionId)
-      }
-    })
-  }
-
-  private async startVideoChatSession(sessionId: string) {
+  async startVideoChatSession(sessionId: string) {
     const sessionDataString = await this.redis.get(`sessionId:${sessionId}`)
     const sessionData = JSON.parse(sessionDataString)
     const tokens = sessionData.tokens
