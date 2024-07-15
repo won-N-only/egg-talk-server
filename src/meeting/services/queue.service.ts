@@ -3,6 +3,7 @@ import { Socket } from 'socket.io'
 import { MeetingService } from './meeting.service'
 import { CommonService } from '../../common/common.service'
 import * as NodeCache from 'node-cache'
+import { performance } from 'perf_hooks'
 
 class BipartiteGraph {
   private maleEdges: Map<string, Set<string>> = new Map()
@@ -49,6 +50,7 @@ export class QueueService {
   ) {}
 
   async addParticipant(name: string, socket: Socket, gender: string) {
+    const start = performance.now()
     const queue = gender === 'MALE' ? this.maleQueue : this.femaleQueue
     const index = queue.findIndex(p => p.name === name)
     if (index !== -1) {
@@ -60,21 +62,31 @@ export class QueueService {
       queue.map(p => p.name),
     )
     await this.filterQueues()
+    const end = performance.now()
+    console.log(`addParticipant 실행 시간: ${(end - start).toFixed(2)}ms`)
   }
 
   removeParticipant(name: string, gender: string) {
+    const start = performance.now()
     const queue = gender === 'MALE' ? this.maleQueue : this.femaleQueue
     this[`${gender.toLowerCase()}Queue`] = queue.filter(p => p.name !== name)
     console.log(
       `Update ${gender} Queue: `,
       this[`${gender.toLowerCase()}Queue`].map(p => p.name),
     )
+    const end = performance.now()
+    console.log(`removeParticipant 실행 시간: ${(end - start).toFixed(2)}ms`)
   }
 
   async findOrCreateNewSession(): Promise<string> {
+    const start = performance.now()
     const newSessionId = this.meetingService.generateSessionId()
     await this.meetingService.createSession(newSessionId)
     console.log(`Creating and returning new session: ${newSessionId}`)
+    const end = performance.now()
+    console.log(
+      `findOrCreateNewSession 실행 시간: ${(end - start).toFixed(2)}ms`,
+    )
     return newSessionId
   }
 
@@ -85,11 +97,14 @@ export class QueueService {
   ) {
     let sessionId = ''
     try {
+      const start = performance.now()
       await this.addParticipant(participantName, client, gender)
 
       const result = await this.filterQueues()
       if (result) {
         const { sessionId, readyMales, readyFemales } = result
+        const end = performance.now()
+        console.log(`handleJoinQueue 실행 시간: ${(end - start).toFixed(2)}ms`)
         return { sessionId, readyMales, readyFemales }
       }
 
@@ -97,6 +112,8 @@ export class QueueService {
         'Current waiting participants: ',
         this.meetingService.getParticipants(sessionId).map(p => p.name),
       )
+      const end = performance.now()
+      console.log(`handleJoinQueue 실행 시간: ${(end - start).toFixed(2)}ms`)
       return { sessionId }
     } catch (error) {
       console.error('Error joining queue:', error)
@@ -107,6 +124,7 @@ export class QueueService {
   }
 
   async filterQueues() {
+    const start = performance.now()
     if (this.maleQueue.length >= 3 && this.femaleQueue.length >= 3) {
       console.log('Attempting to filter queues for matching...')
       const [maleFriendsMap, femaleFriendsMap] = await Promise.all([
@@ -164,6 +182,8 @@ export class QueueService {
           f => !females.map(female => female.name).includes(f.name),
         )
 
+        const end = performance.now()
+        console.log(`filterQueues 실행 시간: ${(end - start).toFixed(2)}ms`)
         return {
           sessionId,
           readyMales: males,
@@ -175,10 +195,13 @@ export class QueueService {
     } else {
       console.log('Not enough participants in both queues to start matching.')
     }
+    const end = performance.now()
+    console.log(`filterQueues 실행 시간: ${(end - start).toFixed(2)}ms`)
     return null
   }
 
   private async buildFriendsMap(queue: { name: string; socket: Socket }[]) {
+    const start = performance.now()
     const friendsMap = new Map<string, Set<string>>()
     await Promise.all(
       queue.map(async participant => {
@@ -187,13 +210,20 @@ export class QueueService {
       }),
     )
     console.log('Built friends map:', friendsMap)
+    const end = performance.now()
+    console.log(`buildFriendsMap 실행 시간: ${(end - start).toFixed(2)}ms`)
     return friendsMap
   }
 
   private async getFriends(name: string): Promise<string[]> {
+    const start = performance.now()
     const cachedFriends = this.friendCache.get<string[]>(name)
     if (cachedFriends) {
       console.log(`Cache hit for friends of ${name}`)
+      const end = performance.now()
+      console.log(
+        `getFriends (cache hit) 실행 시간: ${(end - start).toFixed(2)}ms`,
+      )
       return cachedFriends
     }
     console.log(
@@ -201,6 +231,10 @@ export class QueueService {
     )
     const friends = await this.commonService.sortFriend(name)
     this.friendCache.set(name, friends)
+    const end = performance.now()
+    console.log(
+      `getFriends (cache miss) 실행 시간: ${(end - start).toFixed(2)}ms`,
+    )
     return friends
   }
 
@@ -209,6 +243,7 @@ export class QueueService {
     maleFriendsMap: Map<string, Set<string>>,
     femaleFriendsMap: Map<string, Set<string>>,
   ) {
+    const start = performance.now()
     const males = graph.getMales()
     const females = graph.getFemales()
 
@@ -229,6 +264,10 @@ export class QueueService {
             femaleFriendsMap,
           )
         ) {
+          const end = performance.now()
+          console.log(
+            `findMatchingGroups 실행 시간: ${(end - start).toFixed(2)}ms`,
+          )
           return {
             males: maleGroup.map(name => ({
               name,
@@ -242,10 +281,13 @@ export class QueueService {
         }
       }
     }
+    const end = performance.now()
+    console.log(`findMatchingGroups 실행 시간: ${(end - start).toFixed(2)}ms`)
     return null
   }
 
   private getCombinations(arr: string[], size: number): string[][] {
+    const start = performance.now()
     const result: string[][] = []
     const combine = (start: number, chosen: string[]) => {
       if (chosen.length === size) {
@@ -259,6 +301,8 @@ export class QueueService {
       }
     }
     combine(0, [])
+    const end = performance.now()
+    console.log(`getCombinations 실행 시간: ${(end - start).toFixed(2)}ms`)
     return result
   }
 
@@ -269,6 +313,7 @@ export class QueueService {
     maleFriendsMap: Map<string, Set<string>>,
     femaleFriendsMap: Map<string, Set<string>>,
   ): boolean {
+    const start = performance.now()
     const allMales = new Set(males)
     const allFemales = new Set(females)
 
@@ -278,6 +323,8 @@ export class QueueService {
 
       for (const female of females) {
         if (!neighbors.has(female) || maleFriends.has(female)) {
+          const end = performance.now()
+          console.log(`isGroupValid 실행 시간: ${(end - start).toFixed(2)}ms`)
           return false
         }
       }
@@ -289,11 +336,15 @@ export class QueueService {
 
       for (const male of males) {
         if (!neighbors.has(male) || femaleFriends.has(male)) {
+          const end = performance.now()
+          console.log(`isGroupValid 실행 시간: ${(end - start).toFixed(2)}ms`)
           return false
         }
       }
     }
 
+    const end = performance.now()
+    console.log(`isGroupValid 실행 시간: ${(end - start).toFixed(2)}ms`)
     return true
   }
 }
