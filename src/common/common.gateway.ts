@@ -123,7 +123,7 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
-  @SubscribeMessage('joinchat')
+  @SubscribeMessage('joinChat')
   async handleJoinRoom(
     client: Socket,
     payload: { newChatRoomId: string; friendName: string }, // nickName == userId
@@ -152,11 +152,11 @@ export class CommonGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('closeChat')
   async closeChat(
     @ConnectedSocket() client: Socket,
-    @MessageBody() payload: { chatRoomdId: string },
+    @MessageBody() payload: { chatRoomId: string },
   ) {
     try {
-      const { chatRoomdId } = payload
-      client.leave(chatRoomdId)
+      const { chatRoomId } = payload
+      client.leave(chatRoomId)
     } catch (error) {
       logger.error('채팅방 떠나기 오류', error)
     }
