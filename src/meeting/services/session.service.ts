@@ -4,6 +4,11 @@ import { OpenVidu, Session } from 'openvidu-node-client'
 import { v4 as uuidv4 } from 'uuid'
 import { Server } from 'socket.io'
 
+type sessionData = {
+  tokens: string[]
+  openviduUrl: string
+}
+
 @Injectable()
 export class SessionService {
   private openVidu: OpenVidu
@@ -23,10 +28,18 @@ export class SessionService {
 
   async startVideoChatSession(sessionId: string) {
     const sessionDataString = await this.redis.get(`sessionId:${sessionId}`)
-    const sessionData = JSON.parse(sessionDataString)
+    const sessionData: sessionData = JSON.parse(sessionDataString)
     const tokens = sessionData.tokens
-    sessionData.participants.forEach((name, index) => {
-      this.sendTokenToParticipant(sessionId, tokens[index], name)
+    const openviduUrl = sessionData.openviduUrl
+    const participants = this.sessions[sessionId].participants
+    participants.forEach((participant, index) => {
+      this.sendTokenToParticipant(
+        sessionId,
+        tokens[index],
+        participant.name,
+        participant.socketId,
+        openviduUrl,
+      )
     })
   }
 
@@ -34,13 +47,14 @@ export class SessionService {
     sessionId: string,
     token: string,
     participantName: string,
+    participantSocketId: string,
+    openviduUrl: string,
   ) {
-    const clientSocketId =
-      await this.meetingService.getSocketIdByParticipantName(participantName)
-    this.server.to(clientSocketId).emit('startCall', {
+    this.server.to(participantSocketId).emit('startCall', {
       sessionId,
       token,
       participantName,
+      openviduUrl,
     })
   }
 
