@@ -16,14 +16,14 @@ import { timestamp } from 'rxjs'
 import { InjectModel } from '@nestjs/mongoose'
 
 interface RedisMessage {
-  _id: string;
-  sender: string;
-  message: string;
-  chatRoomId: string;
-  timestamp: string;
-  createdAt: string;
-  updatedAt: string;
-  __v: number;
+  _id: string
+  sender: string
+  message: string
+  chatRoomId: string
+  timestamp: string
+  createdAt: string
+  updatedAt: string
+  __v: number
 }
 @Injectable()
 export class CommonService {
@@ -78,14 +78,18 @@ export class CommonService {
   }
 
   async getChatHistory(chatRoomId: string) {
-    const messages = await this.redisClient.zrange(`chatHistorySorted:${chatRoomId}`, 0, -1);
+    const messages = await this.redisClient.zrange(
+      `chatHistorySorted:${chatRoomId}`,
+      0,
+      -1,
+    )
     if (messages.length > 0) {
       // Redis에 데이터가 있는 경우 => 데이터 변환
       const parsedMessages = messages.map(message => {
-        const parsedMessage = JSON.parse(message);
-        return parsedMessage._doc ? parsedMessage._doc : parsedMessage; // '_doc' 속성에 접근하여 데이터를 가져옴
-      });
-  
+        const parsedMessage = JSON.parse(message)
+        return parsedMessage._doc ? parsedMessage._doc : parsedMessage // '_doc' 속성에 접근하여 데이터를 가져옴
+      })
+
       const redisMessages = parsedMessages.map(message => ({
         _id: new Types.ObjectId(message._id),
         sender: message.sender,
@@ -94,9 +98,9 @@ export class CommonService {
         timestamp: new Date(message.timestamp),
         createdAt: new Date(message.createdAt),
         updatedAt: new Date(message.updatedAt),
-        __v: message.__v
-      }));
-      return redisMessages;
+        __v: message.__v,
+      }))
+      return redisMessages
     } else {
       // Redis에 데이터가 없는 경우 => DB 에서 가져오기
       const dbChatHistory =
@@ -176,7 +180,7 @@ export class CommonService {
     chatRoomId: string,
     message: string,
     isReceiverOnline: boolean,
-  ): Promise<void> {
+  ) {
     const newChat = {
       _id: new Types.ObjectId(),
       sender: senderNickName,
@@ -185,26 +189,24 @@ export class CommonService {
       timestamp: new Date(),
       createdAt: new Date(),
       updatedAt: new Date(),
-      __v: 0
-    };
-  
+      __v: 0,
+    }
+
     // sorted Set에 저장
     await this.redisClient.zadd(
       `chatHistorySorted:${chatRoomId}`,
       newChat.timestamp.getTime(),
-      JSON.stringify(newChat)
-    );
-  
+      JSON.stringify(newChat),
+    )
+
     await this.commonRepository.updateChatRoomIsRead(
       chatRoomId,
       isReceiverOnline,
-    );
-  
-    console.log(newChat);
+    )
+    return newChat
   }
-  
 
-  @Cron(CronExpression.EVERY_30_SECONDS)
+  @Cron(CronExpression.EVERY_MINUTE)
   async saveChatHistoryToDataBase() {
     console.log('Cron 정상작동합니다!!!!!!')
 
@@ -213,12 +215,22 @@ export class CommonService {
     for (const chatRoomKey of chatRoomKeys) {
       const chatRoomId = chatRoomKey.split(':')[1]
 
+      // DB에서 해당 채팅방의 가장 최근 메시지 타임스탬프 가져오기
+      const lastSavedMessage =
+        await this.commonRepository.getLastSavedMessage(chatRoomId)
+      const lastSavedTimestamp = lastSavedMessage
+        ? new Date(lastSavedMessage.timestamp).getTime()
+        : 0
+
+      console.log(lastSavedMessage, '마지막 타임스탬프')
+
       const messagesWithScores = await this.redisClient.zrange(
         chatRoomKey,
         0,
         -1,
         'WITHSCORES',
       )
+
       const messages: [string, number][] = []
 
       // score를 숫자로 변환하며 messages 배열 생성
@@ -231,7 +243,6 @@ export class CommonService {
           console.error(`Invalid score: ${messagesWithScores[i + 1]}`)
         }
       }
-
       if (messages.length > 0) {
         const chatEntities: ChatWithMetadata[] = messages
           .map(([message, score]) => {
@@ -248,32 +259,36 @@ export class CommonService {
                 !chatData.sender ||
                 !chatData.timestamp
               ) {
-                console.error(`Invalid chat data: ${JSON.stringify(chatData)}`)
+                // console.error(`Invalid chat data: ${JSON.stringify(chatData)}`)
                 return null
               }
 
               // timestamp 변환 시도
               const timestamp = new Date(chatData.timestamp)
               if (isNaN(timestamp.getTime())) {
-                console.error(`Invalid timestamp: ${chatData.timestamp}`)
+                // console.error(`Invalid timestamp: ${chatData.timestamp}`)
                 return null
               }
 
-              return {
-                ...chatData, // chatData만 사용
-                messageId: score, // score는 이미 number 타입임
-                timestamp: timestamp, // 올바른 Date 객체
+              // DB에 이미 저장된 메시지보다 최신인 경우만 반환
+              if (timestamp.getTime() > lastSavedTimestamp) {
+                return {
+                  ...chatData, // chatData만 사용
+                  messageId: score, // score는 이미 number 타입임
+                  timestamp: timestamp, // 올바른 Date 객체
+                }
+              } else {
+                return null // 중복 메시지 제거
               }
             } catch (error) {
               console.error(
-                `Error parsing message: ${message}, score: ${score}`,
+                // `Error parsing message: ${message}, score: ${score}`,
                 error,
               )
               return null // 또는 다른 처리 방식
             }
           })
           .filter((chat): chat is ChatWithMetadata => chat !== null) // null 값 제거
-
         if (chatEntities.length > 0) {
           try {
             await this.commonRepository.saveChatHistoryToMongo(

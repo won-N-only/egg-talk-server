@@ -201,9 +201,11 @@ export class CommonGateway
       ) // isReceiverOnline 전달
       // 메시지 전송
       if (receiverSocket) {
+        console.log("메세지 전송!!")
+        console.log(newChat, "newChat 입니다")
         this.server.to(chatRoomId).emit('message', newChat) // 상대방이 (온라인 상태 + 채팅방 참여) 일때 메시지 전송
+        console.log("메세지 성공!!")
       } else {
-        console.log("게이트웨이까지 다시 돌아옴!!!!")
         const receiverSocket = await this.commonService
         .getSocketByUserId(receiverNickname)
         const receiverSocketId = receiverSocket ? receiverSocket.id : null; 

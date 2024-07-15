@@ -287,4 +287,18 @@ export class CommonRepository {
       throw error;
     }
   }
+
+  // 최근 메세지 가져오는 함수
+  async getLastSavedMessage(chatRoomId: string){
+    try {
+      const lastMessage = await this.chatModel
+        .findOne({ chatRoomId: new Types.ObjectId(chatRoomId) })
+        .sort({ timestamp: -1 }) // 타임스탬프를 기준으로 내림차순 정렬하여 가장 최근 메시지를 가져옴
+        .exec();
+      return lastMessage;
+    } catch (error) {
+      console.error(`Error fetching last saved message for chatRoomId ${chatRoomId}:`, error);
+      return null;
+    }
+  } 
 }
