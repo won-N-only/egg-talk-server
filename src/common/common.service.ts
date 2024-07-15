@@ -2,17 +2,18 @@ import { Inject, Injectable } from '@nestjs/common'
 import { AcceptFriend, AddFriendDto } from './dto/request/notification.dto'
 import { UsersRepository } from '../users/users.repository'
 import { Notification } from '../entities/notification.entity'
-import { ObjectId, Types } from 'mongoose'
-import { Chat } from '../entities/chat.entity'
+import { ObjectId, Types, Model } from 'mongoose'
+import { Chat, ChatWithMetadata } from '../entities/chat.entity'
 import { User } from '../entities/user.entity'
 import { Server, Socket } from 'socket.io'
 import { CommonRepository } from './common.repository'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Cache } from 'cache-manager'
-import Redis from 'ioredis'
+import { Redis } from 'ioredis'
 import { Cron, CronExpression} from '@nestjs/schedule'
 import { ChatRoom } from 'src/entities/chat-room.entity'
 import { timestamp } from 'rxjs'
+import { InjectModel } from '@nestjs/mongoose'
 
 @Injectable()
 export class CommonService {
@@ -20,7 +21,8 @@ export class CommonService {
   constructor(
     private readonly commonRepository: CommonRepository,
     private readonly usersRepository: UsersRepository,
-    
+    @InjectModel(Chat.name) private chatModel: Model<Chat>,
+
     @Inject(CACHE_MANAGER) private cacheManager: Cache,){
       this.redisClient = (this.cacheManager as any).store.getClient();
     }
@@ -76,31 +78,28 @@ export class CommonService {
 
   // Redis 버전
   async getChatHistory(chatRoomId: string): Promise<Chat[]> {
-    const messageIds = await this.redisClient.hkeys('chatHistory');
-    const filteredIds = messageIds.filter(id => id.startsWith(`${chatRoomId}:`));
-  
-    if (filteredIds.length === 0) {
-      // Redis에 해당 채팅방 메시지가 없으면 DB에서 가져와 Redis에 저장
+    const messages = await this.redisClient.zrange(`chatHistorySorted:${chatRoomId}`, 0, -1); // Sorted Set에서 메시지 가져오기
+    if (messages.length === 0) {
+      // Redis에 해당 채팅방 메시지가 없으면 DB에서 가져와 Redis에 저장 (Sorted Set 사용)
       const dbChatHistory = await this.commonRepository.getChatHistoryFromDatabase(chatRoomId);
-      const dbChats = dbChatHistory.chats as unknown as Chat[];
+      if (!dbChatHistory) {
+        console.error(`Chat history not found in DB for chatRoomId: ${chatRoomId}`);
+        return [];
+      }
   
+      const dbChats = dbChatHistory.chats as unknown as Chat[];
       const pipeline = this.redisClient.pipeline();
       for (const chat of dbChats) {
-        const messageId = Date.now() + Math.random(); // 랜덤 값 추가하여 중복 방지
-        pipeline.hset('chatHistory', `${chatRoomId}:${messageId}`, JSON.stringify(chat));
+        const messageId = await this.redisClient.incr(`chatHistoryNextId:${chatRoomId}`); // messageId 증가
+        const score = chat.timestamp ? new Date(chat.timestamp).getTime() : Date.now(); // DB에서 가져온 메시지에 timestamp가 없을 경우 현재 시간 사용
+        pipeline.zadd(`chatHistorySorted:${chatRoomId}`, score, JSON.stringify({ ...chat, messageId }));
       }
       await pipeline.exec();
-  
       return dbChats;
     }
-  
-    const messages = await this.redisClient.hmget('chatHistory', ...filteredIds);
-    return messages.map(message => {
-      const parsedMessage = JSON.parse(message);
-      parsedMessage.chatRoomId = new Types.ObjectId(parsedMessage.chatRoomId); // ObjectId로 변환
-      return parsedMessage as Chat;
-    });
+    return messages.map(message => JSON.parse(message) as Chat); // 메시지 파싱
   }
+  
 
   // async sendMessage(
   //   senderNickName: string,
@@ -130,65 +129,107 @@ export class CommonService {
     message: string,
     isReceiverOnline: boolean,
   ): Promise<Chat> {
-      const newChat = new Chat();
-      newChat.sender = senderNickName
-      newChat.message = message;
-      newChat.chatRoomId = new Types.ObjectId(chatRoomId);
-      const messageId = Date.now();
-      
-      // Redis Hash에 메세지 추가
-      await this.redisClient.hset(
-        'chatHistory',
-        `${chatRoomId}:${messageId}`,
-        JSON.stringify({ ...newChat, timestamp: messageId }) // chatRoomId는 ObjectId 그대로 유지
+    const newChat = new this.chatModel({
+      sender: senderNickName,
+      message,
+      chatRoomId: new Types.ObjectId(chatRoomId),
+      timestamp: new Date(),
+    });
+
+    const messageId = await this.redisClient.incr(`chatHistoryNextId:${chatRoomId}`);
+    await this.redisClient.zadd(
+      `chatHistorySorted:${chatRoomId}`,
+      newChat.timestamp.getTime(),
+      JSON.stringify({sender:senderNickName,message,chatRoomId})
+    );
+
+    await this.commonRepository.updateChatRoomIsRead(chatRoomId, isReceiverOnline);
+    await newChat.save();
+    return newChat;
+  }
+  
+  
+  @Cron(CronExpression.EVERY_30_SECONDS)
+  async saveChatHistoryToDataBase() {
+    console.log("Cron 정상작동합니다!!!!!!");
+  
+    const chatRoomKeys = await this.redisClient.keys("chatHistorySorted:*");
+  
+    for (const chatRoomKey of chatRoomKeys) {
+      const chatRoomId = chatRoomKey.split(":")[1];
+  
+      const messagesWithScores = await this.redisClient.zrange(
+        chatRoomKey,
+        0,
+        -1,
+        "WITHSCORES"
       );
-      // await this.redisClient.rpush(`chatHistory:${chatRoomId}`, JSON.stringify(newChat))
-      // ChatRoom의 isRead 업데이트
-      await this.commonRepository.updateChatRoomIsRead(chatRoomId, isReceiverOnline);
-      console.log("service 까지는 들어옵니다")
-      return newChat
-    }
-
-    @Cron(CronExpression.EVERY_30_SECONDS) 
-    async saveChatHistoryToDataBase() {
-      console.log("Cron 정상작동합니다!!!!!!");
-    
-      const messageIds = await this.redisClient.hkeys('chatHistory');
-      const chatRoomMessages = {};
-      for (const messageId of messageIds) {
-        const [chatRoomId, _] = messageId.split(':');
-        chatRoomMessages[chatRoomId] = chatRoomMessages[chatRoomId] || [];
-        chatRoomMessages[chatRoomId].push(messageId);
+      const messages: [string, number][] = [];
+  
+      // score를 숫자로 변환하며 messages 배열 생성
+      for (let i = 0; i < messagesWithScores.length; i += 2) {
+        const message = messagesWithScores[i];
+        const score = parseInt(messagesWithScores[i + 1], 10); // score를 숫자로 변환
+        if (!isNaN(score)) {
+          messages.push([message, score]);
+        } else {
+          console.error(`Invalid score: ${messagesWithScores[i + 1]}`);
+        }
       }
-    
-      for (const chatRoomId in chatRoomMessages) {
-        const messages = await this.redisClient.hmget('chatHistory', ...chatRoomMessages[chatRoomId]);
-    
-        if (messages.length > 0) {
-          const chatEntities = messages.map(message => JSON.parse(message) as Chat & { timestamp: number })
-            .sort((a, b) => a.timestamp - b.timestamp)
-            .filter((chat : any) => !chat._id);
-
-          
-          console.log(chatEntities, "제대로 들어오는지 확인")
-          // MongoDB에 저장 (chatRoomId를 ObjectId로 변환)
-          if (chatEntities.length > 0) {
-            try {
-              await this.commonRepository.saveChatHistoryToMongo(
-                new Types.ObjectId(chatRoomId),
-                chatEntities
-              );
-    
-              // MongoDB 저장 성공 후 Redis에서 메시지 삭제
-              await this.redisClient.hdel('chatHistory', ...chatRoomMessages[chatRoomId]);
-            } catch (error) {
-              console.error('Error saving chat history:', error);
-              // 에러 처리 (예: 재시도 로직 추가)
+  
+      if (messages.length > 0) {
+        const chatEntities: ChatWithMetadata[] = messages.map(([message, score]) => {
+          try {
+            const parsedMessage = JSON.parse(message) as any; // any 타입으로 파싱
+  
+            // Mongoose 모델 객체 메타데이터 제거 (필요한 경우)
+            const { __v, _id, $isNew, ...chatData } = parsedMessage;
+  
+            // 필수 필드가 모두 존재하는지 확인
+            if (!chatData.chatRoomId || !chatData.message || !chatData.sender || !chatData.timestamp) {
+              console.error(`Invalid chat data: ${JSON.stringify(chatData)}`);
+              return null;
             }
+  
+            // timestamp 변환 시도
+            const timestamp = new Date(chatData.timestamp);
+            if (isNaN(timestamp.getTime())) {
+              console.error(`Invalid timestamp: ${chatData.timestamp}`);
+              return null;
+            }
+  
+            return {
+              ...chatData, // chatData만 사용
+              messageId: score, // score는 이미 number 타입임
+              timestamp: timestamp, // 올바른 Date 객체
+            };
+          } catch (error) {
+            console.error(`Error parsing message: ${message}, score: ${score}`, error);
+            return null; // 또는 다른 처리 방식
+          }
+        }).filter((chat): chat is ChatWithMetadata => chat !== null); // null 값 제거
+  
+        if (chatEntities.length > 0) {
+          try {
+            await this.commonRepository.saveChatHistoryToMongo(
+              new Types.ObjectId(chatRoomId),
+              chatEntities
+            );
+  
+            // Redis 캐시 무효화
+            await this.redisClient.del(`chatHistorySorted:${chatRoomId}`);
+  
+          } catch (error) {
+            console.error("Error saving chat history:", error);
           }
         }
       }
     }
+  }
+  
+  
+  
+  
     
     
   

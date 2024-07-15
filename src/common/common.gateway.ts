@@ -131,29 +131,31 @@ export class CommonGateway
   @SubscribeMessage('joinChat')
   async handleJoinRoom(
     client: Socket,
-    payload: { newChatRoomId: string; friendName: string }, // nickName == userId
+    payload: { newChatRoomId: string; friendName: string },
   ) {
-    const { newChatRoomId, friendName } = payload
-    const chatRoomId = newChatRoomId
-    const nickname = client['user'].nickname
+    const { newChatRoomId, friendName } = payload;
+    const chatRoomId = newChatRoomId;
+    const nickname = client['user'].nickname;
+  
     // 1. 기존 채팅방 정보 가져오기
-
-    const currentRooms = Array.from(client.rooms) // 현재 참여 중인 모든 방
-    const currentChatRoomId = currentRooms.find(room => room !== client.id) // Socket ID 제외
+    const currentRooms = Array.from(client.rooms); // 현재 참여 중인 모든 방
+    const currentChatRoomId = currentRooms.find(room => room !== client.id); // Socket ID 제외
+    
     // 2. 기존 채팅방 연결 종료 (만약 있다면)
     if (currentChatRoomId) {
-      client.leave(currentChatRoomId) // 기존 방 떠나기
+      client.leave(currentChatRoomId); // 기존 방 떠나기
     }
-
+  
     // 3. 새 채팅방 참여
-    client.join(chatRoomId)
-
+    client.join(chatRoomId);
+  
     // 4. 채팅 기록 불러오기 (필요하다면)
-    const chatHistory = await this.commonService.getChatHistory(chatRoomId)
-
+    const chatHistory = await this.commonService.getChatHistory(chatRoomId);
+    console.log("joinChat의 chatHistory 목록", chatHistory);
+  
     // 5. 읽음 표시
-    await this.commonService.readMessage(friendName, nickname)
-    client.emit('chatHistory', chatHistory)
+    await this.commonService.readMessage(friendName, nickname);
+    client.emit('chatHistory', chatHistory);
   }
 
   @SubscribeMessage('closeChat')

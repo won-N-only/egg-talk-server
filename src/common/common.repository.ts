@@ -5,7 +5,7 @@ import { Model, Types, ObjectId } from 'mongoose'
 import { AcceptFriend, AddFriendDto } from './dto/request/notification.dto'
 import { ChatRoom } from '../entities/chat-room.entity'
 import { Notification } from '../entities/notification.entity'
-import { Chat } from '../entities/chat.entity'
+import { Chat, ChatWithMetadata } from '../entities/chat.entity'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Redis } from 'ioredis'
 import { Cache } from 'cache-manager';
@@ -206,7 +206,10 @@ export class CommonRepository {
   //     console.error('채팅 기록 저장 실패:', error)
   //   }
   // }
-  async saveChatHistoryToMongo(chatRoomId: Types.ObjectId, chats: Chat[]): Promise<void> {
+  async saveChatHistoryToMongo(
+    chatRoomId: Types.ObjectId,
+    chats: ChatWithMetadata[]
+  ): Promise<void> {
     try {
       const chatRoom = await this.chatRoomModel.findById(chatRoomId);
   
@@ -214,19 +217,25 @@ export class CommonRepository {
         throw new Error(`ChatRoom not found with ID: ${chatRoomId}`);
       }
   
-      // 1. Chat 모델 인스턴스 생성 및 저장
-      const chatInstances = chats.map(chatData => new this.chatModel(chatData)); 
+      // 1. 이미 저장된 메시지 필터링 (필요에 따라 추가)
+      const unsavedChats = chats.filter((chat) => !chat._id);
+  
+      // 2. Chat 모델 인스턴스 생성 및 저장 (messageId, timestamp 제거)
+      const chatInstances = unsavedChats.map((chatData) => {
+        const { messageId, ...chatWithoutMessageId } = chatData; // messageId 제거
+        return new this.chatModel(chatWithoutMessageId);
+      });
       const savedChats = await this.chatModel.insertMany(chatInstances);
   
       // 3. 저장된 채팅 메시지의 ObjectId 가져오기
-      const savedChatIds = savedChats.map(chat => chat._id);
+      const savedChatIds = savedChats.map((chat) => chat._id);
   
       // 4. ChatRoom에 채팅 메시지 ID 추가 및 저장
       chatRoom.chats.push(...savedChatIds);
       await chatRoom.save();
     } catch (error) {
-      console.error('Error saving chat history to MongoDB:', error);
-      throw error;
+      console.error("Error saving chat history to MongoDB:", error);
+      throw error; // 에러를 상위 계층으로 전파
     }
   }
   
@@ -239,26 +248,55 @@ export class CommonRepository {
   }
   
   // 기존의 데이터베이스 조회 로직을 그대로 사용
-  async getChatHistoryFromDatabase(chatRoomId: string){
-    const chatRoomIdObj = new Types.ObjectId(chatRoomId);
+  async getChatHistoryFromDatabase(chatRoomId: string): Promise<ChatRoom & { chats: Chat[] } | null> {
+    const chatRoomIdObj = new Types.ObjectId(chatRoomId); // ObjectId로 변환
     const chatRoom = await this.chatRoomModel
       .findByIdAndUpdate(chatRoomIdObj, { $set: { isRead: true } }, { new: true })
       .lean()
       .exec();
   
     if (chatRoom) {
-      return await this.chatRoomModel.populate(chatRoom, {
-        path: 'chats',
-        model: 'Chat',
-        options: { sort: { createdAt: 1 } }, // createdAt 필드명 확인
-        populate: { path: 'sender', select: 'nickname' },
-      }) // 타입 단언 추가
+      const populatedChatRoom = await this.chatRoomModel.populate<ChatRoom & { chats: Chat[] }>(chatRoom, {
+        path: 'chats', // 'chats' 필드를 populate
+        model: 'Chat', // Chat 모델을 사용하여 populate
+        options: { sort: { createdAt: 1 } }, // 오름차순 정렬
+        populate: { 
+          path: 'sender', // Chat 모델의 'sender' 필드를 populate
+          select: 'nickname' // sender의 nickname만 가져옴
+        },
+      });
+  
+      // chats 배열의 각 요소가 timestamp 필드를 포함하는지 확인
+      for (const chat of populatedChatRoom.chats) {
+        if (!chat.timestamp) {
+          console.error(`Missing timestamp in chat data: ${JSON.stringify(chat)}`);
+          chat.timestamp = new Date(); // 기본값으로 현재 시간 설정
+        } else if (isNaN(new Date(chat.timestamp).getTime())) {
+          console.error(`Invalid timestamp in chat data: ${JSON.stringify(chat)}`);
+          chat.timestamp = new Date(); // 기본값으로 현재 시간 설정
+        }
+      }
+  
+      return populatedChatRoom;
     } else {
+      console.error(`Chat room not found for chatRoomId: ${chatRoomId}`);
       return null;
     }
   }
   // 채팅 기록을 Redis List에 저장
   async saveChatHistoryToRedis(chatRoomId: string, messages: Chat[]): Promise<void> {
     await this.redisClient.rpush(`chatHistory:${chatRoomId}`, JSON.stringify(messages)); // 빈 배열도 저장
+  }
+
+  async updateChatRoomWithNewChats(chatRoomId: Types.ObjectId, chatIds: Types.ObjectId[]): Promise<void> {
+    try {
+      await this.chatRoomModel.updateOne(
+        { _id: chatRoomId },
+        { $push: { chats: { $each: chatIds } } }
+      );
+    } catch (error) {
+      console.error(`Error updating chatRoom with new chats: ${chatIds}`, error);
+      throw error;
+    }
   }
 }
