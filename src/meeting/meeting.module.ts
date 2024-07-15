@@ -9,6 +9,7 @@ import { ConfigService } from '@nestjs/config'
 import { SessionService } from './services/session.service'
 import { TimerService } from './services/timer.service'
 import { DrawingContestService } from './services/drawingContest.service'
+import { RedisService } from './services/redis.service'
 import Redis from 'ioredis'
 
 @Module({
@@ -31,6 +32,7 @@ import Redis from 'ioredis'
     ConfigService,
     SessionService,
     DrawingContestService,
+    RedisService,
     TimerService,
   ],
   exports: ['REDIS'],
