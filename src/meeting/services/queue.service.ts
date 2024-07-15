@@ -2,6 +2,7 @@ import { Injectable, Inject } from '@nestjs/common'
 import { MeetingService } from './meeting.service'
 import Redis from 'ioredis'
 import { SessionService } from './session.service'
+import { SendMessageCommand, SQSClient } from '@aws-sdk/client-sqs'
 
 @Injectable()
 export class QueueService {
@@ -91,5 +92,20 @@ export class QueueService {
       console.error('Error joining queue:', error)
       await this.sessionService.deleteSession(sessionId)
     }
+  }
+
+  private SQS_QUEUE_URL = process.env.SQS_QUEUE_URL
+  private region = 'ap-northeast-2'
+  private client = new SQSClient({ region: this.region })
+
+  async sendMessageToSqs(sessionId: string, sqsQueueUrl = this.SQS_QUEUE_URL) {
+    const command = new SendMessageCommand({
+      QueueUrl: sqsQueueUrl,
+      MessageBody: 'this is Message Body 입니다.',
+      MessageAttributes: {
+        sessionId: { DataType: 'String', StringValue: sessionId },
+      },
+    })
+    this.client.send(command)
   }
 }
