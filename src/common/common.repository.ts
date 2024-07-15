@@ -182,7 +182,7 @@ export class CommonRepository {
 
       const friendToUpdateIndex = user.friends.findIndex(friend => friend.friend == receiverNickname);
   
-      // user.friends[friendToUpdateIndex].newMessage = false;
+      user.friends[friendToUpdateIndex].newMessage = false;
       await user.save();
     } catch (error) {
       throw error;
