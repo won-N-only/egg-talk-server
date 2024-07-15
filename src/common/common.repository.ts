@@ -248,7 +248,7 @@ export class CommonRepository {
   }
   
   // 기존의 데이터베이스 조회 로직을 그대로 사용
-  async getChatHistoryFromDatabase(chatRoomId: string): Promise<ChatRoom & { chats: Chat[] } | null> {
+  async getChatHistoryFromDatabase(chatRoomId: string) {
     const chatRoomIdObj = new Types.ObjectId(chatRoomId); // ObjectId로 변환
     const chatRoom = await this.chatRoomModel
       .findByIdAndUpdate(chatRoomIdObj, { $set: { isRead: true } }, { new: true })
@@ -256,7 +256,7 @@ export class CommonRepository {
       .exec();
   
     if (chatRoom) {
-      const populatedChatRoom = await this.chatRoomModel.populate<ChatRoom & { chats: Chat[] }>(chatRoom, {
+      const populatedChatRoom = await this.chatRoomModel.populate(chatRoom, {
         path: 'chats', // 'chats' 필드를 populate
         model: 'Chat', // Chat 모델을 사용하여 populate
         options: { sort: { createdAt: 1 } }, // 오름차순 정렬
@@ -264,19 +264,7 @@ export class CommonRepository {
           path: 'sender', // Chat 모델의 'sender' 필드를 populate
           select: 'nickname' // sender의 nickname만 가져옴
         },
-      });
-  
-      // chats 배열의 각 요소가 timestamp 필드를 포함하는지 확인
-      for (const chat of populatedChatRoom.chats) {
-        if (!chat.timestamp) {
-          console.error(`Missing timestamp in chat data: ${JSON.stringify(chat)}`);
-          chat.timestamp = new Date(); // 기본값으로 현재 시간 설정
-        } else if (isNaN(new Date(chat.timestamp).getTime())) {
-          console.error(`Invalid timestamp in chat data: ${JSON.stringify(chat)}`);
-          chat.timestamp = new Date(); // 기본값으로 현재 시간 설정
-        }
-      }
-  
+      });  
       return populatedChatRoom;
     } else {
       console.error(`Chat room not found for chatRoomId: ${chatRoomId}`);

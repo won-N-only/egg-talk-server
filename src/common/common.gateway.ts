@@ -151,7 +151,6 @@ export class CommonGateway
   
     // 4. 채팅 기록 불러오기 (필요하다면)
     const chatHistory = await this.commonService.getChatHistory(chatRoomId);
-    console.log("joinChat의 chatHistory 목록", chatHistory);
   
     // 5. 읽음 표시
     await this.commonService.readMessage(friendName, nickname);
