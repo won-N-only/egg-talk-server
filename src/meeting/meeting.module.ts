@@ -9,11 +9,9 @@ import { ConfigService } from '@nestjs/config'
 import { SessionService } from './services/session.service'
 import { TimerService } from './services/timer.service'
 import { DrawingContestService } from './services/drawingContest.service'
-import { CommonModule } from '../common/common.module'
 import Redis from 'ioredis'
 
 @Module({
-  imports: [CommonModule],
   providers: [
     {
       provide: 'REDIS',
