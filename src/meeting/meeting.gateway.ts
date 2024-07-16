@@ -16,6 +16,7 @@ import { ConfigService } from '@nestjs/config'
 import { TimerService } from './services/timer.service'
 import { SessionService } from './services/session.service'
 import { DrawingContestService } from './services/drawingContest.service'
+import { RedisService } from './services/redis.service'
 import { JwtAuthWsGuard } from '../guards/jwt-auth.ws.guard'
 
 @UseGuards(JwtAuthWsGuard)
@@ -40,6 +41,7 @@ export class MeetingGateway
   private userCount = this.queueService.userQueueCount * 2
   constructor(
     private readonly meetingService: MeetingService,
+    private readonly redisService: RedisService,
     private readonly queueService: QueueService,
     private readonly configService: ConfigService,
     private readonly sessionService: SessionService,
@@ -383,7 +385,11 @@ export class MeetingGateway
     if (isAccepted === true) {
       const newSessionId = this.sessionService.generateSessionId()
 
-      await this.sessionService.createSession(newSessionId)
+      const newOpenViduUrl =
+        await this.sessionService.getOpenViduUrlBySessionId(sessionId)
+      const newOpenVidu =
+        await this.sessionService.getOpenViduInstance(newOpenViduUrl)
+      await this.sessionService.createSession(newSessionId, newOpenVidu)
 
       const partner = participant.find(
         participant => participant.name === partnerName,
