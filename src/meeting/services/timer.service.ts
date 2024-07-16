@@ -20,7 +20,7 @@ export class TimerService {
       { time: 94 / 60, event: 'cam' },
       { time: 104 / 60, event: 'drawingContest' },
       { time: 2.9, event: 'lastCupidTime' },
-      { time: 3.1, event: 'finish' },
+      { time: 300000.1, event: 'finish' },
     ]
 
     if (this.sessionTimers[sessionId]) {
