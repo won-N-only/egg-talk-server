@@ -61,7 +61,6 @@ export class QueueService {
   }
   // 참여자를 추가하는 함수입니다.
   async addParticipant(name: string, socket: Socket, gender: string) {
-    const start = performance.now()
     const participant = JSON.stringify({ name, socketId: socket.id })
     const genderQueue = gender === 'MALE' ? 'maleQueue' : 'femaleQueue'
 
@@ -82,13 +81,10 @@ export class QueueService {
       ),
     )
     await this.filterQueues()
-    const end = performance.now()
-    console.log(`addParticipant 실행 시간: ${(end - start).toFixed(2)}ms`)
   }
 
   // 대기열에서 특정 참가자를 제거합니다. 성별과 이름으로 찾아서 제거하는 방식입니다.
   async removeParticipant(name: string, gender: string) {
-    const start = performance.now()
     const genderQueue = gender === 'MALE' ? 'maleQueue' : 'femaleQueue'
     const queue = await this.redis.lrange(genderQueue, 0, -1)
     for (const item of queue) {
@@ -98,20 +94,13 @@ export class QueueService {
         break
       }
     }
-    const end = performance.now()
-    console.log(`removeParticipant 실행 시간: ${(end - start).toFixed(2)}ms`)
   }
 
   //  새로운 세션 ID를 생성합니다.
   async findOrCreateNewSession(): Promise<string> {
-    const start = performance.now()
     const newSessionId = this.sessionService.generateSessionId()
     await this.sessionService.createSession(newSessionId)
     console.log(`Creating and returning new session: ${newSessionId}`)
-    const end = performance.now()
-    console.log(
-      `findOrCreateNewSession 실행 시간: ${(end - start).toFixed(2)}ms`,
-    )
     return newSessionId
   }
 
@@ -123,14 +112,11 @@ export class QueueService {
   ) {
     let sessionId = ''
     try {
-      const start = performance.now()
       await this.addParticipant(participantName, client, gender)
 
       const result = await this.filterQueues()
       if (result) {
         const { sessionId, readyMales, readyFemales } = result
-        const end = performance.now()
-        console.log(`handleJoinQueue 실행 시간: ${(end - start).toFixed(2)}ms`)
         return { sessionId, readyMales, readyFemales }
       }
 
@@ -138,8 +124,6 @@ export class QueueService {
         'Current waiting participants: ',
         this.sessionService.getParticipants(sessionId).map(p => p.name),
       )
-      const end = performance.now()
-      console.log(`handleJoinQueue 실행 시간: ${(end - start).toFixed(2)}ms`)
       return { sessionId }
     } catch (error) {
       console.error('Error joining queue:', error)
@@ -152,7 +136,6 @@ export class QueueService {
   // 남자, 여자 대기열을 모두 확인해서 매칭 가능한 그룹을 찾음. 남자와 여자가 서로 친구가 아닌 경우에만 매칭을 시도함.
   // 매칭 가능한 그룹이 있으면 세션을 시작함.
   async filterQueues() {
-    const start = performance.now()
     const maleQueue = (await this.redis.lrange('maleQueue', 0, -1)).map(item =>
       JSON.parse(item),
     )
@@ -210,9 +193,6 @@ export class QueueService {
         await this.meetingService.startVideoChatSession(sessionId)
 
         await this.updateQueuesAfterMatch(males, females)
-
-        const end = performance.now()
-        console.log(`filterQueues 실행 시간: ${(end - start).toFixed(2)}ms`)
         return {
           sessionId,
           readyMales: males,
@@ -224,8 +204,6 @@ export class QueueService {
     } else {
       console.log('Not enough participants in both queues to start matching.')
     }
-    const end = performance.now()
-    console.log(`filterQueues 실행 시간: ${(end - start).toFixed(2)}ms`)
     return null
   }
   // 매칭된 그룹을 대기열에서 제거. 남녀참가자를 대기열에서 찾아 제거해야함.
@@ -254,7 +232,6 @@ export class QueueService {
 
   // 각 참가자의 친구 목록을 가져와서 맵으로 만들어줌. 예를 들면 "John"의 친구 목록을 가져와서 "John"의 키로 매핑을 함
   private async buildFriendsMap(queue: { name: string; socketId: string }[]) {
-    const start = performance.now()
     const friendsMap = new Map<string, Set<string>>()
     await Promise.all(
       queue.map(async participant => {
@@ -263,32 +240,17 @@ export class QueueService {
       }),
     )
     console.log('Built friends map:', friendsMap)
-    const end = performance.now()
-    console.log(`buildFriendsMap 실행 시간: ${(end - start).toFixed(2)}ms`)
     return friendsMap
   }
 
   // 친구 목록을 가져오게됨. 캐시에서 친구 목록을 찾고, 캐시에 없으면 데이터베이스를 뒤져서 친구 목록을 들고옴
   private async getFriends(name: string): Promise<string[]> {
-    const start = performance.now()
     const cachedFriends = this.friendCache.get<string[]>(name)
     if (cachedFriends) {
-      console.log(`Cache hit for friends of ${name}`)
-      const end = performance.now()
-      console.log(
-        `getFriends (cache hit) 실행 시간: ${(end - start).toFixed(2)}ms`,
-      )
       return cachedFriends
     }
-    console.log(
-      `Cache miss for friends of ${name}, fetching from commonService`,
-    )
     const friends = await this.commonService.sortFriend(name)
     this.friendCache.set(name, friends)
-    const end = performance.now()
-    console.log(
-      `getFriends (cache miss) 실행 시간: ${(end - start).toFixed(2)}ms`,
-    )
     return friends
   }
 
@@ -300,7 +262,6 @@ export class QueueService {
     maleQueue: { name: string; socketId: string }[],
     femaleQueue: { name: string; socketId: string }[],
   ) {
-    const start = performance.now()
     const males = graph.getMales()
     const females = graph.getFemales()
 
@@ -321,10 +282,6 @@ export class QueueService {
             femaleFriendsMap,
           )
         ) {
-          const end = performance.now()
-          console.log(
-            `findMatchingGroups 실행 시간: ${(end - start).toFixed(2)}ms`,
-          )
           return {
             males: maleGroup.map(name => ({
               name,
@@ -338,13 +295,10 @@ export class QueueService {
         }
       }
     }
-    const end = performance.now()
-    console.log(`findMatchingGroups 실행 시간: ${(end - start).toFixed(2)}ms`)
     return null
   }
 
   private getCombinations(arr: string[], size: number): string[][] {
-    const start = performance.now()
     const result: string[][] = []
     // 재귀적으로 조합을 생성하여 결과 배열에 추가합니다. 예를 들어, 5명 중 3명을 뽑는 모든 조합을 만듦
     // https://www.notion.so/queue-service-d93882ce399f4b6d9560f2e5335ed8c1 여기에 정리
@@ -360,8 +314,6 @@ export class QueueService {
       }
     }
     combine(0, [])
-    const end = performance.now()
-    console.log(`getCombinations 실행 시간: ${(end - start).toFixed(2)}ms`)
     return result
   }
 
@@ -372,7 +324,6 @@ export class QueueService {
     maleFriendsMap: Map<string, Set<string>>,
     femaleFriendsMap: Map<string, Set<string>>,
   ): boolean {
-    const start = performance.now()
     const allMales = new Set(males)
     const allFemales = new Set(females)
     // 각 남자의 친구 목록을 확인하여, 여자 그룹에 속한 여자가 친구 목록에 있는지 확인합니다. 친구가 있으면 유효하지 않은 그룹으로 판단합니다.
@@ -382,8 +333,6 @@ export class QueueService {
 
       for (const female of females) {
         if (!neighbors.has(female) || maleFriends.has(female)) {
-          const end = performance.now()
-          console.log(`isGroupValid 실행 시간: ${(end - start).toFixed(2)}ms`)
           return false
         }
       }
@@ -395,15 +344,11 @@ export class QueueService {
 
       for (const male of males) {
         if (!neighbors.has(male) || femaleFriends.has(male)) {
-          const end = performance.now()
-          console.log(`isGroupValid 실행 시간: ${(end - start).toFixed(2)}ms`)
           return false
         }
       }
     }
 
-    const end = performance.now()
-    console.log(`isGroupValid 실행 시간: ${(end - start).toFixed(2)}ms`)
     // 모든 검증을 통과하면 유효한 그룹으로 판단하고 true를 반환합니다.
     return true
   }
