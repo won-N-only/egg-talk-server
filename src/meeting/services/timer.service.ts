@@ -7,14 +7,11 @@ import Redis from 'ioredis'
 @Injectable()
 export class TimerService {
   private sessionTimers: Record<string, NodeJS.Timeout> = {}
-  private redis: Redis
 
   constructor(
     private readonly sessionService: SessionService,
-    @Inject('REDIS') redis: Redis,
-  ) {
-    this.redis = redis
-  }
+    @Inject('REDIS') private readonly redis: Redis,
+  ) {}
 
   startSessionTimer(sessionId: string, server: Server) {
     const timers = [
