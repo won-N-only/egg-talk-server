@@ -115,40 +115,6 @@ export class CommonRepository {
     }
   }
 
-  // async getChatRoomMessage(chatRoomObjectId: Types.ObjectId) {
-  //   const chatRoom = await this.chatRoomModel
-  //     .findByIdAndUpdate(
-  //       chatRoomObjectId,
-  //       { $set: { isRead: true } },
-  //       { new: true },
-  //     )
-  //     .lean()
-  //     .exec()
-
-  //   if (chatRoom) {
-  //     return await this.chatRoomModel.populate(chatRoom, {
-  //       path: 'chats',
-  //       model: 'Chat',
-  //       options: { sort: { createAt: 1 } },
-  //       populate: { path: 'sender', select: 'nickname' },
-  //     })
-  //   } else return null
-  // }
-
-  // async saveMessagetoChatRoom(
-  //   sender: string,
-  //   message: string,
-  //   chatRoomId: string,
-  //   isReceiverOnline: boolean,
-  // ): Promise<Chat> {
-  //   const newChat = await this.chatModel.create({ sender, message })
-  //   await this.chatRoomModel.findByIdAndUpdate(chatRoomId, {
-  //     $push: { chats: newChat._id },
-  //     isRead: isReceiverOnline,
-  //   })
-  //   return newChat
-  // }
-
   async updateChatRoomIsRead(chatRoomId: string, isRead: boolean): Promise<void> {
   await this.chatRoomModel.findByIdAndUpdate(chatRoomId, { isRead });
 }
@@ -189,23 +155,6 @@ export class CommonRepository {
     }
   }
 
-  // // 5분마다 채팅 기록을 DB에 저장하는 스케줄러 함수
-  // async saveChatHistoryToDatabase(chatRoomId: string, messages: Chat[]){
-  //   try{
-  //     // 1. chatRoomId를 ObjectId로 변환
-  //     const chatRoomIdObj = new Types.ObjectId(chatRoomId);
-
-  //     // 2. Chat 객체 배열을 바로 사용
-  //     messages.forEach(chat => {
-  //       chat.chatRoomId === chatRoomIdObj
-  //     })
-  //     console.log("메세지 입니다---------------------", messages);
-  //     await this.chatModel.insertMany(messages)
-
-  //   } catch (error){
-  //     console.error('채팅 기록 저장 실패:', error)
-  //   }
-  // }
   async saveChatHistoryToMongo(
     chatRoomId: Types.ObjectId,
     chats: ChatWithMetadata[]
@@ -239,14 +188,6 @@ export class CommonRepository {
     }
   }
   
-  
-
-  // Redis List에서 채팅 기록을 가져와 Chat 객체 배열로 반환합
-  async getChatHistoryFromRedis(chatRoomId: string): Promise<Chat[]> {
-    const messages = await this.redisClient.lrange(`chatHistory:${chatRoomId}`, 0, -1);
-    return messages?.map(message => JSON.parse(message) as Chat);
-  }
-  
   // 기존의 데이터베이스 조회 로직을 그대로 사용
   async getChatHistoryFromDatabase(chatRoomId: string) {
     const chatRoomIdObj = new Types.ObjectId(chatRoomId); // ObjectId로 변환
@@ -271,34 +212,24 @@ export class CommonRepository {
       return null;
     }
   }
-  // 채팅 기록을 Redis List에 저장
-  async saveChatHistoryToRedis(chatRoomId: string, messages: Chat[]): Promise<void> {
-    await this.redisClient.rpush(`chatHistory:${chatRoomId}`, JSON.stringify(messages)); // 빈 배열도 저장
-  }
-
-  async updateChatRoomWithNewChats(chatRoomId: Types.ObjectId, chatIds: Types.ObjectId[]): Promise<void> {
-    try {
-      await this.chatRoomModel.updateOne(
-        { _id: chatRoomId },
-        { $push: { chats: { $each: chatIds } } }
-      );
-    } catch (error) {
-      console.error(`Error updating chatRoom with new chats: ${chatIds}`, error);
-      throw error;
-    }
-  }
-
   // 최근 메세지 가져오는 함수
-  async getLastSavedMessage(chatRoomId: string){
+  async getLastSavedMessage(chatRoomId: string) {
     try {
+      const messageCount = await this.chatModel.countDocuments({ chatRoomId });
+      if (messageCount === 0) {
+          console.log(`No messages found for chatRoomId ${chatRoomId}`);
+          return null;
+      }
+
       const lastMessage = await this.chatModel
-        .findOne({ chatRoomId: new Types.ObjectId(chatRoomId) })
-        .sort({ timestamp: -1 }) // 타임스탬프를 기준으로 내림차순 정렬하여 가장 최근 메시지를 가져옴
+        .findOne({ chatRoomId })
+        .sort({ timestamp: -1 })
         .exec();
+  
       return lastMessage;
     } catch (error) {
-      console.error(`Error fetching last saved message for chatRoomId ${chatRoomId}:`, error);
+      console.error(`Error fetching last saved message for chatRoomId ${chatRoomId}: ${error.message}`);
       return null;
     }
-  } 
+  }
 }

@@ -11,20 +11,8 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Cache } from 'cache-manager'
 import { Redis } from 'ioredis'
 import { Cron, CronExpression } from '@nestjs/schedule'
-import { ChatRoom } from 'src/entities/chat-room.entity'
-import { timestamp } from 'rxjs'
 import { InjectModel } from '@nestjs/mongoose'
 
-interface RedisMessage {
-  _id: string
-  sender: string
-  message: string
-  chatRoomId: string
-  timestamp: string
-  createdAt: string
-  updatedAt: string
-  __v: number
-}
 @Injectable()
 export class CommonService {
   private redisClient: Redis
@@ -125,56 +113,7 @@ export class CommonService {
     }
   }
 
-  // async sendMessage(
-  //   senderNickName: string,
-  //   chatRoomId: string,
-  //   message: string,
-  //   isReceiverOnline: boolean,
-  // ): Promise<Chat> {
-  //   try {
-  //     //DTO
-  //     const newChat = await this.commonRepository.saveMessagetoChatRoom(
-  //       senderNickName,
-  //       message,
-  //       chatRoomId,
-  //       isReceiverOnline,
-  //     )
-  //     return newChat
-  //   } catch (error) {
-  //     console.error('메시지 저장 실패:', error)
-  //     throw error
-  //   }
-  // }
 
-  // Redis 버전
-  // async sendMessage(
-  //   senderNickName: string,
-  //   chatRoomId: string,
-  //   message: string,
-  //   isReceiverOnline: boolean,
-  // ): Promise<Chat> {
-  //   const newChat = new this.chatModel({
-  //     sender: senderNickName,
-  //     message,
-  //     chatRoomId: new Types.ObjectId(chatRoomId),
-  //     timestamp: new Date(),
-  //   })
-
-  //   // sorted Set에 저장
-  //   await this.redisClient.zadd(
-  //     `chatHistorySorted:${chatRoomId}`,
-  //     newChat.timestamp.getTime(),
-  //     JSON.stringify({ sender: senderNickName, message, chatRoomId }),
-  //   )
-
-  //   await this.commonRepository.updateChatRoomIsRead(
-  //     chatRoomId,
-  //     isReceiverOnline,
-  //   )
-  //   // await newChat.save()
-  //   console.log(newChat)
-  //   return newChat
-  // }
   async sendMessage(
     senderNickName: string,
     chatRoomId: string,
@@ -206,7 +145,7 @@ export class CommonService {
     return newChat
   }
 
-  @Cron(CronExpression.EVERY_MINUTE)
+  @Cron(CronExpression.EVERY_5_MINUTES)
   async saveChatHistoryToDataBase() {
     console.log('Cron 정상작동합니다!!!!!!')
 
@@ -222,7 +161,6 @@ export class CommonService {
         ? new Date(lastSavedMessage.timestamp).getTime()
         : 0
 
-      console.log(lastSavedMessage, '마지막 타임스탬프')
 
       const messagesWithScores = await this.redisClient.zrange(
         chatRoomKey,
