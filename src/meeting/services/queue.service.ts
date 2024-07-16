@@ -1,9 +1,11 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, Inject } from '@nestjs/common'
 import { Socket } from 'socket.io'
 import { MeetingService } from './meeting.service'
 import { CommonService } from '../../common/common.service'
 import * as NodeCache from 'node-cache'
 import { performance } from 'perf_hooks'
+import { Redis } from 'ioredis'
+import { SessionService } from './session.service'
 
 class BipartiteGraph {
   private maleEdges: Map<string, Set<string>> = new Map()
@@ -13,12 +15,12 @@ class BipartiteGraph {
     if (!this.maleEdges.has(male)) {
       this.maleEdges.set(male, new Set())
     }
-    this.maleEdges.get(male).add(female)
+    this.maleEdges.get(male)!.add(female)
 
     if (!this.femaleEdges.has(female)) {
       this.femaleEdges.set(female, new Set())
     }
-    this.femaleEdges.get(female).add(male)
+    this.femaleEdges.get(female)!.add(male)
   }
 
   getMaleNeighbors(male: string): Set<string> {
@@ -40,48 +42,64 @@ class BipartiteGraph {
 
 @Injectable()
 export class QueueService {
-  private maleQueue: { name: string; socket: Socket }[] = []
-  private femaleQueue: { name: string; socket: Socket }[] = []
+  private redis: Redis
+  public userQueueCount = 3
   private friendCache = new NodeCache({ stdTTL: 600 })
 
   constructor(
     private readonly meetingService: MeetingService,
     private readonly commonService: CommonService,
-  ) {}
+    private readonly sessionService: SessionService,
+    @Inject('REDIS') redis: Redis,
+  ) {
+    this.redis = redis
+  }
 
   async addParticipant(name: string, socket: Socket, gender: string) {
     const start = performance.now()
-    const queue = gender === 'MALE' ? this.maleQueue : this.femaleQueue
-    const index = queue.findIndex(p => p.name === name)
-    if (index !== -1) {
-      queue.splice(index, 1)
+    const participant = JSON.stringify({ name, socketId: socket.id })
+    const genderQueue = gender === 'MALE' ? 'maleQueue' : 'femaleQueue'
+
+    const queue = await this.redis.lrange(genderQueue, 0, -1)
+
+    for (const item of queue) {
+      const parsedItem = JSON.parse(item)
+      if (parsedItem.name === name) {
+        await this.redis.lrem(genderQueue, 0, item)
+      }
     }
-    queue.push({ name, socket })
+
+    await this.redis.rpush(genderQueue, participant)
     console.log(
       `${gender} Queue: `,
-      queue.map(p => p.name),
+      (await this.redis.lrange(genderQueue, 0, -1)).map(
+        item => JSON.parse(item).name,
+      ),
     )
     await this.filterQueues()
     const end = performance.now()
     console.log(`addParticipant 실행 시간: ${(end - start).toFixed(2)}ms`)
   }
 
-  removeParticipant(name: string, gender: string) {
+  async removeParticipant(name: string, gender: string) {
     const start = performance.now()
-    const queue = gender === 'MALE' ? this.maleQueue : this.femaleQueue
-    this[`${gender.toLowerCase()}Queue`] = queue.filter(p => p.name !== name)
-    console.log(
-      `Update ${gender} Queue: `,
-      this[`${gender.toLowerCase()}Queue`].map(p => p.name),
-    )
+    const genderQueue = gender === 'MALE' ? 'maleQueue' : 'femaleQueue'
+    const queue = await this.redis.lrange(genderQueue, 0, -1)
+    for (const item of queue) {
+      const parsedItem = JSON.parse(item)
+      if (parsedItem.name === name) {
+        await this.redis.lrem(genderQueue, 0, item)
+        break
+      }
+    }
     const end = performance.now()
     console.log(`removeParticipant 실행 시간: ${(end - start).toFixed(2)}ms`)
   }
 
   async findOrCreateNewSession(): Promise<string> {
     const start = performance.now()
-    const newSessionId = this.meetingService.generateSessionId()
-    await this.meetingService.createSession(newSessionId)
+    const newSessionId = this.sessionService.generateSessionId()
+    await this.sessionService.createSession(newSessionId)
     console.log(`Creating and returning new session: ${newSessionId}`)
     const end = performance.now()
     console.log(
@@ -110,7 +128,7 @@ export class QueueService {
 
       console.log(
         'Current waiting participants: ',
-        this.meetingService.getParticipants(sessionId).map(p => p.name),
+        this.sessionService.getParticipants(sessionId).map(p => p.name),
       )
       const end = performance.now()
       console.log(`handleJoinQueue 실행 시간: ${(end - start).toFixed(2)}ms`)
@@ -118,23 +136,30 @@ export class QueueService {
     } catch (error) {
       console.error('Error joining queue:', error)
       if (sessionId) {
-        await this.meetingService.deleteSession(sessionId)
+        await this.sessionService.deleteSession(sessionId)
       }
     }
   }
 
   async filterQueues() {
     const start = performance.now()
-    if (this.maleQueue.length >= 3 && this.femaleQueue.length >= 3) {
+    const maleQueue = (await this.redis.lrange('maleQueue', 0, -1)).map(item =>
+      JSON.parse(item),
+    )
+    const femaleQueue = (await this.redis.lrange('femaleQueue', 0, -1)).map(
+      item => JSON.parse(item),
+    )
+
+    if (maleQueue.length >= 3 && femaleQueue.length >= 3) {
       console.log('Attempting to filter queues for matching...')
       const [maleFriendsMap, femaleFriendsMap] = await Promise.all([
-        this.buildFriendsMap(this.maleQueue),
-        this.buildFriendsMap(this.femaleQueue),
+        this.buildFriendsMap(maleQueue),
+        this.buildFriendsMap(femaleQueue),
       ])
 
       const graph = new BipartiteGraph()
-      for (const male of this.maleQueue) {
-        for (const female of this.femaleQueue) {
+      for (const male of maleQueue) {
+        for (const female of femaleQueue) {
           if (
             !maleFriendsMap.get(male.name).has(female.name) &&
             !femaleFriendsMap.get(female.name).has(male.name)
@@ -148,6 +173,8 @@ export class QueueService {
         graph,
         maleFriendsMap,
         femaleFriendsMap,
+        maleQueue,
+        femaleQueue,
       )
 
       if (result) {
@@ -157,30 +184,25 @@ export class QueueService {
 
         await Promise.all([
           ...males.map(male =>
-            this.meetingService.addParticipant(
+            this.sessionService.addParticipant(
               sessionId,
               male.name,
-              male.socket,
+              male.socketId,
             ),
           ),
           ...females.map(female =>
-            this.meetingService.addParticipant(
+            this.sessionService.addParticipant(
               sessionId,
               female.name,
-              female.socket,
+              female.socketId,
             ),
           ),
         ])
 
-        console.log('현재 큐 시작진입합니다 세션 이름은: ', sessionId)
+        console.log('Starting session with id: ', sessionId)
         await this.meetingService.startVideoChatSession(sessionId)
 
-        this.maleQueue = this.maleQueue.filter(
-          m => !males.map(male => male.name).includes(m.name),
-        )
-        this.femaleQueue = this.femaleQueue.filter(
-          f => !females.map(female => female.name).includes(f.name),
-        )
+        await this.updateQueuesAfterMatch(males, females)
 
         const end = performance.now()
         console.log(`filterQueues 실행 시간: ${(end - start).toFixed(2)}ms`)
@@ -200,7 +222,30 @@ export class QueueService {
     return null
   }
 
-  private async buildFriendsMap(queue: { name: string; socket: Socket }[]) {
+  private async updateQueuesAfterMatch(
+    males: { name: string; socketId: string }[],
+    females: { name: string; socketId: string }[],
+  ) {
+    const maleQueue = await this.redis.lrange('maleQueue', 0, -1)
+    const femaleQueue = await this.redis.lrange('femaleQueue', 0, -1)
+
+    for (const male of males) {
+      await this.redis.lrem(
+        'maleQueue',
+        0,
+        JSON.stringify({ name: male.name, socketId: male.socketId }),
+      )
+    }
+    for (const female of females) {
+      await this.redis.lrem(
+        'femaleQueue',
+        0,
+        JSON.stringify({ name: female.name, socketId: female.socketId }),
+      )
+    }
+  }
+
+  private async buildFriendsMap(queue: { name: string; socketId: string }[]) {
     const start = performance.now()
     const friendsMap = new Map<string, Set<string>>()
     await Promise.all(
@@ -242,6 +287,8 @@ export class QueueService {
     graph: BipartiteGraph,
     maleFriendsMap: Map<string, Set<string>>,
     femaleFriendsMap: Map<string, Set<string>>,
+    maleQueue: { name: string; socketId: string }[],
+    femaleQueue: { name: string; socketId: string }[],
   ) {
     const start = performance.now()
     const males = graph.getMales()
@@ -271,11 +318,11 @@ export class QueueService {
           return {
             males: maleGroup.map(name => ({
               name,
-              socket: this.maleQueue.find(p => p.name === name).socket,
+              socketId: maleQueue.find(p => p.name === name).socketId,
             })),
             females: femaleGroup.map(name => ({
               name,
-              socket: this.femaleQueue.find(p => p.name === name).socket,
+              socketId: femaleQueue.find(p => p.name === name).socketId,
             })),
           }
         }
