@@ -21,6 +21,7 @@ export class RedisService {
       const sessionId = channel.split(':')[2]
       const openViduUrl =
         await this.sessionService.getOpenViduUrlBySessionId(sessionId)
+      console.log('subscribe success', openViduUrl)
       if (openViduUrl) {
         this.sessionService.startVideoChatSession(sessionId, openViduUrl)
       }

@@ -23,6 +23,7 @@ export class SessionService {
   async startVideoChatSession(sessionId: string, openViduUrl: string) {
     try {
       const openVidu = await this.getOpenViduInstance(openViduUrl)
+      if (!openVidu) console.log('openVidu server broken')
       await this.createSession(sessionId, openVidu)
       const tokens = await this.meetingService.generateTokens(sessionId)
       const participants = this.sessions[sessionId].participants
