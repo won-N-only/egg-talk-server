@@ -431,6 +431,7 @@ export class MeetingGateway
       await this.meetingService.getSessionIdByParticipantName(participantName)
     if (sessionId) {
       this.meetingService.removeParticipant(sessionId, participantName)
+      await this.meetingService.deleteParticipantNameInSession(sessionId)
       await this.meetingService.deleteCupidFlagBySessionId(sessionId)
       await this.meetingService.deleteLastCupidFlagBySessionId(sessionId)
     }
