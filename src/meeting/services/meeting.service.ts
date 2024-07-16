@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common'
+import { forwardRef, Inject, Injectable } from '@nestjs/common'
 import { OpenViduRole } from 'openvidu-node-client'
 import { Server, Socket } from 'socket.io'
 import Redis from 'ioredis'
@@ -13,16 +13,14 @@ type ChooseResult = {
 @Injectable()
 export class MeetingService {
   public server: Server
-  private redis: Redis
   private connectedSockets = new Map<string, Socket>() // socketId: Socket
 
   constructor(
+    @Inject(forwardRef(() => SessionService))
     private readonly sessionService: SessionService,
     private readonly timerService: TimerService,
-    @Inject('REDIS') redis: Redis,
-  ) {
-    this.redis = redis
-  }
+    @Inject('REDIS') private readonly redis: Redis,
+  ) {}
 
   // 소켓 관리
   async getParticipantNameBySocketId(socketId: string): Promise<string | null> {
@@ -181,24 +179,6 @@ export class MeetingService {
     } catch (error) {
       console.error('Error generating tokens:', error)
       return []
-    }
-  }
-
-  async startVideoChatSession(sessionId: string) {
-    try {
-      const tokens = await this.generateTokens(sessionId)
-
-      for (const { participant, token } of tokens) {
-        const participantSocketId =
-          await this.getSocketIdByParticipantName(participant)
-        this.server.to(participantSocketId).emit('startCall', {
-          sessionId: sessionId,
-          token: token,
-          participantName: participant,
-        })
-      }
-    } catch (error) {
-      console.error('Error generating tokens: ', error)
     }
   }
 
