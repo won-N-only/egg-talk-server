@@ -14,6 +14,7 @@ import { Server, Socket } from 'socket.io'
 import { CommonService } from './common.service'
 import { AcceptFriend, AddFriendDto } from './dto/request/notification.dto'
 import { UsersService } from '../users/users.service'
+import { joinChatDto, sendMessageDto } from './dto/request/chat.dto'
 
 const logger = new Logger('ChatGateway')
 
@@ -77,7 +78,7 @@ export class CommonGateway
   async friendStat(@ConnectedSocket() client: Socket) {
     try {
       const nickname = client['user'].nickname
-      // const nickname = 'jinyong'
+      // const nickname = 'jinYong'
       const friendIds = await this.commonService.sortFriend(nickname)
       // const friendStat = new Map<string, boolean>();
       const friendStat: Array<{ [key: string]: boolean }> = []
@@ -147,6 +148,7 @@ export class CommonGateway
     }
   
     // 3. 새 채팅방 참여
+
     client.join(chatRoomId);
   
     // 4. 채팅 기록 불러오기 (필요하다면)
@@ -155,6 +157,7 @@ export class CommonGateway
     // 5. 읽음 표시
     await this.commonService.readMessage(friendName, nickname);
     client.emit('chatHistory', chatHistory);
+    
   }
 
   @SubscribeMessage('closeChat')
@@ -168,6 +171,7 @@ export class CommonGateway
   
       // 채팅방 퇴장 시에도 Redis 데이터 유지 (삭제하지 않음)
       // ... (나머지 로직)
+
     } catch (error) {
       logger.error('채팅방 떠나기 오류', error);
     }
@@ -177,12 +181,7 @@ export class CommonGateway
   async handleSendMessage(
     @ConnectedSocket() client: Socket,
     @MessageBody()
-    payload: {
-      userNickname: string
-      chatRoomId: string
-      message: string
-      receiverNickname: string
-    },
+    payload : sendMessageDto,
   ) {
     try {
       const { chatRoomId, message, userNickname, receiverNickname } = payload
@@ -219,7 +218,7 @@ export class CommonGateway
         await this.commonService.newMessage(receiverNickname, userNickname)
       }
 
-      // 1. recieverId에 대응 하는 socket ID 가 connectClient에 존재하는지 확인
+      // 1. receiverId에 대응 하는 socket ID 가 connectClient에 존재하는지 확인
       // 2. (존재하는경우)
       //                1) 상대방이 room에 join 한경우         emit("message")
       //                2) 상대방이 room에 join 하지 않은 경우   emit("online_notice_message")

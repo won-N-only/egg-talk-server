@@ -119,6 +119,7 @@ export class CommonService {
     chatRoomId: string,
     message: string,
     isReceiverOnline: boolean,
+
   ) {
     const newChat = {
       _id: new Types.ObjectId(),
@@ -167,6 +168,7 @@ export class CommonService {
         0,
         -1,
         'WITHSCORES',
+
       )
 
       const messages: [string, number][] = []
