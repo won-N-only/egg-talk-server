@@ -425,11 +425,11 @@ export class MeetingGateway
       await this.meetingService.getSessionIdByParticipantName(participantName)
     if (sessionId) {
       this.meetingService.removeParticipant(sessionId, participantName)
+      await this.meetingService.deleteCupidFlagBySessionId(sessionId)
+      await this.meetingService.deleteLastCupidFlagBySessionId(sessionId)
     }
     await this.meetingService.deleteParticipantNameInSession(participantName)
     await this.meetingService.deleteConnectedSocket(client.id, participantName)
-    await this.meetingService.deleteCupidFlagBySessionId(sessionId)
-    await this.meetingService.deleteLastCupidFlagBySessionId(sessionId)
   }
 
   @SubscribeMessage('emoji')

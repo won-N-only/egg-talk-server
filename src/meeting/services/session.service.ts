@@ -11,6 +11,7 @@ type sessionData = {
 
 @Injectable()
 export class SessionService {
+  /**url 받고 openVidu 객체 만들어서 세션발급 토큰발급 하는 함수 만들기 */
   private openVidu: OpenVidu
   private redis: Redis
   private server: Server
@@ -27,9 +28,10 @@ export class SessionService {
   }
 
   async startVideoChatSession(sessionId: string) {
-    const sessionDataString = await this.redis.get(`sessionId:${sessionId}`)
+    const sessionDataString = await this.redis.get(`sessionId:${sessionId}`) //url뿐
     const sessionData: sessionData = JSON.parse(sessionDataString)
-    const tokens = sessionData.tokens
+    const tokens =
+      sessionData.tokens /**server에서 gen.tokens 하기, 세션 만들기 */
     const openviduUrl = sessionData.openviduUrl
     const participants = this.sessions[sessionId].participants
     participants.forEach((participant, index) => {
