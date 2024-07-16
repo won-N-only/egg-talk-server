@@ -130,8 +130,8 @@ export class CommonGateway
 
   @SubscribeMessage('joinChat')
   async handleJoinRoom(
-    client: Socket,
-    payload: { newChatRoomId: string; friendName: string },
+    @ConnectedSocket()client: Socket,
+    @MessageBody()payload: { newChatRoomId: string; friendName: string },
   ) {
     const { newChatRoomId, friendName } = payload;
     const chatRoomId = newChatRoomId;
