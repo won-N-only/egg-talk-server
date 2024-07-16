@@ -11,11 +11,9 @@ import { TimerService } from './services/timer.service'
 import { DrawingContestService } from './services/drawingContest.service'
 import { CommonModule } from '../common/common.module'
 import Redis from 'ioredis'
-import { UsersModule } from '../users/users.module'
-import { CommonService } from '../common/common.service'
 
 @Module({
-  imports: [UsersModule, CommonModule],
+  imports: [CommonModule],
   providers: [
     {
       provide: 'REDIS',
@@ -27,7 +25,6 @@ import { CommonService } from '../common/common.service'
       },
     },
     MeetingGateway,
-    CommonService,
     MeetingService,
     QueueService,
     MeetingRepository,
