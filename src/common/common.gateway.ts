@@ -78,15 +78,13 @@ export class CommonGateway
   async friendStat(@ConnectedSocket() client: Socket) {
     try {
       const nickname = client['user'].nickname
-      // const nickname = 'jinYong'
       const friendIds = await this.commonService.sortFriend(nickname)
-      // const friendStat = new Map<string, boolean>();
       const friendStat: Array<{ [key: string]: boolean }> = []
 
       if (friendIds.length > 0) {
         for (const friend of friendIds) {
-          const friendSocket = this.commonService.getSocketByUserId(friend)
-          if (friendSocket) {
+          const friendSocket = await this.commonService.getSocketByUserId(friend)
+          if (friendSocket !== null ) {
             // 친구가 로그인 되어있다면 { 친구이름 : 참 } 형태로 저장
             friendStat.push({ [friend]: true })
           } else {

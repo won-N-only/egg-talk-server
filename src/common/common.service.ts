@@ -113,13 +113,11 @@ export class CommonService {
     }
   }
 
-
   async sendMessage(
     senderNickName: string,
     chatRoomId: string,
     message: string,
     isReceiverOnline: boolean,
-
   ) {
     const newChat = {
       _id: new Types.ObjectId(),
@@ -162,13 +160,11 @@ export class CommonService {
         ? new Date(lastSavedMessage.timestamp).getTime()
         : 0
 
-
       const messagesWithScores = await this.redisClient.zrange(
         chatRoomKey,
         0,
         -1,
         'WITHSCORES',
-
       )
 
       const messages: [string, number][] = []

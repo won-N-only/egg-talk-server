@@ -44,7 +44,4 @@ import { ScheduleModule  } from '@nestjs/schedule'
   ],
   exports: [CacheModule, CommonRepository, CommonService],
 })
-export class CommonModule {
-  constructor(private commonGateway: CommonGateway) {
-  }
-}
+export class CommonModule {}
