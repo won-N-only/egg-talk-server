@@ -1,48 +1,44 @@
-import { Inject, Injectable } from '@nestjs/common'
-import { Redis } from 'ioredis'
+import { forwardRef, Inject, Injectable } from '@nestjs/common'
 import { OpenVidu, Session } from 'openvidu-node-client'
 import { v4 as uuidv4 } from 'uuid'
 import { Server } from 'socket.io'
-
-type sessionData = {
-  tokens: string[]
-  openviduUrl: string
-}
+import { MeetingService } from './meeting.service'
+import { Redis } from 'ioredis'
 
 @Injectable()
 export class SessionService {
-  /**url 받고 openVidu 객체 만들어서 세션발급 토큰발급 하는 함수 만들기 */
-  private openVidu: OpenVidu
-  private redis: Redis
   private server: Server
   private sessions: Record<
     string,
     { session: Session; participants: { name: string; socketId: string }[] }
   > = {}
+  private openViduInstances: Record<string, OpenVidu> = {}
 
-  constructor(@Inject('REDIS') redis: Redis) {
-    this.redis = redis
-    const OPENVIDU_URL = process.env.OPENVIDU_URL
-    const OPENVIDU_SECRET = process.env.OPENVIDU_SECRET
-    this.openVidu = new OpenVidu(OPENVIDU_URL, OPENVIDU_SECRET)
-  }
+  constructor(
+    @Inject(forwardRef(() => MeetingService))
+    private readonly meetingService: MeetingService,
+    @Inject('REDIS') private readonly redis: Redis,
+  ) {}
 
-  async startVideoChatSession(sessionId: string) {
-    const sessionDataString = await this.redis.get(`sessionId:${sessionId}`) //url뿐
-    const sessionData: sessionData = JSON.parse(sessionDataString)
-    const tokens =
-      sessionData.tokens /**server에서 gen.tokens 하기, 세션 만들기 */
-    const openviduUrl = sessionData.openviduUrl
-    const participants = this.sessions[sessionId].participants
-    participants.forEach((participant, index) => {
-      this.sendTokenToParticipant(
-        sessionId,
-        tokens[index],
-        participant.name,
-        participant.socketId,
-        openviduUrl,
-      )
-    })
+  async startVideoChatSession(sessionId: string, openViduUrl: string) {
+    try {
+      const openVidu = await this.getOpenViduInstance(openViduUrl)
+      await this.createSession(sessionId, openVidu)
+      const tokens = await this.meetingService.generateTokens(sessionId)
+      const participants = this.sessions[sessionId].participants
+
+      participants.forEach((participant, index) => {
+        const token = tokens[index]
+        this.sendTokenToParticipant(
+          sessionId,
+          token.token,
+          participant.name,
+          participant.socketId,
+        )
+      })
+    } catch (e) {
+      console.error('Error startVideoChatSession:', e)
+    }
   }
 
   private async sendTokenToParticipant(
@@ -50,30 +46,53 @@ export class SessionService {
     token: string,
     participantName: string,
     participantSocketId: string,
-    openviduUrl: string,
   ) {
-    this.server.to(participantSocketId).emit('startCall', {
+    this.meetingService.server.to(participantSocketId).emit('startCall', {
       sessionId,
       token,
       participantName,
-      openviduUrl,
     })
+  }
+
+  async getOpenViduInstance(openviduUrl: string): Promise<OpenVidu> {
+    if (!this.openViduInstances[openviduUrl]) {
+      this.openViduInstances[openviduUrl] =
+        await this.createOpenViduInstance(openviduUrl)
+    }
+    return this.openViduInstances[openviduUrl]
+  }
+
+  async createOpenViduInstance(openviduUrl: string) {
+    const OPENVIDU_SECRET = process.env.OPENVIDU_SECRET
+    return new OpenVidu(openviduUrl, OPENVIDU_SECRET)
+  }
+
+  async getOpenViduUrlBySessionId(sessionId: string) {
+    return await this.redis.get(`sessionId:${sessionId}:openViduUrl`)
   }
 
   generateSessionId() {
     return uuidv4()
   }
 
-  async createSession(sessionId: string): Promise<Session> {
-    if (!this.sessions[sessionId]) {
-      const session = await this.openVidu.createSession({
-        customSessionId: sessionId,
-      })
-      this.sessions[sessionId] = { session, participants: [] }
-      return session
-    } else {
-      return this.sessions[sessionId].session
-    }
+  async findOrCreateNewSession(openVidu: OpenVidu): Promise<string> {
+    const newSessionId = this.generateSessionId()
+    await this.createSession(newSessionId, openVidu)
+    console.log(`Creating and returning new session: ${newSessionId}`)
+    return newSessionId
+  }
+
+  async initSession(sessionId: string) {
+    this.sessions[sessionId] = { session: null, participants: [] }
+  }
+
+  async createSession(sessionId: string, openVidu: OpenVidu): Promise<Session> {
+    const session = await openVidu.createSession({
+      customSessionId: sessionId,
+    })
+    console.log('세션을 만드는 중입니다.', session.sessionId)
+    this.sessions[sessionId].session = session
+    return session
   }
 
   async deleteSession(sessionId: string): Promise<void> {
