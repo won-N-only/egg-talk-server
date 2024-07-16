@@ -6,15 +6,12 @@ import { SendMessageCommand, SQSClient } from '@aws-sdk/client-sqs'
 
 @Injectable()
 export class QueueService {
-  private redis: Redis
   public userQueueCount = 3
   constructor(
     private readonly meetingService: MeetingService,
     private readonly sessionService: SessionService,
-    @Inject('REDIS') redis: Redis,
-  ) {
-    this.redis = redis
-  }
+    @Inject('REDIS') private readonly redis: Redis,
+  ) {}
 
   /* 참여자 대기열 추가 */
   async addParticipantToQueue(name: string, gender: string) {
@@ -35,18 +32,11 @@ export class QueueService {
     await this.redis.lrem(genderQueue, 0, name)
   }
 
-  async findOrCreateNewSession(): Promise<string> {
-    const newSessionId = this.sessionService.generateSessionId()
-    await this.sessionService.createSession(newSessionId)
-    console.log(`Creating and returning new session: ${newSessionId}`)
-    return newSessionId
-  }
-
   /* 남녀 3명씩 끊어서 처리하는 작업 */
   async handleJoinQueue(
     participantName: string,
     gender: string,
-  ): Promise<{ sessionId: string; readyUsers?: any[] }> {
+  ): Promise<{ sessionId: string; readyUsers?: string[] }> {
     let sessionId = ''
     try {
       await this.addParticipantToQueue(participantName, gender)
@@ -61,29 +51,28 @@ export class QueueService {
         0,
         this.userQueueCount - 1,
       )
-      console.log(
-        maleQueue,
-        maleQueue.length,
-        femaleQueue,
-        femaleQueue.length,
-        '큐의 길이 ',
-      )
-      await this.redis.set(`sessionId:${sessionId}:url`, sessionId)
-      if (maleQueue.length + femaleQueue.length === this.userQueueCount) {
-        sessionId = await this.findOrCreateNewSession()
 
+      if (
+        maleQueue.length >= this.userQueueCount &&
+        femaleQueue.length >= this.userQueueCount
+      ) {
         const readyUsers = [...maleQueue, ...femaleQueue]
+
+        await this.redis.ltrim('maleQueue', this.userQueueCount, -1)
+        await this.redis.ltrim('femaleQueue', this.userQueueCount, -1)
+
+        sessionId = await this.sessionService.generateSessionId()
+
+        console.log('현재 큐 시작진입합니다 세션 이름은 : ', sessionId)
+        this.sessionService.initSession(sessionId)
         for (const user of readyUsers) {
           const socketId =
             await this.meetingService.getSocketIdByParticipantName(user)
           this.sessionService.addParticipant(sessionId, user, socketId)
         }
 
-        await this.redis.ltrim('maleQueue', this.userQueueCount, -1)
-        await this.redis.ltrim('femaleQueue', this.userQueueCount, -1)
-
-        console.log('현재 큐 시작진입합니다 세션 이름은 : ', sessionId)
-        await this.meetingService.startVideoChatSession(sessionId)
+        await this.redis.set(`sessionId:${sessionId}:openViduUrl`, null)
+        await this.sendMessageToSqs(sessionId, this.SQS_URL)
 
         return { sessionId, readyUsers }
       }
@@ -95,18 +84,16 @@ export class QueueService {
     }
   }
 
-  /**SQS 관련 작업, 추후 이전 예정 */
-  private SQS_QUEUE_URL = process.env.SQS_URL
+  /**SQS 작업 */
+  private SQS_URL = process.env.SQS_URL
   private region = 'ap-northeast-2'
   private client = new SQSClient({ region: this.region })
 
-  /*  await this.redis.set(`sessionId:${sessionId}`, null or '')*/
-  async sendMessageToSqs(sessionId: string, sqsQueueUrl = this.SQS_QUEUE_URL) {
+  async sendMessageToSqs(sessionId: string, sqsQueueUrl = this.SQS_URL) {
     const command = new SendMessageCommand({
       QueueUrl: sqsQueueUrl,
       MessageBody: 'this is Message Body 입니다.',
       MessageAttributes: {
-        /**인프라와 상의필요 */
         sessionId: { DataType: 'String', StringValue: sessionId },
       },
     })
