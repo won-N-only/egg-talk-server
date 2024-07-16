@@ -5,12 +5,17 @@ import {
   OnGatewayConnection,
   OnGatewayDisconnect,
   WebSocketServer,
+  MessageBody,
+  ConnectedSocket,
 } from '@nestjs/websockets'
 import { UseGuards } from '@nestjs/common'
 import { Server, Socket } from 'socket.io'
 import { MeetingService } from './services/meeting.service'
 import { QueueService } from './services/queue.service'
 import { ConfigService } from '@nestjs/config'
+import { TimerService } from './services/timer.service'
+import { SessionService } from './services/session.service'
+import { DrawingContestService } from './services/drawingContest.service'
 import { JwtAuthWsGuard } from '../guards/jwt-auth.ws.guard'
 
 @UseGuards(JwtAuthWsGuard)
@@ -31,22 +36,19 @@ export class MeetingGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
   @WebSocketServer() server: Server
-  private roomId: Map<string, string> = new Map()
   private isDevelopment: boolean
+  private userCount = this.queueService.userQueueCount * 2
   constructor(
     private readonly meetingService: MeetingService,
     private readonly queueService: QueueService,
     private readonly configService: ConfigService,
+    private readonly sessionService: SessionService,
+    private readonly timerService: TimerService,
+    private readonly drawingContestService: DrawingContestService,
   ) {
     this.isDevelopment = this.configService.get<string>('NODE_ENV') === 'dev'
   }
-  private connectedUsers: { [nickname: string]: Socket } = {} // nickname: socketId 형태로 변경
-  private connectedSockets: { [socketId: string]: string } = {} // socketId: nickname 형태로 변경
-  private cupidFlag: Map<string, boolean> = new Map()
-  private lastCupidFlag: Map<string, boolean> = new Map()
-  private startTimerCount: Map<string, number> = new Map()
 
-  private acceptanceStatus: Record<string, boolean> = {}
   afterInit(server: Server) {
     this.meetingService.server = server
     console.log('WebSocket initialized')
@@ -54,46 +56,42 @@ export class MeetingGateway
 
   handleConnection(client: Socket) {}
 
-  handleDisconnect(client: Socket) {
-    const sessions = this.meetingService.getSessions()
-    const participantName = this.connectedSockets[client.id]
+  async handleDisconnect(@ConnectedSocket() client: Socket) {
+    const sessions = this.sessionService.getSessions()
+    const participantName =
+      await this.meetingService.getParticipantNameBySocketId(client.id)
     console.log(
       '미팅 게이트웨이 디스커넥트입니다. 유저 이름은 : ',
       participantName,
     )
+
     const user = client['user']
-    if (!sessions.length && user) {
+    if (!Object.keys(sessions).length && user) {
       const gender = client['user'].gender
       this.queueService.removeParticipant(participantName, gender)
     }
 
     for (const sessionId in sessions) {
       if (sessions.hasOwnProperty(sessionId)) {
-        this.meetingService.removeParticipant(
-          sessionId,
-          client,
-          participantName,
-        )
+        this.meetingService.removeParticipant(sessionId, participantName)
       }
     }
-    delete this.connectedSockets[client.id]
-    delete this.connectedUsers[participantName]
-    this.roomId.delete(participantName)
 
-    const nickname = this.connectedSockets[client.id]
-    if (nickname in this.acceptanceStatus) {
-      delete this.acceptanceStatus[nickname]
-    }
+    await this.meetingService.deleteConnectedSocket(client.id)
+    await this.meetingService.deleteParticipantNameInSession(participantName)
+    await this.meetingService.deleteAcceptanceStatus(client.id)
   }
 
   @SubscribeMessage('ready')
   async handleReady(
+    @ConnectedSocket()
     client: Socket,
+    @MessageBody()
     payload: { participantName: string; gender: string },
   ) {
     try {
-      let participantName
-      let gender
+      let participantName: string
+      let gender: string
       if (this.isDevelopment) {
         participantName = client['user'].nickname
         gender = client['user'].gender
@@ -102,43 +100,47 @@ export class MeetingGateway
         gender = payload.gender
       }
 
-      const existingSessionId = this.roomId.get(participantName)
+      const existingSessionId =
+        await this.meetingService.getSessionIdByParticipantName(participantName)
+
       if (existingSessionId) {
         this.meetingService.removeParticipant(
           existingSessionId,
-          client,
           participantName,
         )
-        this.roomId.delete(participantName)
+        await this.meetingService.deleteParticipantNameInSession(
+          participantName,
+        )
       }
 
-      const { sessionId, readyMales, readyFemales } =
-        await this.queueService.handleJoinQueue(participantName, client, gender)
+      const { sessionId, readyUsers } = await this.queueService.handleJoinQueue(
+        participantName,
+        client,
+        gender,
+      )
 
       console.log('레디일때의 sessionId은?? ', sessionId)
-      if (sessionId && readyFemales && readyMales) {
-        readyMales.forEach(male => {
-          this.roomId.set(male.name, sessionId)
-        })
-        readyFemales.forEach(female => {
-          this.roomId.set(female.name, sessionId)
+      if (sessionId && readyUsers) {
+        readyUsers.forEach(user => {
+          this.meetingService.setSessionIdToParticipant(user.name, sessionId)
         })
       }
-      this.connectedUsers[participantName] = client
-      this.connectedSockets[client.id] = participantName
+      await this.meetingService.setConnectedSocket(participantName, client.id)
     } catch (error) {
       console.log('Error handling join Queue request:', error)
     }
   }
 
   @SubscribeMessage('cancel')
-  handleCancel(
+  async handleCancel(
+    @ConnectedSocket()
     client: Socket,
+    @MessageBody()
     payload: { participantName: string; gender: string },
   ) {
-    const sessions = this.meetingService.getSessions()
-    let participantName
-    let gender
+    const sessions = this.sessionService.getSessions()
+    let participantName: string
+    let gender: string
     if (this.isDevelopment) {
       participantName = client['user'].nickname
       gender = client['user'].gender
@@ -151,41 +153,42 @@ export class MeetingGateway
 
     for (const sessionId in sessions) {
       if (sessions.hasOwnProperty(sessionId)) {
-        this.meetingService.removeParticipant(
-          sessionId,
-          client,
-          participantName,
-        )
+        this.meetingService.removeParticipant(sessionId, participantName)
+        await this.timerService.decrTimerCountBySessionId(sessionId)
       }
     }
-    delete this.connectedSockets[client.id]
-    delete this.connectedUsers[participantName]
-    this.roomId.delete(participantName)
   }
 
   @SubscribeMessage('choose')
-  handleChoose(client: Socket, payload: { sender: string; receiver: string }) {
-    // 해당 소켓이 존재하는 방을 찾기 위함
-    const sessionId = this.roomId.get(payload.sender)
+  async handleChoose(
+    @MessageBody()
+    payload: {
+      sender: string
+      receiver: string
+    },
+  ) {
+    const sessionId = await this.meetingService.getSessionIdByParticipantName(
+      payload.sender,
+    )
     if (sessionId) {
-      this.meetingService.storeChoose(
+      await this.meetingService.setChooseData(
         sessionId,
         payload.sender,
         payload.receiver,
       )
 
-      const chooseData = this.meetingService.getChooseData(sessionId)
-      if (chooseData.length === 6) {
-        const participants = this.meetingService.getParticipants(sessionId)
-        const matches = this.meetingService.findMatchingPairs(sessionId)
+      const chooseData = await this.meetingService.getChooseData(sessionId)
+      if (Object.keys(chooseData).length === this.userCount) {
+        const participants = this.sessionService.getParticipants(sessionId)
+        const matches = await this.meetingService.findMatchingPairs(sessionId)
 
         const matchedPairs = matches.map(match => ({
           pair: match.pair,
           others: matches.filter(p => p !== match),
         }))
-        if (this.cupidFlag.get(sessionId) == undefined) {
-          participants.forEach(({ socket, name }) => {
-            // 매칭된 사람이 있는지 체크
+
+        if (!(await this.meetingService.getCupidFlagBySessionId(sessionId))) {
+          participants.forEach(({ socketId, name }) => {
             const matchedPair = matches.find(match => match.pair.includes(name))
             const partner = matchedPair
               ? matchedPair.pair.find(partnerName => partnerName !== name)
@@ -200,18 +203,18 @@ export class MeetingGateway
               )
               .map(participant => participant.name)
 
-            this.server.to(socket.id).emit('cupidResult', {
+            this.server.to(socketId).emit('cupidResult', {
               lover: partner,
               loser: losers,
             })
 
             this.server
-              .to(socket.id)
+              .to(socketId)
               .emit('chooseResult', { message: chooseData })
           })
-          this.cupidFlag.set(sessionId, true)
+          await this.meetingService.setCupidFlagBySessionId(sessionId)
         }
-        this.meetingService.removeChooseData(sessionId)
+        await this.meetingService.deleteChooseData(sessionId)
       }
     } else {
       console.error('세션에러입니다')
@@ -219,93 +222,101 @@ export class MeetingGateway
   }
 
   @SubscribeMessage('startTimer')
-  handleStartTimer(client: Socket, payload: { sessionId: string }) {
+  async handleStartTimer(@MessageBody() payload: { sessionId: string }) {
     const { sessionId } = payload
 
-    // startTimer 호출 횟수 증가
-    const currentCount = this.startTimerCount.get(sessionId) || 0
-    this.startTimerCount.set(sessionId, currentCount + 1)
+    await this.timerService.incrTimerCountBySessionId(sessionId)
+    const currentCount =
+      await this.timerService.getTimerCountBySessionId(sessionId)
 
-    // console.log(`startTimer 호출 횟수: ${this.startTimerCount.get(sessionId)}`)
-
-    // 호출 횟수가 6일 때 타이머 시작
-    if (this.startTimerCount.get(sessionId) === 6) {
-      // console.log('타이머가 시작되었습니다.')
-      this.meetingService.startSessionTimer(sessionId, this.server)
+    if (currentCount === this.userCount) {
+      this.timerService.startSessionTimer(sessionId, this.server)
+      this.timerService.deleteTimerCountBySessionId(sessionId)
     }
   }
 
   @SubscribeMessage('forwardDrawing')
-  handleForwardDrawing(
-    client: Socket,
-    payload: { userName: string; drawing: string; photo: string },
+  async handleForwardDrawing(
+    @MessageBody()
+    payload: {
+      userName: string
+      drawing: string
+      photo: string
+    },
   ) {
     const { drawing, userName, photo } = payload
-    const sessionId = this.roomId.get(userName)
+    const sessionId =
+      await this.meetingService.getSessionIdByParticipantName(userName)
 
     if (!sessionId) {
       console.error(`세션에 없는 유저이름임: ${userName}`)
       return
     }
 
-    this.meetingService.savePhoto(sessionId, userName, photo)
-    this.meetingService.saveDrawing(sessionId, userName, drawing)
+    await this.drawingContestService.savePhoto(sessionId, userName, photo)
+    await this.drawingContestService.saveDrawing(sessionId, userName, drawing)
 
-    const drawings = this.meetingService.getDrawings(sessionId)
+    const drawings = await this.drawingContestService.getDrawings(sessionId)
 
-    if (Object.keys(drawings).length === 6) {
-      const participants = this.meetingService.getParticipants(sessionId)
-      participants.forEach(({ socket }) => {
-        this.server.to(socket.id).emit('drawingSubmit', drawings)
+    if (Object.keys(drawings).length === this.userCount) {
+      const participants = this.sessionService.getParticipants(sessionId)
+      participants.forEach(({ socketId }) => {
+        this.server.to(socketId).emit('drawingSubmit', drawings)
       })
-      this.meetingService.resetDrawings(sessionId)
     }
   }
 
   @SubscribeMessage('submitVote')
-  handleSubmitVote(
-    client: Socket,
-    payload: { userName: string; votedUser: string },
+  async handleSubmitVote(
+    @MessageBody() payload: { userName: string; votedUser: string },
   ) {
     const { userName, votedUser } = payload
-    const sessionId = this.roomId.get(userName)
+    const sessionId =
+      await this.meetingService.getSessionIdByParticipantName(userName)
+    await this.drawingContestService.saveVote(sessionId, userName, votedUser)
 
-    this.meetingService.saveVote(sessionId, userName, votedUser)
+    const votes = await this.drawingContestService.getVotes(sessionId)
 
-    const votes = this.meetingService.getVotes(sessionId)
-
-    if (Object.keys(votes).length === 6) {
-      const { winner, losers } = this.meetingService.calculateWinner(sessionId)
-
-      const participants = this.meetingService.getParticipants(sessionId)
-      participants.forEach(({ socket }) => {
-        this.server.to(socket.id).emit('voteResults', {
+    if (Object.keys(votes).length === this.userCount) {
+      const { winner, losers } =
+        await this.drawingContestService.calculateWinner(sessionId)
+      const photos = await this.drawingContestService.getPhotos(sessionId)
+      const participants = this.sessionService.getParticipants(sessionId)
+      participants.forEach(({ socketId }) => {
+        this.server.to(socketId).emit('voteResults', {
           winner,
           losers,
-          photos: this.meetingService.getPhotos(sessionId, userName),
+          photos: photos,
         })
       })
     }
   }
 
   @SubscribeMessage('winnerPrize')
-  handleWinnerPrize(
-    client: Socket,
-    payload: { userName: string; winners: string[]; losers: string[] },
+  async handleWinnerPrize(
+    @MessageBody()
+    payload: {
+      userName: string
+      winners: string[]
+      losers: string[]
+    },
   ) {
     const { userName, winners, losers } = payload
-    const sessionId = this.roomId.get(userName)
-    const participants = this.meetingService.getParticipants(sessionId)
-
+    const sessionId =
+      await this.meetingService.getSessionIdByParticipantName(userName)
+    const participants = this.sessionService.getParticipants(sessionId)
+    this.drawingContestService.resetDrawingContest(sessionId)
     if (userName === winners[0])
-      participants.forEach(({ socket }) => {
-        this.server.to(socket.id).emit('finalResults', { winners, losers })
+      participants.forEach(({ socketId }) => {
+        this.server.to(socketId).emit('finalResults', { winners, losers })
       })
   }
 
   @SubscribeMessage('drawingOneToOne')
   handleDrawingOneToOne(
+    @ConnectedSocket()
     client: Socket,
+    @MessageBody()
     payload: { userName: string; winners: string[]; losers: string[] },
   ) {
     const { userName, winners, losers } = payload
@@ -321,45 +332,33 @@ export class MeetingGateway
     })
   }
 
-  // 1. 10초 이내에 '1대1화상채팅하기' 버튼을 누르지 않으면 비활성
-  // 2. 성공적으로 '1대1화상채팅하기' 버튼을 눌렀을 경우 클라이언트 -> 서버(Event : chooseCam)
   @SubscribeMessage('lastChoose')
-  handleChooseCam(
-    client: Socket,
-    payload: { sender: string; receiver: string },
+  async handleChooseCam(
+    @MessageBody() payload: { sender: string; receiver: string },
   ) {
-    // 서버 입장에서 소켓이 존재하는 방을 찾기 위함
     const { sender, receiver } = payload
-    const sessionId = this.roomId.get(sender)
-    // 기존 정보가 있다면 새롭게 변형해서 저장할 수 있음
+    const sessionId =
+      await this.meetingService.getSessionIdByParticipantName(sender)
     if (sessionId) {
-      this.meetingService.storeChoose(sessionId, sender, receiver)
-      // 방과 일치하는 매칭결과 정보 가져오기
-      const chooseData = this.meetingService.getChooseData(sessionId)
-      if (chooseData.length === 6) {
-        // 방과 일치하는 참여자 정보 가져오기
-        const participant = this.meetingService.getParticipants(sessionId)
-        // 매칭된 쌍의 정보를 가지고 있음
-        // [
-        // { pair: [ 'Alice', 'Bob' ] },
-        // { pair: [ 'Charlie', 'David' ] },
-        // { pair: [ 'Eve', 'Frank' ] }
-        // ]
-        const matches = this.meetingService.findMatchingPairs(sessionId)
+      await this.meetingService.setChooseData(sessionId, sender, receiver)
+      const chooseData = await this.meetingService.getChooseData(sessionId)
+      if (Object.keys(chooseData).length === this.userCount) {
+        const participant = this.sessionService.getParticipants(sessionId)
+        const matches = await this.meetingService.findMatchingPairs(sessionId)
 
-        if (this.lastCupidFlag.get(sessionId) == undefined) {
-          participant.forEach(({ socket, name }) => {
+        if (
+          !(await this.meetingService.getLastCupidFlagBySessionId(sessionId))
+        ) {
+          participant.forEach(({ socketId, name }) => {
             const matchedPair = matches.find(elem => elem.pair.includes(name))
-            if (matchedPair) {
-              const partner = matchedPair.pair.find(elem => elem !== name)
-              this.server.to(socket.id).emit('matching', { lover: partner })
-            } else {
-              this.server.to(socket.id).emit('matching', { lover: '0' })
-            }
+            const partner = matchedPair
+              ? matchedPair.pair.find(elem => elem !== name)
+              : '0'
 
-            this.server.to(socket.id).emit('lastChooseResult', chooseData)
+            this.server.to(socketId).emit('matching', { lover: partner })
+            this.server.to(socketId).emit('lastChooseResult', chooseData)
           })
-          this.lastCupidFlag.set(sessionId, true)
+          await this.meetingService.setLastCupidFlagBySessionId(sessionId)
         }
       }
     } else {
@@ -369,26 +368,29 @@ export class MeetingGateway
 
   @SubscribeMessage('moveToPrivateRoom')
   async handleMoveToPrivateRoom(
+    @ConnectedSocket()
     client: Socket,
+    @MessageBody()
     payload: { sessionId: string; myName: string; partnerName: string },
   ) {
     const { sessionId, myName, partnerName } = payload
-    const participant = this.meetingService.getParticipants(sessionId)
-    if (this.acceptanceStatus[partnerName] === true) {
+    const participant = this.sessionService.getParticipants(sessionId)
+    const isAccepted =
+      await this.meetingService.getAcceptanceStatus(partnerName)
+    if (isAccepted === true) {
       console.log('===========handleMoveToPrivateRoom 1==================')
-      // const newSessionId = `${myName}-${partnerName}`
-      const newSessionId = this.meetingService.generateSessionId()
+      const newSessionId = this.sessionService.generateSessionId()
 
-      await this.meetingService.createSession(newSessionId)
+      await this.sessionService.createSession(newSessionId)
 
-      const partner = await participant.find(
+      const partner = participant.find(
         participant => participant.name === partnerName,
       )
-      this.meetingService.addParticipant(newSessionId, myName, client)
-      this.meetingService.addParticipant(
+      this.sessionService.addParticipant(newSessionId, myName, client.id)
+      this.sessionService.addParticipant(
         newSessionId,
         partnerName,
-        partner.socket,
+        partner.socketId,
       )
       console.log('===========handleMoveToPrivateRoom 2==================')
       const enterToken = await this.meetingService.generateTokens(newSessionId)
@@ -403,44 +405,49 @@ export class MeetingGateway
           .to(client.id)
           .emit('choice', { sessionId: newSessionId, token: myToken })
         this.server
-          .to(partner.socket.id)
+          .to(partner.socketId)
           .emit('choice', { sessionId: newSessionId, token: partnerToken })
       } else {
         console.error('방 생성 실패!')
       }
     } else {
-      this.acceptanceStatus[myName] = true
+      await this.meetingService.setAcceptanceStatus(myName)
       console.log('===========handleMoveToPrivateRoom 0==================')
     }
   }
 
   @SubscribeMessage('leave')
-  handleLeave(client: Socket, payload: { participantName }) {
-    const sessionId = this.roomId.get(payload.participantName)
+  async handleLeave(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { participantName: string },
+  ) {
+    const { participantName } = payload
+    const sessionId =
+      await this.meetingService.getSessionIdByParticipantName(participantName)
     if (sessionId) {
-      this.meetingService.removeParticipant(
-        sessionId,
-        client,
-        payload.participantName,
-      )
+      this.meetingService.removeParticipant(sessionId, participantName)
     }
-    this.roomId.delete(payload.participantName)
-    this.cupidFlag.delete(sessionId)
-    delete this.connectedUsers[payload.participantName]
-    delete this.connectedSockets[client.id]
-    this.startTimerCount.delete(sessionId)
+    await this.meetingService.deleteParticipantNameInSession(participantName)
+    await this.meetingService.deleteConnectedSocket(client.id)
+    await this.meetingService.deleteCupidFlagBySessionId(sessionId)
+    await this.meetingService.deleteLastCupidFlagBySessionId(sessionId)
   }
 
   @SubscribeMessage('emoji')
-  handleEmoji(
-    client: Socket,
-    payload: { nickname: string; emojiIndex: string },
+  async handleEmoji(
+    @MessageBody()
+    payload: {
+      nickname: string
+      emojiIndex: string
+    },
   ) {
     const { nickname, emojiIndex } = payload
-    const sessionId = this.roomId.get(nickname)
-    const participants = this.meetingService.getParticipants(sessionId)
-    participants.forEach(({ socket }) => {
-      this.server.to(socket.id).emit('emojiBroadcast', { nickname, emojiIndex })
+    const sessionId =
+      await this.meetingService.getSessionIdByParticipantName(nickname)
+
+    const participants = this.sessionService.getParticipants(sessionId)
+    participants.forEach(({ socketId }) => {
+      this.server.to(socketId).emit('emojiBroadcast', { nickname, emojiIndex })
     })
   }
 }

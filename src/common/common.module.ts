@@ -14,6 +14,8 @@ import {
   Notification,
   NotificationSchema,
 } from '../entities/notification.entity'
+import { CacheModule } from '@nestjs/cache-manager'
+import * as redisStore from 'cache-manager-ioredis'
 
 @Module({
   imports: [
@@ -23,6 +25,11 @@ import {
       { name: User.name, schema: UserSchema },
       { name: Notification.name, schema: NotificationSchema },
     ]),
+    CacheModule.register({
+      store: redisStore,
+      host: process.env.REDIS_HOST,
+      port: process.env.REDIS_PORT,
+    }),
   ],
   providers: [
     CommonGateway,
@@ -33,6 +40,6 @@ import {
     UsersRepository,
     UsersService,
   ],
-  exports: [CommonRepository, CommonService],
+  exports: [CacheModule, CommonRepository, CommonService],
 })
 export class CommonModule {}
