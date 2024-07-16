@@ -5,29 +5,24 @@ import Redis from 'ioredis'
 @Injectable()
 export class RedisService {
   private subscriber: Redis
-  private redis: Redis
-  private sessionService: SessionService
-  constructor(@Inject('REDIS') redis: Redis, sessionService: SessionService) {
+  constructor(
+    @Inject('REDIS') private readonly redis: Redis,
+    private readonly sessionService: SessionService,
+  ) {
     this.subscriber = redis.duplicate()
-    this.sessionService = sessionService
-    this.redis = redis
     this.initSubscriber()
   }
 
   private initSubscriber() {
     this.redis.config('SET', 'notify-keyspace-events', 'K$')
-    const keyPattern = '__keyspace@0__:sessionId*'
+    const keyPattern = '__keyspace@0__:sessionId:*:openViduUrl'
     this.subscriber.psubscribe(keyPattern)
-
-    this.subscriber.on('pmessage', async (channel, message) => {
-      console.log(channel)
-      const key = message.split(':')[2]
-      console.log('레디스 성공', message, key)
-      if (key) {
-        console.log('set 받아서 비디오 시작')
-        const url = await this.redis.get(`sessionId:${key}:url`)
-        console.log(url)
-        // this.sessionService.startVideoChatSession(key)
+    this.subscriber.on('pmessage', async (pattern, channel, message) => {
+      const sessionId = channel.split(':')[2]
+      const openViduUrl =
+        await this.sessionService.getOpenViduUrlBySessionId(sessionId)
+      if (openViduUrl) {
+        this.sessionService.startVideoChatSession(sessionId, openViduUrl)
       }
     })
   }
