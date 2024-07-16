@@ -1,68 +1,62 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, Inject } from '@nestjs/common'
 import { Socket } from 'socket.io'
 import { MeetingService } from './meeting.service'
+import Redis from 'ioredis'
+import { CommonService } from '../../common/common.service'
+import { SessionService } from './session.service'
 
 @Injectable()
 export class QueueService {
-  constructor(private readonly meetingService: MeetingService) {}
-  private maleQueue: { name: string; socket: Socket }[] = []
-  private femaleQueue: { name: string; socket: Socket }[] = []
-
-  /* 참여자 대기열 추가 */
-  addParticipant(name: string, socket: Socket, gender: string) {
-    if (gender === 'MALE') {
-      const index = this.maleQueue.findIndex(p => p.name === name)
-      if (index !== -1) {
-        // 기존 참가자를 제거
-        this.maleQueue.splice(index, 1)
-      }
-      // 새로운 참가자 추가
-      this.maleQueue.push({ name, socket })
-      console.log(
-        'male Queue : ',
-        this.maleQueue.map(p => p.name),
-      )
-    } else if (gender === 'FEMALE') {
-      const index = this.femaleQueue.findIndex(p => p.name === name)
-      if (index !== -1) {
-        // 기존 참가자를 제거
-        this.femaleQueue.splice(index, 1)
-      }
-      // 새로운 참가자 추가
-      this.femaleQueue.push({ name, socket })
-      console.log(
-        'female Queue : ',
-        this.femaleQueue.map(p => p.name),
-      )
-    }
+  private redis: Redis
+  public userQueueCount = 3
+  constructor(
+    private readonly meetingService: MeetingService,
+    private readonly sessionService: SessionService,
+    private readonly commonService: CommonService,
+    @Inject('REDIS') redis: Redis,
+  ) {
+    this.redis = redis
   }
 
-  removeParticipant(name: string, gender: string) {
-    switch (gender) {
-      case 'MALE':
-        this.maleQueue = this.maleQueue.filter(p => p.name !== name)
-        console.log(
-          'Update Male Queue : ',
-          this.maleQueue.map(p => p.name),
-        )
-        break
+  /* 참여자 대기열 추가 */
+  async addParticipant(name: string, socket: Socket, gender: string) {
+    const participant = JSON.stringify({ name, socketId: socket.id })
+    const genderQueue = gender === 'MALE' ? 'maleQueue' : 'femaleQueue'
 
-      case 'FEMALE':
-        this.femaleQueue = this.femaleQueue.filter(p => p.name !== name)
-        console.log(
-          'Update Female Queue : ',
-          this.femaleQueue.map(p => p.name),
-        )
+    const queue = await this.redis.lrange(genderQueue, 0, -1)
+
+    /**중복 유저 제거과정 최적화 필요 */
+    for (const item of queue) {
+      const parsedItem = JSON.parse(item)
+      if (parsedItem.name === name) {
+        await this.redis.lrem(genderQueue, 0, item)
+      }
+    }
+
+    await this.redis.rpush(genderQueue, participant)
+    console.log(
+      `${gender} Queue : `,
+      (await this.redis.lrange(genderQueue, 0, -1)).map(
+        item => JSON.parse(item).name,
+      ),
+    )
+  }
+
+  async removeParticipant(name: string, gender: string) {
+    const genderQueue = gender === 'MALE' ? 'maleQueue' : 'femaleQueue'
+    const queue = await this.redis.lrange(genderQueue, 0, -1)
+    for (const item of queue) {
+      const parsedItem = JSON.parse(item)
+      if (parsedItem.name === name) {
+        await this.redis.lrem(genderQueue, 0, item)
         break
-      default:
-        console.error('성별 오류입니다.')
-        break
+      }
     }
   }
 
   async findOrCreateNewSession(): Promise<string> {
-    const newSessionId = this.meetingService.generateSessionId()
-    await this.meetingService.createSession(newSessionId)
+    const newSessionId = this.sessionService.generateSessionId()
+    await this.sessionService.createSession(newSessionId)
     console.log(`Creating and returning new session: ${newSessionId}`)
     return newSessionId
   }
@@ -75,44 +69,53 @@ export class QueueService {
   ) {
     let sessionId = ''
     try {
-      this.addParticipant(participantName, client, gender)
+      await this.addParticipant(participantName, client, gender)
 
-      if (this.maleQueue.length >= 3 && this.femaleQueue.length >= 3) {
+      const maleQueue = await this.redis.lrange(
+        'maleQueue',
+        0,
+        this.userQueueCount - 1,
+      )
+      const femaleQueue = await this.redis.lrange(
+        'femaleQueue',
+        0,
+        this.userQueueCount - 1,
+      )
+
+      if (
+        maleQueue.length >= this.userQueueCount &&
+        femaleQueue.length >= this.userQueueCount
+      ) {
         sessionId = await this.findOrCreateNewSession()
-        const readyMales = this.maleQueue.splice(0, 3)
-        const readyFemales = this.femaleQueue.splice(0, 3)
 
-        await this.meetingService.createSession(sessionId)
+        const readyMales = maleQueue
+          .splice(0, this.userQueueCount)
+          .map(item => JSON.parse(item))
+        const readyFemales = femaleQueue
+          .splice(0, this.userQueueCount)
+          .map(item => JSON.parse(item))
 
-        readyMales.forEach(male => {
-          this.meetingService.addParticipant(
+        const readyUsers = [...readyMales, ...readyFemales]
+        for (const user of readyUsers) {
+          this.sessionService.addParticipant(
             sessionId,
-            male.name,
-            male.socket,
+            user.name,
+            user.socketId,
           )
-        })
+        }
 
-        readyFemales.forEach(female => {
-          this.meetingService.addParticipant(
-            sessionId,
-            female.name,
-            female.socket,
-          )
-        })
+        await this.redis.ltrim('maleQueue', this.userQueueCount, -1)
+        await this.redis.ltrim('femaleQueue', this.userQueueCount, -1)
+
         console.log('현재 큐 시작진입합니다 세션 이름은 : ', sessionId)
         await this.meetingService.startVideoChatSession(sessionId)
-        return { sessionId, readyMales, readyFemales }
+        return { sessionId, readyUsers }
       }
-      // 이 부분은 클라 확인차 로그로써 삭제해도 무방 다만 테스트 시 확인이 힘들어짐
-      const participants = this.meetingService.getParticipants(sessionId)
-      console.log(
-        'Current waiting participants: ',
-        participants.map(p => p.name),
-      )
+
       return { sessionId }
     } catch (error) {
       console.error('Error joining queue:', error)
-      await this.meetingService.deleteSession(sessionId)
+      await this.sessionService.deleteSession(sessionId)
     }
   }
 }
