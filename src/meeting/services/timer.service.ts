@@ -18,13 +18,12 @@ export class TimerService {
 
   startSessionTimer(sessionId: string, server: Server) {
     const timers = [
-      { time: 0.5, event: 'introduce' },
-      { time: 2.5, event: 'keyword' },
-      { time: 4, event: 'cupidTime' },
-      { time: 6, event: 'cam' },
-      { time: 6.5, event: 'drawingContest' },
-      { time: 8.5, event: 'lastCupidTime' },
-      { time: 9, event: 'finish' },
+      { time: 1 / 12, event: 'keyword' },
+      { time: 2 / 3, event: 'cupidTime' },
+      { time: 94 / 60, event: 'cam' },
+      { time: 104 / 60, event: 'drawingContest' },
+      { time: 2.9, event: 'lastCupidTime' },
+      { time: 3.1, event: 'finish' },
     ]
 
     if (this.sessionTimers[sessionId]) {
