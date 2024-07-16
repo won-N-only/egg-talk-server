@@ -16,7 +16,7 @@ import {
 } from '../entities/notification.entity'
 import { CacheModule } from '@nestjs/cache-manager'
 import * as redisStore from 'cache-manager-ioredis'
-import { ScheduleModule  } from '@nestjs/schedule'
+import { ScheduleModule } from '@nestjs/schedule'
 
 @Module({
   imports: [
@@ -31,7 +31,7 @@ import { ScheduleModule  } from '@nestjs/schedule'
       host: process.env.REDIS_HOST,
       port: process.env.REDIS_PORT,
     }),
-    ScheduleModule.forRoot()
+    ScheduleModule.forRoot(),
   ],
   providers: [
     CommonGateway,
