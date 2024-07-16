@@ -100,18 +100,3 @@ export class QueueService {
     this.client.send(command)
   }
 }
-
-/** SQS와 연결 시
- *  1.  const readyUsers = [...readyMales, ...readyFemales]
- *  readyUsers를 sessionId와 매칭
- *  setSessionIdToParticipant()같은거 만들기
- *
- *  2. sqs에 sessionId 전송
- *
- *  3. sessionId를 redis에 { `sessionId:${sessionId}`,null }꼴로 저장 후 구독
- *
- *  4. `sessionId:${sessionId}`항목이 변경되면 data 들고와서 clients에게 emit
- *  ㄴ sendTokenToParticipant()
- *
- *  await this.redis.set(`sessionId:${sessionId}`, null or '')
- */
