@@ -11,8 +11,8 @@ import { TimerService } from './services/timer.service'
 import { DrawingContestService } from './services/drawingContest.service'
 import { CommonModule } from '../common/common.module'
 import Redis from 'ioredis'
-import { UsersModule } from 'src/users/users.module'
-import { CommonService } from 'src/common/common.service'
+import { UsersModule } from '../users/users.module'
+import { CommonService } from '../common/common.service'
 
 @Module({
   imports: [UsersModule, CommonModule],
