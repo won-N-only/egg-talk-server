@@ -56,7 +56,6 @@ export class CommonGateway
     // 유저가 종료되면 연결된 소켓에 해당 유저 종료했다고 알림
     const nickname = client['user']?.nickname // 올바른 코드
     const friendIds = await this.commonService.sortFriend(nickname)
-    // console.log(friendIds)
     if (friendIds) {
       for (const friend of friendIds) {
         const friendSocket = await this.commonService.getSocketByUserId(
@@ -170,7 +169,7 @@ export class CommonGateway
   async handleSendMessage(
     @ConnectedSocket() client: Socket,
     @MessageBody()
-    payload : sendMessageDto,
+    payload: sendMessageDto,
   ) {
     try {
       const { chatRoomId, message, userNickname, receiverNickname } = payload
@@ -232,7 +231,6 @@ export class CommonGateway
         anonymousNicknames.set(client.id, nickname)
       }
       this.server.emit('homeChat', { message, nickname })
-      // console.log(nickname,"께서 보내신 메세지입니다.", message );
     } catch (error) {
       console.error('HomeChat 수신 오류', error)
     }
