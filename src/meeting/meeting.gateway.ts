@@ -143,7 +143,6 @@ export class MeetingGateway
     @MessageBody()
     payload: { participantName: string; gender: string },
   ) {
-    const sessions = this.sessionService.getSessions()
     let participantName: string
     let gender: string
     if (this.isDevelopment) {
@@ -156,14 +155,13 @@ export class MeetingGateway
 
     this.queueService.removeParticipantInQueue(participantName, gender)
 
-    for (const sessionId in sessions) {
-      if (sessions.hasOwnProperty(sessionId)) {
-        this.meetingService.removeParticipant(sessionId, participantName)
-        await this.timerService.decrTimerCountBySessionId(sessionId)
-      }
+    const sessionId =
+      await this.meetingService.getSessionIdByParticipantName(participantName)
+    if (sessionId) {
+      this.meetingService.removeParticipant(sessionId, participantName)
+      await this.timerService.decrTimerCountBySessionId(sessionId)
     }
   }
-
   @SubscribeMessage('choose')
   async handleChoose(
     @MessageBody()
@@ -431,12 +429,12 @@ export class MeetingGateway
       await this.meetingService.getSessionIdByParticipantName(participantName)
     if (sessionId) {
       this.meetingService.removeParticipant(sessionId, participantName)
-      await this.meetingService.deleteParticipantNameInSession(sessionId)
+      await this.meetingService.deleteParticipantNameInSession(participantName)
       await this.meetingService.deleteCupidFlagBySessionId(sessionId)
       await this.meetingService.deleteLastCupidFlagBySessionId(sessionId)
     }
-    await this.meetingService.deleteParticipantNameInSession(participantName)
     await this.meetingService.deleteConnectedSocket(client.id, participantName)
+    await this.meetingService.deleteAcceptanceStatus(client.id)
   }
 
   @SubscribeMessage('emoji')
