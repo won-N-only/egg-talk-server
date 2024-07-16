@@ -1,20 +1,28 @@
-import { Injectable } from '@nestjs/common'
+import { Inject, Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { User, Friend } from '../entities/user.entity'
 import { Model, Types, ObjectId } from 'mongoose'
 import { AcceptFriend, AddFriendDto } from './dto/request/notification.dto'
 import { ChatRoom } from '../entities/chat-room.entity'
 import { Notification } from '../entities/notification.entity'
-import { Chat } from '../entities/chat.entity'
+import { Chat, ChatWithMetadata } from '../entities/chat.entity'
+import { CACHE_MANAGER } from '@nestjs/cache-manager'
+import { Redis } from 'ioredis'
+import { Cache } from 'cache-manager'
 @Injectable()
 export class CommonRepository {
+  private redisClient: Redis
+
   constructor(
     @InjectModel(User.name) private readonly userModel: Model<User>,
     @InjectModel(ChatRoom.name) private readonly chatRoomModel: Model<ChatRoom>,
     @InjectModel(Chat.name) private chatModel: Model<Chat>,
     @InjectModel(Notification.name)
     private readonly notificationModel: Model<Notification>,
-  ) {}
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+  ) {
+    this.redisClient = (this.cacheManager as any).store.getClient()
+  }
 
   async getNotification(nickname: String): Promise<Notification[]> {
     await this.userModel.findOneAndUpdate(
@@ -107,38 +115,11 @@ export class CommonRepository {
     }
   }
 
-  async getChatRoomMessage(chatRoomObjectId: Types.ObjectId) {
-    const chatRoom = await this.chatRoomModel
-      .findByIdAndUpdate(
-        chatRoomObjectId,
-        { $set: { isRead: true } },
-        { new: true },
-      )
-      .lean()
-      .exec()
-
-    if (chatRoom) {
-      return await this.chatRoomModel.populate(chatRoom, {
-        path: 'chats',
-        model: 'Chat',
-        options: { sort: { createAt: 1 } },
-        populate: { path: 'sender', select: 'nickname' },
-      })
-    } else return null
-  }
-
-  async saveMessageToChatRoom(
-    sender: string,
-    message: string,
+  async updateChatRoomIsRead(
     chatRoomId: string,
-    isReceiverOnline: boolean,
-  ): Promise<Chat> {
-    const newChat = await this.chatModel.create({ sender, message })
-    await this.chatRoomModel.findByIdAndUpdate(chatRoomId, {
-      $push: { chats: newChat._id },
-      isRead: isReceiverOnline,
-    })
-    return newChat
+    isRead: boolean,
+  ): Promise<void> {
+    await this.chatRoomModel.findByIdAndUpdate(chatRoomId, { isRead })
   }
 
   async setNewNotification(userId: string) {
@@ -181,21 +162,87 @@ export class CommonRepository {
     }
   }
 
-  async getFriendNicknames(nickname: string): Promise<string[]> {
-    // 1. 주어진 닉네임으로 유저를 찾습니다.
-    const user = await this.userModel.findOne({ nickname }).lean()
+  async saveChatHistoryToMongo(
+    chatRoomId: Types.ObjectId,
+    chats: ChatWithMetadata[],
+  ): Promise<void> {
+    try {
+      const chatRoom = await this.chatRoomModel.findById(chatRoomId)
 
-    // 2. 유저가 없거나, 친구 목록이 없으면 빈 배열을 반환합니다.
-    if (!user || !user.friends) {
-      return []
+      if (!chatRoom) {
+        throw new Error(`ChatRoom not found with ID: ${chatRoomId}`)
+      }
+
+      // 1. 이미 저장된 메시지 필터링 (필요에 따라 추가)
+      const unsavedChats = chats.filter(chat => !chat._id)
+
+      // 2. Chat 모델 인스턴스 생성 및 저장 (messageId, timestamp 제거)
+      const chatInstances = unsavedChats.map(chatData => {
+        const { messageId, ...chatWithoutMessageId } = chatData // messageId 제거
+        return new this.chatModel(chatWithoutMessageId)
+      })
+      const savedChats = await this.chatModel.insertMany(chatInstances)
+
+      // 3. 저장된 채팅 메시지의 ObjectId 가져오기
+      const savedChatIds = savedChats.map(chat => chat._id)
+
+      // 4. ChatRoom에 채팅 메시지 ID 추가 및 저장
+      chatRoom.chats.push(...savedChatIds)
+      await chatRoom.save()
+    } catch (error) {
+      console.error('Error saving chat history to MongoDB:', error)
+      throw error // 에러를 상위 계층으로 전파
     }
+  }
 
-    // 3. 유저의 친구 목록에서 친구 ObjectId를 추출합니다.
-    const friendIds = user.friends.map((friend: Friend) => friend.friend)
+  // 기존의 데이터베이스 조회 로직을 그대로 사용
+  async getChatHistoryFromDatabase(chatRoomId: string) {
+    const chatRoomIdObj = new Types.ObjectId(chatRoomId) // ObjectId로 변환
+    const chatRoom = await this.chatRoomModel
+      .findByIdAndUpdate(
+        chatRoomIdObj,
+        { $set: { isRead: true } },
+        { new: true },
+      )
+      .lean()
+      .exec()
 
-    console.log('친구들은 어떻게 되어있나??', friendIds)
+    if (chatRoom) {
+      const populatedChatRoom = await this.chatRoomModel.populate(chatRoom, {
+        path: 'chats', // 'chats' 필드를 populate
+        model: 'Chat', // Chat 모델을 사용하여 populate
+        options: { sort: { createdAt: 1 } }, // 오름차순 정렬
+        populate: {
+          path: 'sender', // Chat 모델의 'sender' 필드를 populate
+          select: 'nickname', // sender의 nickname만 가져옴
+        },
+      })
+      return populatedChatRoom
+    } else {
+      console.error(`Chat room not found for chatRoomId: ${chatRoomId}`)
+      return null
+    }
+  }
+  // 최근 메세지 가져오는 함수
+  async getLastSavedMessage(chatRoomId: string) {
+    try {
+      const messageCount = await this.chatModel.countDocuments({ chatRoomId })
+      if (messageCount === 0) {
+        console.log(`No messages found for chatRoomId ${chatRoomId}`)
+        return null
+      }
 
-    // 4. 찾은 친구 객체들에서 닉네임만 추출하여 배열로 반환합니다.
-    return friendIds.map(friend => friend)
+      const lastMessage = await this.chatModel
+        .findOne({ chatRoomId })
+        .sort({ timestamp: -1 })
+        .exec()
+
+      return lastMessage
+    } catch (error) {
+      console.error(
+        `Error fetching last saved message for chatRoomId ${chatRoomId}: ${error.message}`,
+      )
+      return null
+    }
   }
 }

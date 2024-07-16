@@ -78,15 +78,14 @@ export class CommonGateway
   async friendStat(@ConnectedSocket() client: Socket) {
     try {
       const nickname = client['user'].nickname
-      // const nickname = 'jinYong'
       const friendIds = await this.commonService.sortFriend(nickname)
-      // const friendStat = new Map<string, boolean>();
       const friendStat: Array<{ [key: string]: boolean }> = []
 
       if (friendIds.length > 0) {
         for (const friend of friendIds) {
-          const friendSocket = this.commonService.getSocketByUserId(friend)
-          if (friendSocket) {
+          const friendSocket =
+            await this.commonService.getSocketByUserId(friend)
+          if (friendSocket !== null) {
             // 친구가 로그인 되어있다면 { 친구이름 : 참 } 형태로 저장
             friendStat.push({ [friend]: true })
           } else {
@@ -132,23 +131,29 @@ export class CommonGateway
   @SubscribeMessage('joinChat')
   async handleJoinRoom(
     @ConnectedSocket() client: Socket,
-    @MessageBody() payload: joinChatDto, // nickName == userId
+    @MessageBody() payload: { newChatRoomId: string; friendName: string },
   ) {
     const { newChatRoomId, friendName } = payload
+    const chatRoomId = newChatRoomId
     const nickname = client['user'].nickname
+
     // 1. 기존 채팅방 정보 가져오기
     const currentRooms = Array.from(client.rooms) // 현재 참여 중인 모든 방
     const currentChatRoomId = currentRooms.find(room => room !== client.id) // Socket ID 제외
+
     // 2. 기존 채팅방 연결 종료 (만약 있다면)
     if (currentChatRoomId) {
       client.leave(currentChatRoomId) // 기존 방 떠나기
     }
 
     // 3. 새 채팅방 참여
-    client.join(newChatRoomId)
+
+    client.join(chatRoomId)
 
     // 4. 채팅 기록 불러오기 (필요하다면)
-    const chatHistory = await this.commonService.getChatHistory(newChatRoomId)
+    const chatHistory = await this.commonService.getChatHistory(chatRoomId)
+
+    // 5. 읽음 표시
     await this.commonService.readMessage(friendName, nickname)
     client.emit('chatHistory', chatHistory)
   }
@@ -161,6 +166,9 @@ export class CommonGateway
     try {
       const { chatRoomId } = payload
       client.leave(chatRoomId)
+
+      // 채팅방 퇴장 시에도 Redis 데이터 유지 (삭제하지 않음)
+      // ... (나머지 로직)
     } catch (error) {
       logger.error('채팅방 떠나기 오류', error)
     }
@@ -170,7 +178,7 @@ export class CommonGateway
   async handleSendMessage(
     @ConnectedSocket() client: Socket,
     @MessageBody()
-    payload : sendMessageDto,
+    payload: sendMessageDto,
   ) {
     try {
       const { chatRoomId, message, userNickname, receiverNickname } = payload
@@ -189,11 +197,14 @@ export class CommonGateway
       ) // isReceiverOnline 전달
       // 메시지 전송
       if (receiverSocket) {
+        console.log('메세지 전송!!')
+        console.log(newChat, 'newChat 입니다')
         this.server.to(chatRoomId).emit('message', newChat) // 상대방이 (온라인 상태 + 채팅방 참여) 일때 메시지 전송
+        console.log('메세지 성공!!')
       } else {
-        const receiverSocketId = await this.commonService
-          .getSocketByUserId(receiverNickname)
-          .then(sock => sock.id)
+        const receiverSocket =
+          await this.commonService.getSocketByUserId(receiverNickname)
+        const receiverSocketId = receiverSocket ? receiverSocket.id : null
         if (receiverSocketId) {
           this.server
             .to(receiverSocketId)
