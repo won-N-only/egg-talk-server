@@ -184,7 +184,6 @@ export class MeetingService {
       console.error('Error generating tokens: ', error)
     }
   }
-
   // 1:1 선택 결과
   async getChooseData(sessionId: string): Promise<ChooseResult[]> {
     const chooseData = await this.redis.hgetall(`choose:${sessionId}`)

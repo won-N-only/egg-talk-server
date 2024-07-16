@@ -113,14 +113,17 @@ export class MeetingGateway
         )
       }
 
-      const { sessionId, readyUsers } = await this.queueService.handleJoinQueue(
+      const result = await this.queueService.handleJoinQueue(
         participantName,
         client,
         gender,
       )
 
+      const { sessionId, readyMales, readyFemales } = result
+
       console.log('레디일때의 sessionId은?? ', sessionId)
-      if (sessionId && readyUsers) {
+      if (sessionId && readyMales && readyFemales) {
+        const readyUsers = [...readyMales, ...readyFemales]
         readyUsers.forEach(user => {
           this.meetingService.setSessionIdToParticipant(user.name, sessionId)
         })
