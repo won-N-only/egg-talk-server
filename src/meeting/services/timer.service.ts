@@ -19,8 +19,8 @@ export class TimerService {
       { time: 2 / 3, event: 'cupidTime' },
       { time: 94 / 60, event: 'cam' },
       { time: 104 / 60, event: 'drawingContest' },
-      { time: 2.9, event: 'lastCupidTime' },
-      { time: 300000.1, event: 'finish' },
+      { time: 3, event: 'lastCupidTime' },
+      { time: 3.15, event: 'finish' },
     ]
 
     if (this.sessionTimers[sessionId]) {

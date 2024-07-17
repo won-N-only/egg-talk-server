@@ -162,6 +162,7 @@ export class MeetingGateway
       await this.timerService.decrTimerCountBySessionId(sessionId)
     }
   }
+
   @SubscribeMessage('choose')
   async handleChoose(
     @MessageBody()
