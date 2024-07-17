@@ -20,7 +20,7 @@ export class TimerService {
       { time: 94 / 60, event: 'cam' },
       { time: 104 / 60, event: 'drawingContest' },
       { time: 3, event: 'lastCupidTime' },
-      { time: 3.15, event: 'finish' },
+      { time: 3.2, event: 'finish' },
     ]
 
     if (this.sessionTimers[sessionId]) {
@@ -41,8 +41,10 @@ export class TimerService {
         let messageArray: string[] | undefined
 
         if (event === 'keyword') {
-          const getRandomNumber = () => Math.floor(Math.random() * 20) + 1
+          const getRandomNumber = () => 0
           message = `${getRandomNumber()}`
+          // const getRandomNumber = () => Math.floor(Math.random() * 20) + 1
+          // message = `${getRandomNumber()}`
         } else if (event === 'introduce') {
           const TeamArray = this.sessionService
             .getParticipants(sessionId)
@@ -80,7 +82,8 @@ export class TimerService {
   ) {
     const participants = this.sessionService.getParticipants(sessionId)
     if (eventType == 'keyword') {
-      const getRandomParticipant = participants[1].name
+      // const getRandomParticipant = participants[1].name
+      const getRandomParticipant = '홍근'
       participants.forEach(({ socketId }) => {
         server.to(socketId).emit(eventType, { message, getRandomParticipant })
       })

@@ -88,9 +88,13 @@ export class SessionService {
   }
 
   async createSession(sessionId: string, openVidu: OpenVidu): Promise<Session> {
+    if (!this.sessions[sessionId]) this.initSession(sessionId)
+
     const session = await openVidu.createSession({
+
       customSessionId: sessionId,
     })
+
     console.log('세션을 만드는 중입니다.', session.sessionId)
     this.sessions[sessionId].session = session
     return session
