@@ -210,6 +210,7 @@ export class MeetingGateway
             this.server.to(socketId).emit('cupidResult', {
               lover: partner,
               loser: losers,
+              time: 13000,
             })
 
             this.server
@@ -333,6 +334,7 @@ export class MeetingGateway
     client.emit('cupidResult', {
       lover: partner,
       loser: losers,
+      time: 9000,
     })
   }
 
