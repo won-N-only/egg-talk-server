@@ -72,11 +72,12 @@ export class QueueService {
         }
 
         await this.redis.set(`sessionId:${sessionId}:openViduUrl`, null)
-        // await this.sendMessageToSqs(sessionId, this.SQS_URL)
-        await this.sessionService.startVideoChatSession(
-          sessionId,
-          process.env.OPENVIDU_URL,
-        )
+        await this.sendMessageToSqs(sessionId, this.SQS_URL)
+        //TODO
+        // await this.sessionService.startVideoChatSession(
+        //   sessionId,
+        //   process.env.OPENVIDU_URL,
+        // )
         return { sessionId, readyUsers }
       }
 
@@ -87,19 +88,19 @@ export class QueueService {
     }
   }
 
-  // /**SQS 작업 TODO */
-  // private SQS_URL = process.env.SQS_URL
-  // private region = 'ap-northeast-2'
-  // private client = new SQSClient({ region: this.region })
-  //
-  // async sendMessageToSqs(sessionId: string, sqsQueueUrl = this.SQS_URL) {
-  // const command = new SendMessageCommand({
-  // QueueUrl: sqsQueueUrl,
-  // MessageBody: 'this is Message Body 입니다.',
-  // MessageAttributes: {
-  // sessionId: { DataType: 'String', StringValue: sessionId },
-  // },
-  // })
-  // this.client.send(command)
-  // }
+  /**SQS 작업 TODO */
+  private SQS_URL = process.env.SQS_URL
+  private region = 'ap-northeast-2'
+  private client = new SQSClient({ region: this.region })
+
+  async sendMessageToSqs(sessionId: string, sqsQueueUrl = this.SQS_URL) {
+    const command = new SendMessageCommand({
+      QueueUrl: sqsQueueUrl,
+      MessageBody: 'this is Message Body 입니다.',
+      MessageAttributes: {
+        sessionId: { DataType: 'String', StringValue: sessionId },
+      },
+    })
+    this.client.send(command)
+  }
 }

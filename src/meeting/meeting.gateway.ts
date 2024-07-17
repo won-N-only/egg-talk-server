@@ -386,8 +386,9 @@ export class MeetingGateway
     if (isAccepted === true) {
       const newSessionId = this.sessionService.generateSessionId()
 
-      const newOpenViduUrl = process.env.OPENVIDU_URL
-      // await this.sessionService.getOpenViduUrlBySessionId(sessionId) TODO
+      const newOpenViduUrl =
+        await this.sessionService.getOpenViduUrlBySessionId(sessionId)
+      // newOpenViduUrl = process.env.OPENVIDU_URL// TODO
       const newOpenVidu =
         await this.sessionService.getOpenViduInstance(newOpenViduUrl)
       await this.sessionService.createSession(newSessionId, newOpenVidu)
