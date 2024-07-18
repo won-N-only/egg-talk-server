@@ -71,13 +71,13 @@ export class QueueService {
           this.sessionService.addParticipant(sessionId, user, socketId)
         }
 
-        await this.redis.set(`sessionId:${sessionId}:openViduUrl`, null)
-        await this.sendMessageToSqs(sessionId, this.SQS_URL)
+        // await this.redis.set(`sessionId:${sessionId}:openViduUrl`, null)
+        // await this.sendMessageToSqs(sessionId, this.SQS_URL)
         //TODO
-        // await this.sessionService.startVideoChatSession(
-        //   sessionId,
-        //   process.env.OPENVIDU_URL,
-        // )
+        await this.sessionService.startVideoChatSession(
+          sessionId,
+          process.env.OPENVIDU_URL,
+        )
         return { sessionId, readyUsers }
       }
 
@@ -101,6 +101,6 @@ export class QueueService {
         sessionId: { DataType: 'String', StringValue: sessionId },
       },
     })
-    this.client.send(command)
+    // this.client.send(command)
   }
 }

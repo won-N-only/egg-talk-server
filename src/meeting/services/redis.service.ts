@@ -14,17 +14,17 @@ export class RedisService {
   }
 
   private initSubscriber() {
-    this.redis.config('SET', 'notify-keyspace-events', 'K$')
-    const keyPattern = '__keyspace@0__:sessionId:*:openViduUrl'
-    this.subscriber.psubscribe(keyPattern)
-    this.subscriber.on('pmessage', async (pattern, channel, message) => {
-      const sessionId = channel.split(':')[2]
-      const openViduUrl =
-        await this.sessionService.getOpenViduUrlBySessionId(sessionId)
-      console.log('subscribe success', openViduUrl)
-      if (openViduUrl) {
-        this.sessionService.startVideoChatSession(sessionId, openViduUrl)
-      }
-    })
+    // this.redis.config('SET', 'notify-keyspace-events', 'K$')
+    // const keyPattern = '__keyspace@0__:sessionId:*:openViduUrl'
+    // this.subscriber.psubscribe(keyPattern)
+    // this.subscriber.on('pmessage', async (pattern, channel, message) => {
+    // const sessionId = channel.split(':')[2]
+    // const openViduUrl =
+    // await this.sessionService.getOpenViduUrlBySessionId(sessionId)
+    // console.log('subscribe success', openViduUrl)
+    // if (openViduUrl) {
+    // this.sessionService.startVideoChatSession(sessionId, openViduUrl)
+    // }
+    // })
   }
 }
